@@ -1,0 +1,113 @@
+# PYTHON
+project_management/project_management/settings.py
+*/templates/**
+project_management/api/templates/**
+*/frontend/**/axios.js
+*/frontend/**/axios.tsx
+*/generated_quotes/**
+*/Media/**
+*/tester.py
+*/accounts/templates/*
+*/myob/scripts/**
+!*/myob/scripts/*.py
+*/myob/invoices/**
+cert.crt
+cert.key
+
+# Microsoft Office
+*.docx
+*.dotx
+*.xlsx
+*.xlsm
+
+# PYTHON
+
+# Django stuff:
+*.log
+local_settings.py
+*.sqlite3
+*.sqlite3-journal
+
+# templated email
+tmp_email/
+
+# npm
+node_modules/
+npm-debug.log
+
+# Webpack
+/frontend/bundles/*
+/frontend/webpack_bundles/*
+/webpack-stats.json
+
+# Byte-compiled / optimized / DLL files
+*/__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.pyc
+/backend/db.sqlite3
+.DS_Store
+.env
+*/settings/local.py
+/staticfiles/*
+/mediafiles/*
+__pycache__/
+/.vscode/
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# pyenv
+.python-version
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+/{{project_name}}-venv/
+/venv/
+/env/
+/output/
+/cache/
+boilerplate.zip
+
+# mkdocs documentation
+/site
