@@ -157,7 +157,7 @@ class ExtractBillDetails(graphene.Mutation):
         }
         data.update({'thumbnailPath': thumbnail_image_path})
 
-        debug = False
+        debug = True
 
         with BytesIO(pdf) as pdf_file:
             reader = PdfReader(pdf_file)
@@ -188,7 +188,7 @@ class ExtractBillDetails(graphene.Mutation):
                     if debug: print("ABN:", abn_regex)
 
                 if not data.get('invoiceNumber'):
-                    invoice_regex = re.findall('[\b\s](?:inv(?:oice)?)[-no.:# ]*?(\d+\/?\d*)', pdf_data)
+                    invoice_regex = re.findall('[\b\s](?:inv(?:oice)?)[-noumber.:# ]*?(\d+\/?\d*)', pdf_data)
                     invoice_set = set(invoice_regex)
                     invoice_regex = list(invoice_set)
                     if(len(invoice_regex) == 1): 
@@ -206,7 +206,7 @@ class ExtractBillDetails(graphene.Mutation):
                     if debug: print("Date:", date_regex)
                     # If more than one date is found from the beginning, narrow down the search to look for an invoice date specifically. 
                     if(len(date_regex) == 1):
-                        date = try_parsing_date(date_regex[0].capitalize())
+                        date = try_parsing_date(date_regex[0].capitalize(), debug)
                         data.update({'invoiceDate': date})
                     elif(len(date_regex) > 1):
                         date_regex = re.findall('(?:invoice\s?date[\r\n\s]*)((?:\s?\d*\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d*,{0,1}\s*\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2})', pdf_data)
@@ -214,11 +214,11 @@ class ExtractBillDetails(graphene.Mutation):
                         date_regex = list(date_set)
                         if debug: print("Date:", date_regex)
                         if(len(date_regex) == 1):
-                            date = try_parsing_date(date_regex[0].capitalize())
+                            date = try_parsing_date(date_regex[0].capitalize(), debug)
                             data.update({'invoiceDate': date})
  
                 if not data.get('amount'):
-                    total_regex = re.findall('[\b\s](?:total|amount|due)[: $aud]*?\s*?(-?[0-9]{0,3}\s*,*?[0-9]{0,3}\s*\.\s*[0-9]{2})', pdf_data)
+                    total_regex = re.findall('(?![\b\s](?:total|amount|due)[: $aud]*?\s*?)(-?[0-9]{0,3}\s*,*?[0-9]{0,3}\s*\.\s*[0-9]{2})', pdf_data)
                     if(len(total_regex) == 1):
                         data.update({'amount': total_regex[0].replace(' ', '').replace(',', '')})
                     if len(total_regex) > 1:
@@ -239,9 +239,10 @@ def abn_format(text):
         return text
 
 
-def try_parsing_date(text):
-    text = text.strip()
-    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %b %Y', '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
+def try_parsing_date(text, debug=False):
+    text = text.strip().title()
+    if debug: print("Parsing:", text)
+    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %B %Y', '%d %b %Y', '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
         try:
             return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
         except ValueError:
