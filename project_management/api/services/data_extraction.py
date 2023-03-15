@@ -157,7 +157,7 @@ class ExtractBillDetails(graphene.Mutation):
         }
         data.update({'thumbnailPath': thumbnail_image_path})
 
-        debug = True
+        debug = False
 
         with BytesIO(pdf) as pdf_file:
             reader = PdfReader(pdf_file)
