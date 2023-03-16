@@ -3,7 +3,7 @@ from django.db.models.deletion import CASCADE, PROTECT, RESTRICT
 from accounts.models import CustomUser
 import datetime
 
-MAX_ID_SIZE = 10
+MAX_ID_SIZE = 12
 
 # CHOICES
 # Australian States and Territories
@@ -35,30 +35,12 @@ ESTIMATE_ITEM_TYPE = [
     ('bag', 'Bag'),
 ]
 
-# BGIS Regions
-# EMOS_REGION_CHOICES = [
-#     ('RIC', 'Richmond Area'),
-#     ('SCM', 'Sydney City Metro'),
-#     ('FBE', 'Fleet Base East'),
-#     ('HOLS', 'Holsworthy Barracks'),
-#     ('SMA', 'Singleton Military Area')
-# ]
-
-
 # MODELS
 # Contractor Companies
 class Client(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     name = models.CharField(max_length=100)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
-    # address = models.CharField(max_length=100)
-    # locality = models.CharField(max_length=50)
-    # postcode = models.CharField(max_length=4)
-    # state = models.CharField(max_length=3, choices=STATE_CHOICES, default='NSW')
-    # abn = models.CharField(max_length=11, verbose_name="ABN")
-    # bank_account_name = models.CharField(max_length=50, verbose_name="Account Name")
-    # bsb = models.CharField(max_length=6, verbose_name="BSB")
-    # bank_account_number = models.CharField(max_length=17, verbose_name="Account Number")
 
     @classmethod
     def get_default_id(cls):
@@ -97,7 +79,7 @@ class ClientContact(models.Model):
 class Location(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     client_ref = models.CharField(blank=True, null=True, max_length=4)
-    name = models.CharField(max_length=50, verbose_name="Base Name")
+    name = models.CharField(max_length=50)
     address = models.CharField(max_length=100)
     locality = models.CharField(max_length=50)
     state = models.CharField(max_length=3, choices=STATE_CHOICES, default='NSW')
@@ -114,12 +96,12 @@ class Location(models.Model):
 # Contractor Companies
 class Contractor(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
-    myob_uid = models.CharField(max_length=36, blank=True, null=True)
-    name = models.CharField(max_length=100)
-    abn = models.CharField(max_length=11, verbose_name="ABN")
-    bsb = models.CharField(max_length=6, verbose_name="BSB")
-    bank_account_name = models.CharField(max_length=50, verbose_name="Account Name")
-    bank_account_number = models.CharField(max_length=17, verbose_name="Account Number")
+    myob_uid = models.CharField(max_length=38, blank=True, null=True)
+    name = models.CharField(max_length=200)
+    abn = models.CharField(max_length=16)
+    bsb = models.CharField(max_length=10)
+    bank_account_name = models.CharField(max_length=52)
+    bank_account_number = models.CharField(max_length=24)
 
     def __str__(self):
         return self.name
@@ -149,23 +131,23 @@ class Job(models.Model):
     requester = models.ForeignKey(ClientContact, on_delete=models.PROTECT, blank=True, null=True,)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
 
-    stage = models.CharField(max_length=3, default='INS', choices=JOB_STATE, verbose_name="Stage", editable=False)
-    po = models.CharField(max_length=MAX_ID_SIZE, blank=False, verbose_name="Purchase Order Number")
-    sr = models.CharField(max_length=MAX_ID_SIZE, blank=True, verbose_name="Service Request Number")
-    other_id = models.CharField(max_length=MAX_ID_SIZE, blank=True, verbose_name="Other Identifying Number")
+    stage = models.CharField(max_length=3, default='INS', choices=JOB_STATE, editable=False)
+    po = models.CharField(max_length=MAX_ID_SIZE, blank=False)
+    sr = models.CharField(max_length=MAX_ID_SIZE, blank=True)
+    other_id = models.CharField(max_length=MAX_ID_SIZE*2, blank=True)
     priority = models.CharField(max_length=4, blank=True)
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True)
-    building = models.CharField(max_length=20, blank=True)
-    detailed_location = models.CharField(max_length=50, blank=True) 
-    title = models.CharField(max_length=50, blank=True)
+    building = models.CharField(max_length=64, blank=True)
+    detailed_location = models.CharField(max_length=255, blank=True) 
+    title = models.CharField(max_length=255, blank=True)
     description = models.TextField(max_length=255, blank=True)
     special_instructions = models.TextField(max_length=255, blank=True)
     scope = models.TextField(max_length=500, blank=True)
-    poc_name = models.CharField(max_length=50, blank=True)
-    poc_phone = models.CharField(max_length=50, blank=True)
+    poc_name = models.CharField(max_length=75, blank=True)
+    poc_phone = models.CharField(max_length=75, blank=True)
     poc_email = models.EmailField(blank=True)
-    alt_poc_name = models.CharField(max_length=50, blank=True)
-    alt_poc_phone = models.CharField(max_length=50, blank=True)
+    alt_poc_name = models.CharField(max_length=75, blank=True)
+    alt_poc_phone = models.CharField(max_length=75, blank=True)
     alt_poc_email = models.EmailField(blank=True)
     date_issued = models.DateField(blank=True, null=True)
     inspection_date = models.DateField(blank=True, null=True)
@@ -177,12 +159,12 @@ class Job(models.Model):
     site_manager = models.ForeignKey(CustomUser, on_delete=PROTECT, blank=True, null=True, related_name="site_manager")
     work_notes = models.TextField(blank=True, max_length=500)
     close_out_date = models.DateField(blank=True, null=True)
-    close_out_reference = models.CharField(max_length=10, blank=True)
+    close_out_reference = models.CharField(max_length=20, blank=True)
     approval_date = models.DateField(blank=True, null=True)
     overdue_date = models.DateField(blank=True, null=True)
-    opportunity_type = models.CharField(default='Commercial', max_length=20)
-    bsafe_link = models.CharField(blank=True, max_length=515, verbose_name="BSAFE Link")
-    work_type = models.CharField(max_length=20, default="Reactive Maintenance")
+    opportunity_type = models.CharField(default='Commercial', max_length=24)
+    bsafe_link = models.CharField(blank=True, max_length=515)
+    work_type = models.CharField(max_length=24, default="Reactive Maintenance")
     cancelled = models.BooleanField(default=False)
     cancel_reason = models.CharField(max_length=255, blank=True)
 
@@ -308,7 +290,7 @@ class PurchaseOrder(models.Model):
 class Estimate(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     job_id = models.ForeignKey(Job, on_delete=CASCADE)
-    name = models.CharField(max_length=20, default='') 
+    name = models.CharField(max_length=50, default='') 
     description = models.CharField(max_length=100, default='')
     price = models.DecimalField(max_digits=10, default='0.00', decimal_places=2)
     quote_by = models.ForeignKey(CustomUser, on_delete=PROTECT)
@@ -323,7 +305,7 @@ class Estimate(models.Model):
 class EstimateHeader(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     estimate_id = models.ForeignKey(Estimate, on_delete=CASCADE)
-    description = models.CharField(max_length=50, default='') 
+    description = models.CharField(max_length=255, default='')
     markup = models.DecimalField(max_digits=10, default='0.00', decimal_places=2)
     gross = models.DecimalField(max_digits=10, default='0.00', decimal_places=2)
 
