@@ -2,7 +2,6 @@ from tkinter import CASCADE
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
-
 class MyAccountManager(BaseUserManager):
     def create_user(self, email, password=None):
         if not email:

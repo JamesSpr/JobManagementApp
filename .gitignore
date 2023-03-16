@@ -21,6 +21,8 @@ cert.key
 *.xlsm
 
 # PYTHON
+pg_service.conf
+.my_pgpass
 
 # Django stuff:
 *.log
