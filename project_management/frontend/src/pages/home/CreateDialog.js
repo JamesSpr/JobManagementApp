@@ -162,6 +162,22 @@ const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => 
         }
     }
 
+    const getNextRFQ = async () => {
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                query nextId { 
+                    nextId
+                }`,
+                variables: {},
+            }),
+        }).then((response) => {
+            const res = response?.data?.data.nextId;
+            setNewJob(prev => ({...prev, 'otherId': `RFQ${res}`}))
+        });
+    }
+
     return (
         <Dialog open={open} onClose={handleClose} fullwidth="true" maxWidth={'md'}>
             <DialogTitle sx={{margin: '0 auto'}}>Create New Job</DialogTitle>
@@ -230,25 +246,26 @@ const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => 
             </DialogContent>
             <DialogActions sx={{justifyContent: "center"}}>
                 <Button variant="outlined" onClick={handleClose}>Close</Button>
-                    {createdJob && Object.keys(createdJob).length !== 0 ?   
-                        <Button variant="outlined" onClick={(e) => navigate('/job/edit/' + defineJobIdentifier(createdJob))}>Go To Job</Button>
+                {createdJob && Object.keys(createdJob).length !== 0 ?   
+                    <Button variant="outlined" onClick={(e) => navigate('/job/edit/' + defineJobIdentifier(createdJob))}>Go To Job</Button>
                     :
-                        <Box sx={{ m: 1, position: 'relative', display: 'inline-block' }}>
-                            <Button variant="outlined" onClick={handleCreate} disabled={waiting}>Create</Button>
-                            {waiting && (
-                                <CircularProgress size={24} 
-                                    sx={{
-                                        colour: 'primary', 
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: '50%',
-                                        marginTop: '-12px',
-                                        marginLeft: '-12px',
-                                    }}
-                                />
-                            )}
-                        </Box>
-                    }
+                    <Box sx={{ m: 1, position: 'relative', display: 'inline-block' }}>
+                        <Button variant="outlined" onClick={handleCreate} disabled={waiting}>Create</Button>
+                        {waiting && (
+                            <CircularProgress size={24} 
+                                sx={{
+                                    colour: 'primary', 
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    marginTop: '-12px',
+                                    marginLeft: '-12px',
+                                }}
+                            />
+                        )}
+                    </Box>
+                }
+                <Button variant="outlined" onClick={(e) => getNextRFQ()}>Next RFQ</Button>
             </DialogActions>
 
             <Portal>
