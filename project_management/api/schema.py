@@ -9,6 +9,7 @@ from graphene import relay
 from graphql_jwt.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.db import connection
 from accounts.models import CustomUser
 from api.services.create_completion_documents import CreateCompletionDocuments
 from .services.email import AllocateJobEmail, CloseOutEmail, EmailQuote
@@ -1136,6 +1137,7 @@ class Query(graphene.ObjectType):
         # return Job.objects.all()
 
     jobs = graphene.List(JobType)
+    next_id = graphene.String()
     job_all = DjangoFilterConnectionField(JobType)
     estimates = graphene.List(EstimateType)
     estimate_headers = graphene.List(EstimateHeaderType)
@@ -1148,6 +1150,14 @@ class Query(graphene.ObjectType):
     invoices = graphene.List(InvoiceType)
     job_invoices = graphene.List(JobInvoiceType)
     bills = graphene.List(BillType)
+
+    @login_required
+    def resolve_next_id(root, info, **kwargs):
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT last_value FROM api_job_id_seq")
+        row = cursor.fetchone()
+        cursor.close()
+        return row[0] + 1 
 
     @login_required
     def resolve_bills(root, info, **kwargs):
