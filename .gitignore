@@ -13,6 +13,7 @@ project_management/api/templates/**
 */myob/invoices/**
 cert.crt
 cert.key
+*/frontend/static/frontend/main.js
 
 # Microsoft Office
 *.docx
