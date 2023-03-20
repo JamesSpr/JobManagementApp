@@ -14,6 +14,7 @@ project_management/api/templates/**
 cert.crt
 cert.key
 */frontend/static/frontend/main.js
+*/frontend/static/frontend/main.js*.txt
 
 # Microsoft Office
 *.docx
