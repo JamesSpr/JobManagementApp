@@ -470,6 +470,7 @@ const EstimateTable = ({estimateData, accessorId}) => {
 
                                 // Average markup
                                 markup = (gross / extension - 1) * 100;
+                                isNaN(markup) ? markup = 0.00 : null;
 
                                 const newEstimateHeader = produce(old[parentId], draft => {
                                     draft.markup = markup.toFixed(2);
