@@ -36,4 +36,5 @@ class Transaction(models.Model):
     job_uid = models.CharField(max_length=36, blank=True)
     job_number = models.CharField(max_length=30, blank=True)
     source_transaction_type = models.CharField(max_length=30, blank=True)
+    date_occurred = models.DateField()
 
