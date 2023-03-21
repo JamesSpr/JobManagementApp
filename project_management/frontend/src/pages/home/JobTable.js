@@ -103,6 +103,15 @@ const JobTable = ({tableData, users, jobStages}) => {
         }
     }
 
+    const inDateRange = (row, columnId, filterValue) => {
+        let [min, max] = filterValue
+        min = isNaN(Date.parse(min)) ? 0 : Date.parse(min)
+        max = isNaN(Date.parse(max)) ? 9007199254740992 : Date.parse(max)
+        
+        const rowValue = row.getValue(columnId) ? Date.parse(row.getValue(columnId).split('/').reverse().join('-')) : 0
+        return rowValue >= min && rowValue <= max
+    }
+
     // Table Columns
     const columns = useMemo(() => [
         {
@@ -163,6 +172,7 @@ const JobTable = ({tableData, users, jobStages}) => {
         {
             accessorKey: 'dateIssued',
             header: () => 'Issue Date',
+            filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na", //{day: '2-digit', month: 'short', year:'numeric'}
             size: 100,
         },
@@ -174,6 +184,7 @@ const JobTable = ({tableData, users, jobStages}) => {
         {
             accessorKey: 'overdueDate',
             header: () => 'Overdue Date',
+            filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na",  //{day: '2-digit', month: 'short', year:'numeric'}
             size: 125,
         },
@@ -218,6 +229,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             accessorFn: row => row.jobinvoiceSet?.[0]?.invoice?.dateCreated ?? "",
             id: 'invoiceCreatedDate',
             header: () => 'Invoice Created',
+            filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
             size: 130,
         },
@@ -225,6 +237,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             accessorFn: row => row.jobinvoiceSet?.[0]?.invoice?.dateIssued ?? "",
             id: 'invoiceDate',
             header: () => 'Invoice Sent',
+            filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
             size: 115,
         },
@@ -252,19 +265,19 @@ const JobTable = ({tableData, users, jobStages}) => {
             sorting,
         },
         onRowSelectionChange: setRowSelection,
-        enableMultiRowSelection: false,  
-        getPaginationRowModel: getPaginationRowModel(),
-        getCoreRowModel: getCoreRowModel(),
         onColumnFiltersChange: setColumnFilters,
         onGlobalFilterChange: setGlobalFilter,
-        globalFilterFn: fuzzyFilter,
-        getFilteredRowModel: getFilteredRowModel(),
-        enableMultiSort: true,
         onSortingChange: setSorting,
+        getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFacetedRowModel: getFacetedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
         getFacetedUniqueValues: getFacetedUniqueValues(),
         getFacetedMinMaxValues: getFacetedMinMaxValues(),
+        globalFilterFn: fuzzyFilter,
+        enableMultiRowSelection: false,  
+        enableMultiSort: true,
         meta: {
             getStageDescription: (value) => (
                 jobStages.map(stage => (
@@ -520,6 +533,7 @@ const Filter = ({column, table, ...props}) => {
 
     const columnFilterValue = column.getFilterValue()
     
+    const dateColumns = ['dateIssued', 'overdueDate', 'invoiceDate', 'invoiceCreatedDate']
     const sortedUniqueValues = useMemo(
       () =>
         typeof firstValue === 'number'
@@ -528,6 +542,63 @@ const Filter = ({column, table, ...props}) => {
       [column.getFacetedUniqueValues()]
     )
   
+    if(dateColumns.includes(column.id)) {
+        return (
+            <>
+                <DebouncedInput
+                    type="date"
+                    value={(columnFilterValue)?.[0] ?? ''}
+                    onChange={value => {
+                        column.setFilterValue((old) => [value, old?.[1]])
+                    }}
+                />
+                <DebouncedInput
+                    type="date"
+                    value={(columnFilterValue)?.[1] ?? ''}
+                    onChange={value => {
+                        column.setFilterValue((old) => [old?.[0], value])
+                    }}
+                />
+            </>
+          )
+    }
+
+    if(typeof firstValue === 'number') {
+        return (
+            <>
+                <DebouncedInput
+                    type="number"
+                    min={Number(column.getFacetedMinMaxValues()?.[0] ?? '')}
+                    max={Number(column.getFacetedMinMaxValues()?.[1] ?? '')}
+                    value={(columnFilterValue)?.[0] ?? ''}
+                    onChange={value =>
+                        column.setFilterValue((old) => [value, old?.[1]])
+                    }
+                    placeholder={`Min ${
+                        column.getFacetedMinMaxValues()?.[0]
+                        ? `(${column.getFacetedMinMaxValues()?.[0]})`
+                        : ''
+                    }`}
+                />
+
+                <DebouncedInput
+                    type="number"
+                    min={Number(column.getFacetedMinMaxValues()?.[0] ?? '')}
+                    max={Number(column.getFacetedMinMaxValues()?.[1] ?? '')}
+                    value={(columnFilterValue)?.[1] ?? ''}
+                    onChange={value =>
+                        column.setFilterValue((old) => [old?.[0], value])
+                    }
+                    placeholder={`Max ${
+                        column.getFacetedMinMaxValues()?.[1]
+                        ? `(${column.getFacetedMinMaxValues()?.[1]})`
+                        : ''
+                    }`}
+                />
+            </>
+        )
+    }
+
     return (
       <>
         <datalist id={column.id + 'list'}>
@@ -545,7 +616,6 @@ const Filter = ({column, table, ...props}) => {
           {...props}
         />
       </>
-    // )
     )
   }
 

@@ -92,7 +92,7 @@ export const ProgressButton = ({name, waiting, onClick, centerButton, buttonVari
     )
 }
 
-export const Tooltip = ({children, title, centerText}) => {
+export const Tooltip = ({children, title}) => {
     if(title !== "") {
         return(
         <div className="tooltip">
