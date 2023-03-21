@@ -5,14 +5,11 @@ import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPag
     Column, Table, ColumnDef, ColumnFiltersState } from '@tanstack/react-table'
 
 
-    
+
 const CompanyDashboard = () => {
 
     const axiosPrivate = useAxiosPrivate()
     const [loading, setLoading] = useState(false);
-    const [clients, setClients] = useState([])
-    // const [invoices, setInvoices] = useState([])
-    // const [bills, setBills] = useState([])
     const [data, setData] = useState([]);
 
     // Get Data
