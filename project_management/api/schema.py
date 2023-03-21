@@ -1026,7 +1026,9 @@ class CreateInvoice(graphene.Mutation):
 
     @classmethod
     def mutate(self, root, info, myob_uid, number, amount, date_created, date_issued, date_paid, job):
-        # invoice = Invoice.objects.get_or_create(myob_uid=myob_uid)
+        if Invoice.objects.filter(number=number).exists():
+            return self(success=False)
+        
         invoice = Invoice()
         invoice.myob_uid = myob_uid
         invoice.number = number
@@ -1045,6 +1047,31 @@ class CreateInvoice(graphene.Mutation):
         job.save()
 
         return self(success = True)
+
+class UpdateInvoice(graphene.Mutation):
+    class Arguments:
+        number = graphene.String()
+        amount = graphene.Float()
+        date_created = graphene.Date()
+        date_issued = graphene.Date()
+        date_paid = graphene.Date()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, number, amount = None, date_created = None, date_issued = None, date_paid = None):
+        if not Invoice.objects.filter(number=number).exists():
+            return self(success=False)
+        
+        invoice = Invoice.objects.get(number=number)
+        if amount: invoice.amount = amount
+        if date_created: invoice.date_created = date_created
+        if date_issued: invoice.date_issued = date_issued
+        if date_paid: invoice.date_paid = date_paid
+        invoice.save()
+
+        return self(success=True)
+
 
 class UpdateInvoices(graphene.Mutation):
     class Arguments:
@@ -1312,6 +1339,7 @@ class Mutation(graphene.ObjectType):
     transfer_estimate = TransferEstimate.Field()
 
     create_invoice = CreateInvoice.Field()
+    update_invoice = UpdateInvoice.Field()
     update_invoices = UpdateInvoices.Field()
     delete_invoice = DeleteInvoice.Field()
     transfer_invoice = TransferInvoice.Field()
