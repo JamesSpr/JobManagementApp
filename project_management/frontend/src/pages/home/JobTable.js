@@ -41,6 +41,7 @@ const JobTable = ({tableData, users, jobStages}) => {
         'stage': true, 'approvedPrice': false, 'invoice': false, 'invoiceDate': false, 
         'invoiceCreatedDate': false, 'region': false, 'detailedLocation': false, 'description': false
     });
+    const [showFooter, setShowFooter] = useState(false);
     const [allData, setAllData] = useState(false);
 
     const [waiting, setWaiting] = useState(false);
@@ -112,12 +113,26 @@ const JobTable = ({tableData, users, jobStages}) => {
         return rowValue >= min && rowValue <= max
     }
 
+    const footerCounts = (column) => {
+        return column.getFacetedUniqueValues().size
+    }
+    const footerSum = (props) => {
+        let sum = 0.0
+
+        for(var i = 0; i < props.table.getFilteredRowModel().flatRows.length; i++) {
+            // console.log(props.table.getFilteredRowModel().flatRows[i].getValue(props.column.id))
+            sum += Number(props.table.getFilteredRowModel().flatRows[i].getValue(props.column.id))
+        }
+        return sum
+    }
+
     // Table Columns
     const columns = useMemo(() => [
         {
             accessorKey: 'id',
             header: () => 'ID',
             cell: info => info.getValue(),
+            footer: '',
             size: 50,
         },
         {                
@@ -125,6 +140,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'client',
             header: () => 'Client',
             cell: info => info.getValue(),
+            footer: props => footerCounts(props.column),
             size: 120,
         },
         {                
@@ -132,6 +148,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'jobNumber',
             header: () => 'Job Number',
             cell: info => info.getValue(),
+            footer: props => footerCounts(props.column),
             size: 120,
         },
         {
@@ -156,34 +173,40 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'location',
             header: () => 'Location',
             cell: info => info.getValue(),
+            footer: props => footerCounts(props.column),
             size: 180,
         },
         {
             accessorKey: 'building',
             header: () => 'Building',
+            footer: '',
             size: 160,
         },
         {
             accessorKey: 'title',
             header: () => 'Title',
             enableSorting: false,
+            footer: '',
             size: 350,
         },
         {
             accessorKey: 'dateIssued',
             header: () => 'Issue Date',
             filterFn: inDateRange,
+            footer: props => footerCounts(props.column),
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na", //{day: '2-digit', month: 'short', year:'numeric'}
             size: 100,
         },
         {
             accessorKey: 'priority',
             header: () => 'Priority',
+            footer: props => footerCounts(props.column),
             size: 70,
         },
         {
             accessorKey: 'overdueDate',
             header: () => 'Overdue Date',
+            footer: props => footerCounts(props.column),
             filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na",  //{day: '2-digit', month: 'short', year:'numeric'}
             size: 125,
@@ -191,19 +214,22 @@ const JobTable = ({tableData, users, jobStages}) => {
         {
             accessorKey: 'detailedLocation',
             header: () => 'Detailed Location',
+            footer: '',
             size: 200,
         },
         {
             accessorKey: 'description',
             header: () => 'Description',
+            footer: '',
             size: 500,
         },
         {
             accessorKey: 'stage',
             header: () => 'Status',
             cell: info => (
-               <Tooltip title={(table.options.meta).getStageDescription(info.getValue())}>{info.getValue()}</Tooltip>
+                <Tooltip title={(table.options.meta).getStageDescription(info.getValue())}>{info.getValue()}</Tooltip>
             ), 
+            footer: '',
             size: 80,
         },
         {
@@ -215,7 +241,8 @@ const JobTable = ({tableData, users, jobStages}) => {
             })]?.price ?? "" : "",
             id: 'approvedPrice',
             header: () => 'Approved Price',
-            cell: info => info.getValue() ? "$" + info.getValue() : info.getValue(),
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
+            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
             size: 140,
         },
         {
@@ -223,6 +250,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'invoice',
             header: () => 'Invoice #',
             cell: info => info.getValue(),
+            footer: props => footerCounts(props.column),
             size: 90,
         },
         {
@@ -402,6 +430,23 @@ const JobTable = ({tableData, users, jobStages}) => {
                                     );
                                 })}
                             </tbody>
+                            {showFooter &&
+                            <tfoot>
+                                {table.getFooterGroups().map(footerGroup => (
+                                    <tr key={footerGroup.id}>
+                                    {footerGroup.headers.map(header => (
+                                        <th key={header.id}>
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                header.column.columnDef.footer,
+                                                header.getContext()
+                                            )}
+                                        </th>
+                                    ))}
+                                    </tr>
+                                ))}
+                            </tfoot>}
                         </table>
                         <PaginationControls table={table} />
                     </Grid>
@@ -504,6 +549,9 @@ const JobTable = ({tableData, users, jobStages}) => {
                                 <FormControlLabel control={
                                     <Checkbox checked={allData} onChange={getAllData}/>
                                 } label="Show Archived Jobs" />
+                                <FormControlLabel control={
+                                    <Checkbox checked={showFooter} onChange={() => setShowFooter(!showFooter)}/>
+                                } label="Show Footer" />
                             </Grid>
                         </Grid>
                     </FormGroup>
