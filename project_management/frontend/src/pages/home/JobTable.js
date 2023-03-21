@@ -140,7 +140,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'client',
             header: () => 'Client',
             cell: info => info.getValue(),
-            footer: props => footerCounts(props.column),
+            footer: '',
             size: 120,
         },
         {                
@@ -148,24 +148,27 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'jobNumber',
             header: () => 'Job Number',
             cell: info => info.getValue(),
-            footer: props => footerCounts(props.column),
+            footer: '',
             size: 120,
         },
         {
             accessorFn: row => "PO" + row.po,
             id: 'po',
             header: () => 'PO',
+            footer: '',
             size: 100,
         },
         {
             accessorFn: row => "SR" + row.sr,
             id: 'sr',
             header: () => 'SR',
+            footer: '',
             size: 100,
         },
         {
             accessorKey: 'otherId',
             header: () => 'Other',
+            footer: '',
             size: 100,
         },
         {
@@ -173,7 +176,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'location',
             header: () => 'Location',
             cell: info => info.getValue(),
-            footer: props => footerCounts(props.column),
+            footer: '',
             size: 180,
         },
         {
@@ -193,22 +196,22 @@ const JobTable = ({tableData, users, jobStages}) => {
             accessorKey: 'dateIssued',
             header: () => 'Issue Date',
             filterFn: inDateRange,
-            footer: props => footerCounts(props.column),
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na", //{day: '2-digit', month: 'short', year:'numeric'}
+            footer: props => footerCounts(props.column),
             size: 100,
         },
         {
             accessorKey: 'priority',
             header: () => 'Priority',
-            footer: props => footerCounts(props.column),
+            footer: '',
             size: 70,
         },
         {
             accessorKey: 'overdueDate',
             header: () => 'Overdue Date',
-            footer: props => footerCounts(props.column),
             filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na",  //{day: '2-digit', month: 'short', year:'numeric'}
+            footer: props => footerCounts(props.column),
             size: 125,
         },
         {
@@ -250,7 +253,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'invoice',
             header: () => 'Invoice #',
             cell: info => info.getValue(),
-            footer: props => footerCounts(props.column),
+            footer: '',
             size: 90,
         },
         {
@@ -259,6 +262,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             header: () => 'Invoice Created',
             filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
+            footer: props => footerCounts(props.column),
             size: 130,
         },
         {
@@ -267,6 +271,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             header: () => 'Invoice Sent',
             filterFn: inDateRange,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
+            footer: props => footerCounts(props.column),
             size: 115,
         },
         {
@@ -274,6 +279,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: "region",
             header: () => 'Region',
             cell: info => info.getValue(),
+            footer: '',
             size: 70,
         },
     ], []);
