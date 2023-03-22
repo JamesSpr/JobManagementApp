@@ -24,10 +24,16 @@ class Account(models.Model):
     level = models.IntegerField()
     current_balance = models.DecimalField(max_digits=13, default='0.00', decimal_places=2)
 
+class Job(models.Model):
+    id = models.AutoField(primary_key=True, unique=True)
+    myob_uid = models.CharField(max_length=36)
+    name = models.CharField(max_length=50)
+    
 
 class Client(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     myob_uid = models.CharField(max_length=36)
+    name = models.CharField(max_length=50)
 
 class Transaction(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
