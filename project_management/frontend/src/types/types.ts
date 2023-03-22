@@ -55,6 +55,22 @@ export type JobStage = {
 
 }
 
-export type Auth = {
-
+export interface IAuth {
+    user : {
+        id: String;
+        username: String;
+        refreshToken: String;
+        defaultPaginationAmount: Number;
+        company?: String;
+    },
+    myob: {
+        id: String;
+    },
+    accessToken: String;
+    sidebar: Boolean;
+}
+    
+export type AuthContextType = {
+    auth?: IAuth;
+    setAuth: (auth: IAuth) => void;
 }

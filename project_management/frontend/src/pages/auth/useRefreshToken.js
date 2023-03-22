@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const useRefreshToken = () => {
     let location = useLocation();
     let navigate = useNavigate();
-    const { auth, setAuth, setUserPreferences } = useAuth();
+    const { auth, setAuth } = useAuth();
 
     const updateUserRefreshToken = async (id, refreshToken) => {
         // Set user refresh token for persistant login
@@ -80,8 +80,7 @@ const useRefreshToken = () => {
                 // Update user auth state
                 const {myobUser, ...user} = res
                 userAuth = user
-                setUserPreferences({paginationAmount: res.defaultPaginationAmount})
-                setAuth({"user": user, "myob": myobUser});
+                setAuth(prev => ({...prev, user: user, myob: myobUser}));
             }
         })
         // }

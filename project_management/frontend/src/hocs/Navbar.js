@@ -9,7 +9,7 @@ import axios from '../hooks/axios';
 import SideBar from './SideBar';
 
 const Navbar = () => {
-    const { auth, setAuth, userPreferences, setUserPreferences } = useAuth();
+    const { auth, setAuth } = useAuth();
     
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -21,10 +21,10 @@ const Navbar = () => {
         setAnchorEl(null);
     };
     
-    const [toggleSidebar, setToggleSidebar] = useState(userPreferences.sidebar);
+    const [toggleSidebar, setToggleSidebar] = useState(false);
 
     useEffect(() => {
-        setUserPreferences({sidebar: toggleSidebar});
+        setAuth(prev => ({...prev, sidebar: toggleSidebar}));
     }, [toggleSidebar])
 
     let navigate = useNavigate();

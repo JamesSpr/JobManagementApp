@@ -104,9 +104,10 @@ class SyncTransactions(graphene.Mutation):
         uid = graphene.String()
 
     success = graphene.Boolean()
+    data = graphene.String()
 
     @login_required
-    def mutate(self, root, info):
+    def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
 
@@ -125,9 +126,9 @@ class SyncTransactions(graphene.Mutation):
 
             general_journal = getAllData(url, headers)
 
-            return self(success=True, message=json.dumps(general_journal))
+            return self(success=True, data=json.dumps(general_journal))
         else:
-            return self(success=False, message="MYOB Connection Error")
+            return self(success=False, data="MYOB Connection Error")
 
         # Update Transactions
         transactions = []

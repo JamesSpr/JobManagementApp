@@ -12,7 +12,7 @@ function LoginPage() {
     const location = useLocation();
     const from = location.state?.from?.pathname || "/";
 
-    const { auth, setAuth, setUserPreferences } = useAuth();
+    const { auth, setAuth } = useAuth();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [email, setEmail] = useState('');
@@ -80,7 +80,6 @@ function LoginPage() {
                     // Reset login form fields
                     setUsername('');
                     setPassword('');
-                    setUserPreferences({paginationAmount: response?.data?.data?.tokenAuth.user.defaultPaginationAmount})
                     successfulLogin(TA);
                 }   
             });

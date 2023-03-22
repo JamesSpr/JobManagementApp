@@ -53,14 +53,14 @@ let theme = createTheme({
 })
 
 const Layout = (props) => {  
-    const { userPreferences } = useAuth();
+    const { auth } = useAuth();
     
     return (
         <div id='container'>
             <ThemeProvider theme={theme}>
                 <Navbar />
                 <EstimateProvider>
-                    <Main open={userPreferences.sidebar}>
+                    <Main open={auth?.sidebar}>
                         {props.children}
                     </Main>
                 </EstimateProvider>

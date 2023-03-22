@@ -75,7 +75,7 @@ const HomePage = () => {
                     nextPage = false; 
                 }
             }).catch((err) => {
-                if(err.code === 'ERR_CANCELLED') {
+                if(err.code === 'ERR_CANCELLED') { 
                     return
                 }
                 console.log("Error:", err);

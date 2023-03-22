@@ -67,7 +67,7 @@ export const FileUploadSection = ({onSubmit, waiting, id, type, button}) => ( <>
     </>
 )
 
-export const ProgressButton = ({name, waiting, onClick, centerButton, buttonVariant="standard"}) => {
+export const ProgressButton = ({name, waiting, onClick, centerButton=false, buttonVariant="standard"}) => {
     let buttonStyle = "progressButton";
     if(centerButton) {
         buttonStyle += " centered";
