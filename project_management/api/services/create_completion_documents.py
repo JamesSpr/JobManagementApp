@@ -46,7 +46,7 @@ class CreateBGISEstimate(graphene.Mutation):
             pass
 
         ## Save to new folder
-        shutil.copy(r"C:\Users\Aurify Constructions\Documents\PM_Software\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
+        shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
 
         xlApp = win32.Dispatch("Excel.Application", pythoncom.CoInitialize())
         xlApp.Visible = False
@@ -73,7 +73,7 @@ class CreateCompletionDocuments(graphene.Mutation):
 
         job = Job.objects.get(id=job_id)
         jobs_path = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
-        templates_path = r'C:\Users\Aurify Constructions\Documents\PM_Software\project_management\api\templates'
+        templates_path = r'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates'
 
         if job.po == "" or job.po == None:
             return cls(success=False, message="Please ensure job has a PO Number")
