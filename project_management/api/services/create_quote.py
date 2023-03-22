@@ -79,8 +79,8 @@ class CreateQuote(graphene.Mutation):
             '[ClientName]' : client_name, 
             '[Location]': location,
             '[Scope]': scope,
-            '[QuoterSignature]': rf'C:\Users\Aurify Constructions\Documents\PM_Software\project_management\api\templates\temp\user_{estimate.quote_by.first_name.lower()}-signature.png',
-            '[CompanyLogo]' : r'C:\Users\Aurify Constructions\Documents\PM_Software\project_management\api\templates\temp\aurify_logo-quote.png',
+            '[QuoterSignature]': rf'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\temp\user_{estimate.quote_by.first_name.lower()}-signature.png',
+            '[CompanyLogo]' : r'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\temp\aurify_logo-quote.png',
             '[Quoter]': estimate.quote_by.first_name.capitalize().strip() + " " + estimate.quote_by.last_name.capitalize().strip(),
             '[QuoterRole]': estimate.quote_by.position.capitalize().strip(),
         }
@@ -209,7 +209,7 @@ class CreateBGISEstimate(graphene.Mutation):
             pass
 
         ## Save to new folder
-        shutil.copy(r"C:\Users\Aurify Constructions\Documents\PM_Software\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
+        shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
 
         xlApp = win32.Dispatch("Excel.Application", pythoncom.CoInitialize())
         xlApp.Visible = False
