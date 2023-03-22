@@ -10,10 +10,8 @@ const CompanyDashboard = () => {
 
     const axiosPrivate = useAxiosPrivate()
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState([]);
 
-    // Get Data
-    useEffect(() => {
+    const syncData = () => {
         const controller = new AbortController();
 
         const fetchData = async () => {
@@ -32,7 +30,6 @@ const CompanyDashboard = () => {
                 const res = response?.data?.data;
 
 
-                setData((res.invoices).concat(res.bills))
                 setLoading(false);
 
             }).catch((err) => {
@@ -49,7 +46,8 @@ const CompanyDashboard = () => {
         return () => {
             controller.abort();
         } 
-    }, []);
+    }
+
 
     return (
         <>

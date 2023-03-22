@@ -2,7 +2,16 @@ import graphene
 from graphene_django import DjangoObjectType
 from graphene import relay
 from graphql_jwt.decorators import login_required
-from .models import Account, Transaction
+from .models import Account, Transaction, Sync
+from datetime import datetime
+import environ
+import requests
+import json
+
+import sys
+sys.path.append("..")
+from myob.models import MyobUser
+from myob.schema import checkTokenAuth
 
 class AccountInputType(graphene.InputObjectType):
     myob_uid = graphene.String()
@@ -73,10 +82,83 @@ class UpdateTransactions(graphene.Mutation):
 
         return self(success=False)
 
+def getAllData(url, headers):
+    url += "?$top=1000"
+    response = requests.request("GET", url, headers=headers, data={})
+    res = json.loads(response.text)
+    data = res
+    counter = 1
+
+    while res['NextPageLink'] != None:
+        skip = 1000*counter
+        response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
+        res = json.loads(response.text)
+        data['Items'].extend(res['Items'])
+        counter += 1
+        print(f"Fetched: {skip} records")
+
+    return data
+
+class SyncTransactions(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+
+    success = graphene.Boolean()
+
+    @login_required
+    def mutate(self, root, info):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction"
+            
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+
+            general_journal = getAllData(url, headers)
+
+            return self(success=True, message=json.dumps(general_journal))
+        else:
+            return self(success=False, message="MYOB Connection Error")
+
+        # Update Transactions
+        transactions = []
+        UpdateTransactions.mutate(root, info, transactions)
+
+        sync = Sync()
+        sync.sync_date_time = datetime.now()
+
+        return self(success=False)
+
+class SyncAccounts(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+
+    success = graphene.Boolean()
+
+    @login_required
+    def mutate(self, root, info):
+
+        # Update Accounts
+        accounts = []
+        UpdateAccounts.mutate(root, info, accounts)
+
+        return self(success=False)
+
 class Query(graphene.ObjectType):
     pass
 
 class Mutation(graphene.ObjectType):
-    update_accounts = UpdateAccounts.Field()
-    update_transactions = UpdateTransactions.Field()
+    # update_accounts = UpdateAccounts.Field()
+    # update_transactions = UpdateTransactions.Field()
+    sync_transactions = SyncTransactions.Field()
+    sync_accounts = SyncAccounts.Field()
     
