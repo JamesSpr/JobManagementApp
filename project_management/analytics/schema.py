@@ -26,18 +26,19 @@ class UpdateAccounts(graphene.Mutation):
 
     success = graphene.Boolean()
 
-    @login_required
+    @classmethod
     def mutate(self, root, info, accounts):
         for acc in accounts:
-            if Account.objects.filter(myob_uid=acc.myob_uid):
-                account = Account.object.get(myob_uid=acc.myob_uid)
+            if Account.objects.filter(myob_uid=acc['UID']):
+                account = Account.objects.get(myob_uid=acc['UID'])
             else:
                 account = Account()
 
-            account.display_id = acc.display_id
-            account.name = acc.name
-            account.level = acc.level
-            account.current_balance = acc.current_balance
+            account.myob_uid = acc['UID']
+            account.display_id = acc['DisplayID']
+            account.name = acc['Name']
+            account.level = acc['Level']
+            account.current_balance = acc['CurrentBalance']
             account.save()
 
         return self(success=True)
@@ -60,42 +61,48 @@ class UpdateTransactions(graphene.Mutation):
 
     success = graphene.Boolean()
 
-    @login_required
+    @classmethod
     def mutate(self, root, info, transactions):
         for trans in transactions:
-            if Transaction.objects.filter(myob_uid=trans.myob_uid):
-                transaction = Transaction.object.get(myob_uid=trans.myob_uid)
-            else:
-                transaction = Transaction()
-        
-            transaction.myob_uid = trans.myob_uid
-            transaction.display_id = trans.display_id
-            transaction.description = trans.description
-            transaction.journal_type = trans.journal_type
-            transaction.account = trans.account
-            transaction.amount = trans.amount
-            transaction.is_credit = trans.is_credit
-            transaction.job_uid = trans.job_uid
-            transaction.source_transaction_type = trans.source_transaction_type
-            transaction.date_occurred = trans.date_occurred
-            transaction.save()
+            for line in trans['Lines']:
+                # if Account.objects.filter(myob_uid=acc['UID']):
+                #     account = Account.objects.get(myob_uid=acc['UID'])
+                # else:
+                transaction = Transaction() 
+                transaction.myob_uid = trans['UID']
+                transaction.display_id = trans['DisplayID'] if trans['DisplayID'] != None else "NA"
+                transaction.description = trans['Description'] if trans['Description'] != None else "NA"
+                transaction.journal_type = trans['JournalType']
+                # transaction.source_transaction_type = trans['SourceTransaction']['TransactionType']
+                transaction.date_occurred = trans['DateOccurred'].split("T")[0]
+                transaction.account = Account.objects.get(myob_uid=line['Account']['UID'])
+                transaction.amount = line['Amount']
+                transaction.is_credit = line['IsCredit']
+                if line['Job']: transaction.job_uid = line['Job']['UID']
+                transaction.save()
 
         return self(success=False)
 
 def getAllData(url, headers):
-    url += "?$top=1000"
+    if "?$" in url:
+        url+= "&$"
+    else:
+        url += "?$"
+
+    url += "top=1000"
     response = requests.request("GET", url, headers=headers, data={})
     res = json.loads(response.text)
     data = res
     counter = 1
 
-    while res['NextPageLink'] != None:
-        skip = 1000*counter
-        response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
-        res = json.loads(response.text)
-        data['Items'].extend(res['Items'])
-        counter += 1
-        print(f"Fetched: {skip} records")
+    if 'NextPageLink' in res:
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
+            res = json.loads(response.text)
+            data['Items'].extend(res['Items'])
+            counter += 1
+            print(f"Fetched: {skip} records")
 
     return data
 
@@ -106,7 +113,7 @@ class SyncTransactions(graphene.Mutation):
     success = graphene.Boolean()
     data = graphene.String()
 
-    @login_required
+    @classmethod
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -115,7 +122,14 @@ class SyncTransactions(graphene.Mutation):
             checkTokenAuth(uid)
             user = MyobUser.objects.get(id=uid)
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction"
+            last_sync_date = Sync.objects.filter(sync_type="TRA").order_by('-sync_date_time').values()[0]['sync_date_time']
+            last_sync_date = last_sync_date.strftime("%Y-%m-%dT%H:%M:%S")
+            now_datetime = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
+            print(now_datetime)
+            if last_sync_date:
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction?$filter=DateOccurred gt datetime'{last_sync_date}'"
+            else:
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction"
             
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -124,38 +138,95 @@ class SyncTransactions(graphene.Mutation):
                 'Accept-Encoding': 'gzip,deflate',
             }
 
-            general_journal = getAllData(url, headers)
+            # general_journal = getAllData(url, headers)
+            # print(general_journal)
+        
+            # # Update Transactions
+            # UpdateTransactions.mutate(root, info, general_journal['Items'])
 
-            return self(success=True, data=json.dumps(general_journal))
+            # sync = Sync()
+            # sync.sync_type = "TRA"
+            # sync.save()
+
+            return self(success=True)
         else:
             return self(success=False, data="MYOB Connection Error")
-
-        # Update Transactions
-        transactions = []
-        UpdateTransactions.mutate(root, info, transactions)
-
-        sync = Sync()
-        sync.sync_date_time = datetime.now()
-
-        return self(success=False)
 
 class SyncAccounts(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
 
     success = graphene.Boolean()
+    data = graphene.String()
 
-    @login_required
-    def mutate(self, root, info):
+    @classmethod
+    def mutate(self, root, info, uid):
+        env = environ.Env()
+        environ.Env.read_env()
 
-        # Update Accounts
-        accounts = []
-        UpdateAccounts.mutate(root, info, accounts)
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
 
-        return self(success=False)
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Account"
+            
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+
+            accounts = getAllData(url, headers)
+            print(accounts)
+            UpdateAccounts.mutate(root, info, accounts['Items'])
+
+            sync = Sync()
+            sync.sync_type = "ACC"
+            sync.save()
+
+            return self(success=True)
+        else:
+            return self(success=False, data="MYOB Connection Error")
+    
+class SyncType(DjangoObjectType):
+    class Meta:
+        model = Sync
+        fields = '__all__'
+
+class AccountType(DjangoObjectType):
+    class Meta:
+        model = Account
+        fields = '__all__'
+
+class TransactionType(DjangoObjectType):
+    class Meta:
+        model = Transaction
+        fields = '__all__'
+
 
 class Query(graphene.ObjectType):
-    pass
+    syncs = graphene.List(SyncType)   
+    synctype = graphene.Field(SyncType, sync_type=graphene.String())
+    accounts = graphene.List(AccountType)
+    transactions = graphene.List(TransactionType)
+
+    @login_required
+    def resolve_syncs(root, info, **kwargs):
+        return Sync.objects.all()
+        
+    @login_required
+    def resolve_synctype(root, info, sync_type, **kwargs):
+        if sync_type != None:
+            return Sync.objects.filter(sync_type=sync_type).order_by('-sync_date_time').first()
+
+    @login_required
+    def resolve_transactions(root, info, **kwargs):
+        return Transaction.objects.all()
+
+    @login_required
+    def resolve_accounts(root, info, **kwargs):
+        return Account.objects.all()
 
 class Mutation(graphene.ObjectType):
     # update_accounts = UpdateAccounts.Field()

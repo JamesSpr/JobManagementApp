@@ -13,7 +13,7 @@ class Sync(models.Model):
 
     id = models.AutoField(primary_key=True, unique=True)
     sync_type = models.CharField(max_length=3, choices=MODEL_CHOICES)
-    sync_date_time = models.DateTimeField(default=datetime.now())
+    sync_date_time = models.DateTimeField(auto_now_add=True)
 
 
 class Account(models.Model):

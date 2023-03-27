@@ -111,12 +111,13 @@ class updateOrCreateMyobAccount(graphene.Mutation):
 
         return self(success=True, message="Account Updated", user=user)
 
+import inspect
 # Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
 def checkTokenAuth(uid):
     env = environ.Env()
     environ.Env.read_env()
 
-    print('Checking MYOB Auth')
+    print(f'Checking MYOB Auth from {inspect.stack()[1][0].f_locals["self"].__name__}')
 
     if MyobUser.objects.filter(id=uid).exists():
         user = MyobUser.objects.get(id=uid)

@@ -44,6 +44,11 @@ h2 {
   margin: 2px;
 }
 
+h4 {
+  margin: 0;
+  text-align: center;
+}
+
 .tab-list {
   border-bottom: 1px solid #ccc;
   padding-left: 0;
