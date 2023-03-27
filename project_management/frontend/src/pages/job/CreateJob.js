@@ -105,7 +105,7 @@ const CreateJob = () => {
                             id
                         }
                     }
-                    users {
+                    users (isStaff: true) {
                         edges {
                             node {
                                 id: pk
