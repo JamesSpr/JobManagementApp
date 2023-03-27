@@ -27,7 +27,7 @@ class CreateBGISEstimate(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
-    def mutate(cls, root, info, job_id, selected_estimate):
+    def mutate(self, root, info, job_id, selected_estimate):
         
         job = Job.objects.get(id=job_id)
         estimate = Estimate.objects.get(job_id=job_id, name=selected_estimate)
@@ -37,7 +37,7 @@ class CreateBGISEstimate(graphene.Mutation):
         jobs_path = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
         
         if os.path.exists(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx")):
-            return cls(success=False, message="Estimate Already Exists")
+            return self(success=False, message="Estimate Already Exists")
 
         ## Create folder for the selected estimate
         try:
@@ -58,7 +58,7 @@ class CreateBGISEstimate(graphene.Mutation):
         xlApp.Quit()
         del xlApp
 
-        return cls(success=True, message="Estimate Created Successfully")
+        return self(success=True, message="Estimate Created Successfully")
 
 
 class CreateCompletionDocuments(graphene.Mutation):
@@ -69,28 +69,35 @@ class CreateCompletionDocuments(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
-    def mutate(cls, root, info, job_id):
+    def mutate(self, root, info, job_id):
 
         job = Job.objects.get(id=job_id)
         jobs_path = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
         templates_path = r'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates'
 
         if job.po == "" or job.po == None:
-            return cls(success=False, message="Please ensure job has a PO Number")
+            return self(success=False, message="Please ensure job has a PO Number")
 
         if job.scope == "" or job.scope == None:
-            return cls(success=False, message="Please ensure job has a Scope of Works")
+            return self(success=False, message="Please ensure job has a Scope of Works")
 
         if job.site_manager == "" or job.site_manager == None:
-            return cls(success=False, message="Please ensure a site manager is selected")
+            return self(success=False, message="Please ensure a site manager is selected")
 
         if not os.path.exists(os.path.join(jobs_path, str(job).strip())):
-            return cls(success=False, message="Job folder does not exist")
+            return self(success=False, message="Job folder does not exist")
+        
+        if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Documentation")):
+            return self(success=False, message="File System Folders are not correct. Please check Documentation Folder Exists")
 
         word = win32.Dispatch("Word.Application", pythoncom.CoInitialize())
         word.Visible = True
 
         document = None
+
+        swms_filename = os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - SWMS.docx")
+        pra_filename = os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - PRA.docx")
+        sdkt_filename = os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - SDKT.docx")
 
         try:
             if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - SWMS.docx")):
@@ -121,13 +128,12 @@ class CreateCompletionDocuments(graphene.Mutation):
                         bookmark.Delete
 
                     # Save and close word document
-                    swms_filename = os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - SWMS.docx")
                     document.SaveAs(swms_filename)
                     document.Close()
                 else:
                     word.Quit()
                     del word
-                    return cls(success=False, message="Site Manager Required for SWMS Creation")
+                    return self(success=False, message="Site Manager Required for SWMS Creation")
                 
             if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - PRA.docx")):
                 if not job.site_manager == None or not job.site_manager == "":
@@ -149,13 +155,12 @@ class CreateCompletionDocuments(graphene.Mutation):
                         bookmark.Delete
 
                     # Save and close word document
-                    pra_filename = os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - PRA.docx")
                     document.SaveAs(pra_filename)
                     document.Close()
                 else:
                     word.Quit()
                     del word
-                    return cls(success=False, message="Site Manager Required for Pre-Start Risk Assessment Creation")
+                    return self(success=False, message="Site Manager Required for Pre-Start Risk Assessment Creation")
             
             if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - SDKT.docx")):
                 if not job.completion_date == "" or not job.completion_date == None:
@@ -177,20 +182,20 @@ class CreateCompletionDocuments(graphene.Mutation):
                         bookmark.Delete
 
                     # Save and close word document
-                    sdkt_filename = os.path.join(jobs_path, str(job).strip(), "Documentation", "PO" + job.po + " - SDKT.docx")
                     document.SaveAs(sdkt_filename)
                     document.Close()
                 else:
                     word.Quit()
                     del word
-                    return cls(success=False, message="Completion Date required for Service Docket.")
+                    return self(success=False, message="Completion Date required for Service Docket.")
         except BaseException as err:
             print(err)
-            return cls(success=False, message="An Error has occured, please contact admin.")
+            print(swms_filename, "\n", pra_filename, "\n", sdkt_filename)
+            return self(success=False, message="An Error has occured, please contact admin.")
 
         finally: 
             if word:
                 word.Quit()
                 del word
 
-        return cls(success=True, message="Completion Documents Saved to Folder. Please fill out the SWMS and PRA")
+        return self(success=True, message="Completion Documents Saved to Folder. Please fill out the SWMS and PRA")
