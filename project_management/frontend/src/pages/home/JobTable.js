@@ -113,6 +113,14 @@ const JobTable = ({tableData, users, jobStages}) => {
         return rowValue >= min && rowValue <= max
     }
 
+    const dateSort = (rowA, rowB, columnId) => {
+        var dateAParts = rowA.getValue(columnId).split("/");
+        var dateBParts = rowB.getValue(columnId).split("/");
+        const valA = new Date(+dateAParts[2], dateAParts[1] - 1, +dateAParts[0]); 
+        const valB = new Date(+dateBParts[2], dateBParts[1] - 1, +dateBParts[0]);
+        return valA < valB ? 1 : -1;
+    }
+
     const footerCounts = (column) => {
         return column.getFacetedUniqueValues().size
     }
@@ -194,8 +202,10 @@ const JobTable = ({tableData, users, jobStages}) => {
         },
         {
             accessorKey: 'dateIssued',
+            id: 'dateIssued',
             header: () => 'Issue Date',
             filterFn: inDateRange,
+            sortingFn: dateSort,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na", //{day: '2-digit', month: 'short', year:'numeric'}
             footer: props => footerCounts(props.column),
             size: 100,
@@ -208,8 +218,10 @@ const JobTable = ({tableData, users, jobStages}) => {
         },
         {
             accessorKey: 'overdueDate',
+            id: 'overdueDate',
             header: () => 'Overdue Date',
             filterFn: inDateRange,
+            sortingFn: dateSort,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na",  //{day: '2-digit', month: 'short', year:'numeric'}
             footer: props => footerCounts(props.column),
             size: 125,
@@ -261,6 +273,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'invoiceCreatedDate',
             header: () => 'Invoice Created',
             filterFn: inDateRange,
+            sortingFn: dateSort,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
             footer: props => footerCounts(props.column),
             size: 130,
@@ -270,6 +283,7 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'invoiceDate',
             header: () => 'Invoice Sent',
             filterFn: inDateRange,
+            sortingFn: dateSort,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
             footer: props => footerCounts(props.column),
             size: 115,
@@ -318,7 +332,14 @@ const JobTable = ({tableData, users, jobStages}) => {
                     stage['name'] === value ? stage['description'] : ""
                 ))
             )
-        }
+        },
+        // sortingFns: {
+        //     dateSort: (rowA, rowB, columnId) => {
+        //         const valA = new Date(rowA.getValue(columnId).value) 
+        //         const valB = new Date(rowB.getValue(columnId).value) 
+        //         return valA < valB ? 1 : -1;
+        //     },
+        // },
         // debugTable: true,
         // debugHeaders: true,
         // debugColumns: true,
