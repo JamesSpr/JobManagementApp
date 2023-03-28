@@ -110,8 +110,8 @@ class Contractor(models.Model):
 class Job(models.Model):
     # State Of Job
     JOB_STATE = [
-        ('INS', 'Inspection Required'),
-        ('QUO', 'Quote Required'),
+        ('INS', 'Inspection/Quote Required'),
+        # ('QUO', 'Quote Required'),
         ('SUB', 'Quote Submitted'),
         ('APP', 'Quote Approved'),
         ('QAR', 'Quote Approval Required'),
@@ -212,8 +212,6 @@ class Job(models.Model):
             self.stage = 'APP'
         elif Estimate.objects.filter(job_id=self).exclude(issue_date=None).exists():
             self.stage = 'SUB'
-        elif self.inspection_date:
-            self.stage = "QUO"
         else:
             self.stage = "INS"
         
