@@ -13,6 +13,30 @@ sys.path.append("..")
 from myob.models import MyobUser
 from myob.schema import checkTokenAuth
 
+def getAllData(url, headers):
+    if "?$" in url:
+        url+= "&$"
+    else:
+        url += "?$"
+
+    url += "top=1000"
+    response = requests.request("GET", url, headers=headers, data={})
+    res = json.loads(response.text)
+    data = res
+    counter = 1
+
+    if 'NextPageLink' in res:
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
+            res = json.loads(response.text)
+            data['Items'].extend(res['Items'])
+            counter += 1
+            print(f"Fetched: {skip} records")
+
+    return data
+
+
 class AccountInputType(graphene.InputObjectType):
     myob_uid = graphene.String()
     display_id = graphene.String()
@@ -83,29 +107,6 @@ class UpdateTransactions(graphene.Mutation):
 
         return self(success=False)
 
-def getAllData(url, headers):
-    if "?$" in url:
-        url+= "&$"
-    else:
-        url += "?$"
-
-    url += "top=1000"
-    response = requests.request("GET", url, headers=headers, data={})
-    res = json.loads(response.text)
-    data = res
-    counter = 1
-
-    if 'NextPageLink' in res:
-        while res['NextPageLink'] != None:
-            skip = 1000*counter
-            response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
-            res = json.loads(response.text)
-            data['Items'].extend(res['Items'])
-            counter += 1
-            print(f"Fetched: {skip} records")
-
-    return data
-
 class SyncTransactions(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -125,9 +126,9 @@ class SyncTransactions(graphene.Mutation):
             last_sync_date = Sync.objects.filter(sync_type="TRA").order_by('-sync_date_time').values()[0]['sync_date_time']
             last_sync_date = last_sync_date.strftime("%Y-%m-%dT%H:%M:%S")
             now_datetime = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
-            print(now_datetime)
+            print(last_sync_date, now_datetime)
             if last_sync_date:
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction?$filter=DateOccurred gt datetime'{last_sync_date}'"
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction?$filter=DateOccurred gt datetime'{last_sync_date}' and DateOccurred le datetime'{now_datetime}'"
             else:
                 url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction"
             
@@ -138,15 +139,16 @@ class SyncTransactions(graphene.Mutation):
                 'Accept-Encoding': 'gzip,deflate',
             }
 
-            # general_journal = getAllData(url, headers)
-            # print(general_journal)
+            general_journal = getAllData(url, headers)
+            print(general_journal)
         
-            # # Update Transactions
-            # UpdateTransactions.mutate(root, info, general_journal['Items'])
+            # Update Transactions
+            if(general_journal['Items']):
+                UpdateTransactions.mutate(root, info, general_journal['Items'])
 
-            # sync = Sync()
-            # sync.sync_type = "TRA"
-            # sync.save()
+            sync = Sync()
+            sync.sync_type = "TRA"
+            sync.save()
 
             return self(success=True)
         else:
