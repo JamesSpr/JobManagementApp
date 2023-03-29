@@ -218,7 +218,8 @@ class ExtractBillDetails(graphene.Mutation):
                             data.update({'invoiceDate': date})
  
                 if not data.get('amount'):
-                    total_regex = re.findall('(?![\b\s](?:total|amount|due)[: $aud]*?\s*?)(-?[0-9]{0,3}\s*,*?[0-9]{0,3}\s*\.\s*[0-9]{2})', pdf_data)
+                    total_regex = re.findall('(?![\b[^\S\r\n]](?:total|amount|due)[: $aud]*?[^\S\r\n]*?)(-?[0-9]{0,3}[^\S\r\n]*,*?[0-9]{0,3}[^\S\r\n]*\.[^\S\r\n]*[0-9]{2})', pdf_data)
+                    if debug: print(total_regex)
                     if(len(total_regex) == 1):
                         data.update({'amount': total_regex[0].replace(' ', '').replace(',', '')})
                     if len(total_regex) > 1:

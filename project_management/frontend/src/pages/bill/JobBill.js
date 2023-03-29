@@ -141,55 +141,57 @@ const CreateBill = ({ open, handleClose, handleBack, id, setBills, contractors, 
         const {abn, thumbnailPath, ...bill} = newBill
 
         // Post bill details to MYOB
-        try {
-            await axiosPrivate({
-                method: 'post',
-                data: JSON.stringify({
-                    query: `
-                    mutation myobCreateBill($uid:String!, $jobId:String!, $newBill: BillInputType!, $attachment: String!, $attachmentName: String!) {
-                        create: myobCreateBill(uid:$uid, jobId:$jobId, newBill: $newBill, attachment: $attachment, attachmentName: $attachmentName) {
-                            success
-                            message
-                            error
-                            bill {
-                                myobUid
-                                supplier {
-                                    name
-                                }
-                                invoiceNumber
-                                invoiceDate
-                                amount
-                                processDate
-                                imgPath
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                mutation myobCreateBill($uid:String!, $jobId:String!, $newBill: BillInputType!, $attachment: String!, $attachmentName: String!) {
+                    create: myobCreateBill(uid:$uid, jobId:$jobId, newBill: $newBill, attachment: $attachment, attachmentName: $attachmentName) {
+                        success
+                        message
+                        error
+                        bill {
+                            myobUid
+                            supplier {
+                                name
                             }
+                            invoiceNumber
+                            invoiceDate
+                            amount
+                            processDate
+                            imgPath
                         }
-                    }`,
-                    variables: {
-                        uid: auth?.myob.id,
-                        jobId: id,
-                        newBill: bill,
-                        attachment: billAttachment.data,
-                        attachmentName: billAttachment.name,
-                    },
+                    }
+                }`,
+                variables: {
+                    uid: auth?.myob.id,
+                    jobId: id,
+                    newBill: bill,
+                    attachment: billAttachment.data,
+                    attachmentName: billAttachment.name,
+                },
             }),
-            }).then((response) => {
-                const res = response?.data?.data?.create; 
-                console.log(res)
-                setWaiting(false);
-                if(res.success) {
-                    setBills(prev => ([...prev, res.bill]));
-                    handleBack();
-                }
-                else {
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage(res.message);
-                    console.log("MYOB Create Bill", res)
-                }
-            });
-        } catch (err) {
+        }).then((response) => {
+            const res = response?.data?.data?.create; 
+            console.log(res);
+            if(res.success) {
+                setBills(prev => ([...prev, res.bill]));
+                handleBack();
+            }
+            else {
+                setSnackVariant('error');
+                setSnackMessage(res.message);
+                console.log("MYOB Create Bill", res)
+            }
+        }).catch((err) => {
             console.log("error:", err);
-        }
+            setSnackVariant('error');
+            setSnackMessage(res.message);
+            console.log("MYOB Create Bill", res)
+        }).finally(() => {
+            setSnack(true);
+            setWaiting(false);
+        });
         
         const {billType, ...formattedBill} = bill
 
@@ -292,6 +294,10 @@ const CreateBill = ({ open, handleClose, handleBack, id, setBills, contractors, 
 const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBill, setBillAttachment }) => {
     const axiosPrivate = useAxiosPrivate();
     const [waiting, setWaiting] = useState({'create': false});
+
+    const [snack, setSnack] = useState(false);
+    const [snackMessage, setSnackMessage] = useState('');
+    const [snackVariant, setSnackVariant] = useState('info');
 
     // Table Columns
     const estimateTableColumns = useMemo(() => [
@@ -458,43 +464,45 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
         fileReader.onload = async () => {
             let data = fileReader.result
 
-            try {
-                await axiosPrivate({
-                    method: 'post',
-                    data: JSON.stringify({
-                    query: `
-                    mutation extractBillDetails($file: String!, $filename: String!) {
-                        bill: extractBillDetails(file: $file, filename: $filename) {
-                            success
-                            message
-                            data
-                            billFileName
-                            billFileData
-                        }
-                    }`,
-                    variables: { 
-                        file: data,
-                        filename: file.name
-                    },
-                }),
-                }).then((response) => {
-                    console.log(response);
-                    const res = response?.data?.data?.bill;
-                    if(res.success) {
-                        console.log(JSON.parse(res.data));
-                        setNewBill(JSON.parse(res.data));
-                        setBillAttachment({
-                            'data': res.billFileData,
-                            'name': res.billFileName
-                        })
-                        // setNewBill(prev => ({...prev, 'invoiceDate': new Date(prev?.invoiceDate)}))
+            await axiosPrivate({
+                method: 'post',
+                data: JSON.stringify({
+                query: `
+                mutation extractBillDetails($file: String!, $filename: String!) {
+                    bill: extractBillDetails(file: $file, filename: $filename) {
+                        success
+                        message
+                        data
+                        billFileName
+                        billFileData
                     }
-                    setWaiting(prev => ({...prev, 'create': false}));
-                    setCreateBill(true);
-                });
-            } catch (err) {
-                console.log("error:", err);
-            }
+                }`,
+                variables: { 
+                    file: data,
+                    filename: file.name
+                },
+            }),
+            }).then((response) => {
+                console.log(response);
+                const res = response?.data?.data?.bill;
+                if(res.success) {
+                    console.log(JSON.parse(res.data));
+                    setNewBill(JSON.parse(res.data));
+                    setBillAttachment({
+                        'data': res.billFileData,
+                        'name': res.billFileName
+                    })
+                    // setNewBill(prev => ({...prev, 'invoiceDate': new Date(prev?.invoiceDate)}))
+                }
+                setCreateBill(true);
+            }).catch((err) => {
+                console.log("Error", err)
+                setSnackMessage("Data Extraction Error. Contact Admin");
+                setSnackVariant("error");
+                setSnack(true);
+            }).finally(() => {
+                setWaiting(prev => ({...prev, 'create': false}));
+            });
         }      
     }
 
@@ -635,6 +643,18 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
                 </Grid>
             </DialogContent>
         </Dialog>
+
+        <Portal>
+            {/* Notification Snackbar */}
+            <Snackbar
+                anchorOrigin={{vertical: "bottom", horizontal:"center"}}
+                open={snack}
+                autoHideDuration={12000}
+                onClose={(e) => setSnack(false)}
+            >
+                <Alert onClose={(e) => setSnack(false)} severity={snackVariant} sx={{width: '100%'}}>{snackMessage}</Alert>
+            </Snackbar>
+        </Portal>
     </>
     );
 }
