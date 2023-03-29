@@ -1154,7 +1154,7 @@ class Query(graphene.ObjectType):
     @login_required
     def resolve_job_page(root, info, **kwargs):
         # return Job.objects.exclude(stage="CAN").exclude(stage="FIN").exclude(location__isnull=False)
-        return Job.objects.exclude(stage="CAN").exclude(stage="FIN") #.exclude(location=None)
+        return Job.objects.order_by('id').exclude(stage="CAN").exclude(stage="FIN") #.exclude(location=None)
         # return Job.objects.all()
 
     @login_required
