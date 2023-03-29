@@ -14,7 +14,7 @@ const CompanyDashboard = () => {
     const { auth } = useAuth();
     const [lastSync, setLastSync] = useState<LastSyncType>()
     const [loading, setLoading] = useState(false);
-    const [waiting, setWaiting] = useState({transactionSync: false, accountSync: false});
+    const [waiting, setWaiting] = useState({transactionSync: false, accountSync: false, clientSync: false, jobSync: false});
 
     // Get Data
     useEffect(() => {
@@ -30,6 +30,9 @@ const CompanyDashboard = () => {
                             syncDateTime
                         }
                         Transaction: synctype(syncType: "TRA") {
+                            syncDateTime
+                        }
+                        Job: synctype(syncType: "JOB") {
                             syncDateTime
                         }
                         Client: synctype(syncType: "CLI") {
@@ -82,7 +85,7 @@ const CompanyDashboard = () => {
         }).then((response) => {
             const res = response?.data?.data.transactions;
             console.log(res);
-            setLastSync(prev => ({ ...prev, Transaction: new Date(Date.now()).toUTCString() } as LastSyncType))
+            setLastSync(prev => ({ ...prev, Transaction: new Date(Date.now()) } as LastSyncType))
         }).catch((err) => {
             // TODO: handle error
             if(err.name === "CanceledError") {
@@ -114,7 +117,7 @@ const CompanyDashboard = () => {
         }).then((response) => {
             const res = response?.data?.data.accounts;
             console.log(res);
-            setLastSync(prev => ({...prev, Account: new Date(Date.now()).toUTCString()} as LastSyncType))
+            setLastSync(prev => ({...prev, Account: new Date(Date.now())} as LastSyncType))
         }).catch((err) => {
             // TODO: handle error
             if(err.name === "CanceledError") {
@@ -126,20 +129,92 @@ const CompanyDashboard = () => {
         });
     }
 
+    const syncClients = async () => {
+        setWaiting(prev => ({...prev, clientSync: true}))
+        await axiosPrivate({ 
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                    mutation syncClients($uid:String!) {
+                        clients: syncClients(uid: $uid) {
+                            success
+                            data
+                        }
+                    }
+                `,
+                variables: {
+                    uid: auth?.myob?.id
+                }
+            }),
+        }).then((response) => {
+            const res = response?.data?.data.jobs;
+            console.log(res);
+            setLastSync(prev => ({...prev, Client: new Date(Date.now())} as LastSyncType))
+        }).catch((err) => {
+            // TODO: handle error
+            if(err.name === "CanceledError") {
+                return
+            }
+            console.log("Error:", err);
+        }).finally(() => {
+            setWaiting(prev => ({...prev, clientSync: false}))
+        });
+    }
+
+    const syncJobs = async () => {
+        setWaiting(prev => ({...prev, jobSync: true}))
+        await axiosPrivate({ 
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                    mutation syncJobs($uid:String!) {
+                        jobs: syncJobs(uid: $uid) {
+                            success
+                            data
+                        }
+                    }
+                `,
+                variables: {
+                    uid: auth?.myob?.id
+                }
+            }),
+        }).then((response) => {
+            const res = response?.data?.data.jobs;
+            console.log(res);
+            setLastSync(prev => ({...prev, Job: new Date(Date.now())} as LastSyncType))
+        }).catch((err) => {
+            // TODO: handle error
+            if(err.name === "CanceledError") {
+                return
+            }
+            console.log("Error:", err);
+        }).finally(() => {
+            setWaiting(prev => ({...prev, jobSync: false}))
+        });
+    }
+
     return (
         <>
             <Grid container spacing={1} alignItems="center" 
                 justifyContent="center"
+                alignContent="center"
+                textAlign="center"
                 direction="column">
                 <Grid item xs={12}>
-                    <h4>Sync Data</h4>
+                    <h2>Company Analytics Dashboard</h2>
+                    <p>Here is the dashboard for the company wide analytics. Here you can sync MYOB data to update the database records.</p>
+                </Grid>
+                <Grid item xs={12}>
+                    <h4>MYOB Sync</h4>
                     {lastSync && Object.entries(lastSync as LastSyncType).map(([key, val])=> {
-                        console.log(key, val ? val['syncDateTime'] : "N/A")
-                        return(<p>Last {key} Sync: {val ? val['syncDateTime'] : "N/A"}</p>)
+                        return(<p>Last {key} Sync: {val ? new Date(val['syncDateTime']).toLocaleString('en-AU', { timeZone: 'UTC' }) : "N/A"}</p>)
                     })}
                     <ProgressButton name={"Transactions"} waiting={waiting.transactionSync} onClick={syncTransactions}/>
                     <ProgressButton name={"Accounts"} waiting={waiting.accountSync} onClick={syncAccounts}/>
-
+                </Grid>
+                <Grid item xs={12}>
+                    <ProgressButton name={"Jobs"} waiting={waiting.jobSync} onClick={syncJobs}/>
+                    <ProgressButton name={"Clients"} waiting={waiting.clientSync} onClick={syncClients}/>
                 </Grid>
             </Grid>
         </>
