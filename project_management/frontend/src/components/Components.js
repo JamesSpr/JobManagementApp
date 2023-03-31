@@ -1,7 +1,7 @@
 import { Box, Button, CircularProgress } from "@mui/material";
 import React, { useEffect, useRef } from "react"; 
 
-export const InputField = ({type="text", label, children, multiline, halfWidth, wide, width, error, noMargin, ...props}) => {
+export const InputField = ({type="text", label, children, multiline=false, halfWidth=false, wide=false, width=null, error=false, noMargin=false, ...props}) => {
 
     const textareaRef = useRef(null);
     useEffect(() => {

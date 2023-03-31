@@ -195,11 +195,13 @@ const CompanyDashboard = () => {
 
     return (
         <>
-            <Grid container spacing={1} alignItems="center" 
+            <Grid container spacing={1} 
+                alignItems="center" 
                 justifyContent="center"
                 alignContent="center"
                 textAlign="center"
-                direction="column">
+                direction="column"
+            >
                 <Grid item xs={12}>
                     <h2>Company Analytics Dashboard</h2>
                     <p>Here is the dashboard for the company wide analytics. Here you can sync MYOB data to update the database records.</p>
