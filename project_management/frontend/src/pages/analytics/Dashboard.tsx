@@ -1,4 +1,4 @@
-import { useState, useEffect, createRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel,
     getFacetedRowModel,getFacetedUniqueValues,getFacetedMinMaxValues,
@@ -7,8 +7,8 @@ import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPag
 import { Chart as ChartJS, LinearScale, CategoryScale, BarElement, PointElement, LineElement, Legend, Tooltip, LineController, BarController, } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import { Button, Grid } from "@mui/material";
-import Invoices from "../invoice/Invoices";
-import { InputField } from "../../components/Components";
+import { InputField, PaginationControls } from "../../components/Components";
+import { TableFilter } from "../../components/FuzzyFilter";
 
 interface chartData {
     id: string,
@@ -23,7 +23,7 @@ const Dashboard = () => {
     const axiosPrivate = useAxiosPrivate();
     const [loading, setLoading] = useState(false);
     const [clients, setClients] = useState([]);
-    const [data, setData] = useState([]);
+    const [data, setData] = useState<chartData[]>([]);
 
     const [chartIncome, setChartIncome] = useState([0.0])
     const [chartBills, setChartBills] = useState([0.0])
@@ -123,10 +123,10 @@ const Dashboard = () => {
         const d2 = new Date(filterParams.end)
 
         if(filterParams.frequency == 4) {
-            return (Math.round((d2.getTime() - d1.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+            return Math.round(((d2.getTime() - d1.getTime()) / (7 * 24 * 60 * 60 * 1000)));
         }
         if(filterParams.frequency == 2) {
-            return (Math.round(d2.getTime() - d1.getTime()) / (2 * 7 * 24 * 60 * 60 * 1000));
+            return Math.round((d2.getTime() - d1.getTime()) / (2 * 7 * 24 * 60 * 60 * 1000));
         }
         if(filterParams.frequency == 1) {
             return d2.getMonth() - d1.getMonth() + (12* (d2.getFullYear() - d1.getFullYear())) + 1
@@ -144,6 +144,7 @@ const Dashboard = () => {
         let billData = Array(frequency).fill(0.0);
         let invoiceData = Array(frequency).fill(0.0);
         let runningData = Array(frequency).fill(0.0);
+        setData([]);
 
         const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -163,15 +164,19 @@ const Dashboard = () => {
 
 
         const startYear = new Date(filterParams.start).getFullYear()
+        const startMonth = new Date(filterParams.start).getMonth()
         for(let i = 0; i < invoices.length; i++) {
             if(invoices[i]['dateCreated'] >= new Date(filterParams.start) && invoices[i]['dateCreated'] <= new Date(filterParams.end)) {
-                invoiceData[invoices[i]['dateCreated'].getMonth() + ((invoices[i]['dateCreated'].getFullYear() - startYear) * 12)] += parseFloat(invoices[i]['amount'])
+                // console.log("Invoice", invoiceData, invoices[i]['dateCreated'].getMonth() - startMonth + (invoices[i]['dateCreated'].getFullYear() - startYear) * 12, parseFloat(invoices[i]['amount']))
+                invoiceData[(invoices[i]['dateCreated'].getMonth() - startMonth) + ((invoices[i]['dateCreated'].getFullYear() - startYear) * 12)] += parseFloat(invoices[i]['amount'])
+                setData(prev => [...prev, invoices[i]]);
             }
         }
-
+        
         for(let i = 0; i < bills.length; i++) {
             if(bills[i]['dateCreated'] >= new Date(filterParams.start) && bills[i]['dateCreated'] <= new Date(filterParams.end)) {
-                billData[bills[i]['dateCreated'].getMonth()  + ((bills[i]['dateCreated'].getFullYear() - startYear) * 12)] -= parseFloat(bills[i]['amount'])
+                billData[(bills[i]['dateCreated'].getMonth() - startMonth) + ((bills[i]['dateCreated'].getFullYear() - startYear) * 12)] -= parseFloat(bills[i]['amount'])
+                setData(prev => [...prev, bills[i]]);
             }
         }
 
@@ -218,6 +223,64 @@ const Dashboard = () => {
         // setChartRunningTotal(runningData);
     }
 
+    function Table ({data, columns}: {data: chartData[], columns: ColumnDef<chartData>[]}) {
+        const table = useReactTable({
+            data,
+            columns,
+            // Pipeline
+            getCoreRowModel: getCoreRowModel(),
+            getFilteredRowModel: getFilteredRowModel(),
+            getPaginationRowModel: getPaginationRowModel(),
+        })
+
+        return (
+            <>
+                <table>
+                    <thead>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id}>
+                        {headerGroup.headers.map(header => {
+                            return (
+                            <th key={header.id} colSpan={header.colSpan}>
+                                {header.isPlaceholder ? null : (
+                                <div>
+                                    {flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                    )}
+                                </div>
+                                )}
+                            </th>
+                            )
+                        })}
+                        </tr>
+                    ))}
+                    </thead>
+                    <tbody>
+                    {table.getRowModel().rows.map(row => {
+                        return (
+                        <tr key={row.id}>
+                            {row.getVisibleCells().map(cell => {
+                            return (
+                                <td key={cell.id}>
+                                {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                )}
+                                </td>
+                            )
+                            })}
+                        </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+                
+                <PaginationControls table={table} />
+            </>
+        )
+    }
+
 
     ChartJS.register(
         LinearScale,
@@ -259,6 +322,27 @@ const Dashboard = () => {
         ],
     })
 
+
+    const columns = useMemo<ColumnDef<chartData>[]>(() => [
+        {
+            accessorKey: 'number',
+            header: () => "Invoice/Bill Number",
+            cell: info => info.getValue(),
+        },
+        {
+            accessorKey: 'amount',
+            header: () => "Invoice/Bill Amount",
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
+            footer: props => props.column.id,
+        },
+        {
+            accessorKey: 'dateCreated',
+            header: () => "Invoice/Bill Date",
+            cell: info => info.getValue().toDateString(),
+        },
+    ], [] )
+    
+
     return ( 
         <>
             {!loading &&
@@ -278,18 +362,21 @@ const Dashboard = () => {
                     </Grid>
                     <Grid item xs={12}>
                         <InputField type="select" label="Frequency" value={filterParams?.frequency} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, frequency: e.target.value as unknown as number}))}>
-                            <option key={0} value={4.3}>Weekly</option>
-                            <option key={1} value={2.15}>Fortnightly</option>
+                            <option key={0} value={4}>Weekly</option>
+                            <option key={1} value={2}>Fortnightly</option>
                             <option key={2} value={1}>Monthly</option>
                         </InputField>
                         <InputField type="date" label="Filter Start Date" value={filterParams?.start} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, start: e.target.value}))}> </InputField>
                         <InputField type="date" label="Filter End Date"  value={filterParams?.end} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, end: e.target.value}))}> </InputField>
                         <Button variant="outlined" onClick={updateChartData}>Update Chart</Button>
                     </Grid>
+                    <div style={{ position: "relative", margin: "auto", width: "80vw" }}>
+                        <Chart type='bar' data={chartData} style={{height: '100%', width: '100%'}}/>
+                    </div>
+                    <Grid item xs={12}>
+                        <Table {...{data, columns}} />
+                    </Grid>
                 </Grid>
-                <div style={{ position: "relative", margin: "auto", width: "80vw" }}>
-                    <Chart type='bar' data={chartData} style={{height: '100%', width: '100%'}}/>
-                </div>
             </>
             }
         </>
