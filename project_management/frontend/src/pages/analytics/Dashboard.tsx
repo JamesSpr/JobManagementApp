@@ -125,9 +125,9 @@ const Dashboard = () => {
         if(filterParams.frequency == 4) {
             return Math.round(((d2.getTime() - d1.getTime()) / (7 * 24 * 60 * 60 * 1000)));
         }
-        if(filterParams.frequency == 2) {
-            return Math.round((d2.getTime() - d1.getTime()) / (2 * 7 * 24 * 60 * 60 * 1000));
-        }
+        // if(filterParams.frequency == 2) {
+        //     return Math.round((d2.getTime() - d1.getTime()) / (2 * 7 * 24 * 60 * 60 * 1000));
+        // }
         if(filterParams.frequency == 1) {
             return d2.getMonth() - d1.getMonth() + (12* (d2.getFullYear() - d1.getFullYear())) + 1
             // return ((d2.getFullYear() - d1.getFullYear()) * 12 - d1.getMonth() + d2.getMonth());
@@ -363,7 +363,6 @@ const Dashboard = () => {
                     <Grid item xs={12}>
                         <InputField type="select" label="Frequency" value={filterParams?.frequency} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, frequency: e.target.value as unknown as number}))}>
                             <option key={0} value={4}>Weekly</option>
-                            <option key={1} value={2}>Fortnightly</option>
                             <option key={2} value={1}>Monthly</option>
                         </InputField>
                         <InputField type="date" label="Filter Start Date" value={filterParams?.start} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, start: e.target.value}))}> </InputField>
