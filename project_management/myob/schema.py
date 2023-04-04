@@ -195,7 +195,6 @@ class myobGetClients(graphene.Mutation):
 
         if MyobUser.objects.filter(id=uid).exists():
             checkTokenAuth(uid)
-            print("Getting User")
             user = MyobUser.objects.get(id=uid)
 
             client_filter = "" if client == "" else "?$filter=" + client
@@ -211,6 +210,68 @@ class myobGetClients(graphene.Mutation):
             return self(success=True, message=response.text)
         else:
             return self(success=False, message="MYOB Connection Error")
+        
+class myobCreateClient(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        client = graphene.String()
+
+    success = graphene.Boolean()
+    uid = graphene.String()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, uid, client):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+
+            client_filter = "" if client == "" else f"?$filter=CompanyName eq'{client}'"
+            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer{client_filter}"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.get(link, headers=headers)
+            res = json.loads(response.text)
+
+            if(len(res['Items']) > 0):
+                return self(success=False, message="Client Already Exists in MYOB")
+            
+            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer/"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            payload = json.dumps({
+                'CompanyName': client,
+                'IsActive': True,
+                'SellingDetails': {
+                    'SaleLayout': 'NoDefault',
+                    'InvoiceDelivery': 'Print',
+                    'TaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'},
+                    'FreightTaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'}
+                },
+            })
+            response = requests.post(link, headers=headers, data=payload)
+
+            if not response.status_code == 201:
+                return self(success=False, message=response.text)
+            
+            myob_uid = response.headers['Location'].replace(link, "")
+
+            return self(success=True, message=response.text, uid=myob_uid)
+        else:
+            return self(success=False, message="MYOB Connection Error")
+
+
 
 class myobGetContractors(graphene.Mutation):
     class Arguments:
@@ -2042,7 +2103,9 @@ class Mutation(graphene.ObjectType):
     myob_get_access_token = myobGetAccessToken.Field()
     update_or_create_myob_account = updateOrCreateMyobAccount.Field()
     myob_refresh_token = myobRefreshToken.Field()
+
     myob_get_clients = myobGetClients.Field()
+    myob_create_client = myobCreateClient.Field()
 
     myob_get_contractors = myobGetContractors.Field()
     myob_create_contractor = myobCreateContractor.Field()

@@ -688,16 +688,23 @@ class ClientType(DjangoObjectType):
 class CreateClient(graphene.Mutation):
     class Arguments:
         name = graphene.String()
+        myob_uid = graphene.String()
 
+    success = graphene.Boolean()
+    message = graphene.String()
     client = graphene.Field(ClientType)
 
     @classmethod
-    def mutate(self, root, info, name):
+    def mutate(self, root, info, name, myob_uid):
+        if(Client.objects.filter(name=name).exists()):
+            return self(success=False, message="Client Already Exists")
+        
         client = Client()
         client.name = name
-
+        client.myob_uid = myob_uid
         client.save()
-        return CreateClient(client=client)
+
+        return self(success=True, message="Client Successfully Added", client=client)
 
 class ClientRegionType(DjangoObjectType):
     class Meta:
@@ -823,7 +830,7 @@ class CreateClientContact(graphene.Mutation):
             client_contact.phone = "{} {}".format(contact.phone.replace(" ","")[0:4], contact.phone.replace(" ","")[4:])
         
         client_contact.email = contact.email.lower().strip()
-        client_contact.region = ClientRegion.objects.get(id=contact.region)
+        if contact.region: client_contact.region = ClientRegion.objects.get(id=contact.region)
         client_contact.save()
         return self(success=True, client_contact=client_contact)
 

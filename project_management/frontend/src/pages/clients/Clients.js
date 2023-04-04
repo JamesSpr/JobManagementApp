@@ -1,53 +1,24 @@
 import React, { useEffect, useState, useMemo } from "react";
-import {
-    createTable,
-    Column,
-    ExpandedState,
-    useReactTable,
-    getCoreRowModel,
-    getExpandedRowModel,
-    getGroupedRowModel,
-    ColumnDef,
-    flexRender,
-    isRowSelected,
-} from '@tanstack/react-table'
-
-import { 
-    Table, 
-    TableHead, 
-    TableBody,
-    TableFooter,
-    TableCell,
-    TableRow,
-    TableContainer,
-    Button,
-    IconButton,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogContentText,
-    DialogTitle,
-    Grid,
-    TextField,
-    FormControl, 
-    Box,
-    AppBar, 
-    Toolbar,
-    CircularProgress
-} from '@mui/material';
+import { useReactTable, getCoreRowModel, flexRender, } from '@tanstack/react-table'
+import { Table, TableHead, TableBody, TableCell, TableRow, TableContainer, Button, Dialog, DialogContent, DialogTitle, Grid, TextField, FormControl,  Box, AppBar,  Toolbar, CircularProgress } from '@mui/material';
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { SnackBar } from "../../components/Components";
+import useAuth from "../auth/useAuth";
 
 const Clients = () => {
 
     const axiosPrivate = useAxiosPrivate();
+    const { auth } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
     const [createClient, setCreateClient] = useState(false);
     const [newClient, setNewClient] = useState('');
     const [data, setData] = useState([]);
+
+    const [snack, setSnack] = useState({'active': false, 'message': '', 'variant': ''})
 
     // Fetch Clients Data
     useEffect(() => {
@@ -98,12 +69,6 @@ const Clients = () => {
         data,
         columns,
         getCoreRowModel: getCoreRowModel(),
-        // state: {
-        //     rowSelection,
-        // },
-        // enableMultiRowSelection: false,
-        // onRowSelectionChange: setRowSelection,
-        // debugTable: true,
     });    
 
     const handleClose = (event, reason) => {
@@ -113,13 +78,48 @@ const Clients = () => {
     }
 
     const handleCreate = async () => {
-        try {
+        let successfulMYOBAddition = false
+        let myobUID = ''
+
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                mutation myobCreateClient($uid:String!, $client: String!) { 
+                    create_client: myobCreateClient(uid: $uid, client: $client) {
+                        success
+                        message
+                        uid
+                    }
+                }`,
+                variables: {
+                    uid: auth?.myob?.id,
+                    client: newClient,
+                },
+            }),
+        }).then((response) => {
+            const res = response?.data?.data?.create_client;
+            if(!res.success){
+                setSnack({active:true, message: res.message, variant: "error"})
+                return
+            }
+
+            console.log(res)
+            myobUID = res.uid
+            successfulMYOBAddition = true
+
+        }).catch((err) =>  {
+            console.log(err);
+        });
+
+        if(successfulMYOBAddition) {
+            console.log(myobUID)
             await axiosPrivate({
                 method: 'post',
                 data: JSON.stringify({
                     query: `
-                    mutation createClient($name: String!) { 
-                        create_client: createClient(name: $name) {
+                    mutation createClient($name: String!, $myobUid: String!) { 
+                        create_client: createClient(name: $name, myobUid: $myobUid) {
                             client {
                                 name
                             }
@@ -127,21 +127,24 @@ const Clients = () => {
                     }`,
                     variables: { 
                         name: newClient,
+                        myobUid: myobUID
                     },
                 }),
             }).then((response) => {
-                const res = response?.data?.data;
-                if(res.errors){
-                    console.log("error",res)
-                    // setCreationError(res.errors[0].message);
+                const res = response?.data?.data?.create_client;
+
+                if(!res.success){
+                    console.log("error", res)
+                    setSnack({active:true, message: res.message, variant: "error"})
+                    return
                 }
-                else {
-                    setCreateClient(false);
-                    setData(oldArray => [...oldArray, res.create_client.client]);
-                }
+
+                setCreateClient(false);
+                setData(oldArray => [...oldArray, res.client]);
+
+            }).catch((err) => {
+                console.log(err);
             });
-        } catch (err) {
-            console.log(err);
         }
     }
 
@@ -244,6 +247,8 @@ const Clients = () => {
                 </Grid>
             </DialogContent>
         </Dialog>
+
+        <SnackBar {...{snack, setSnack}} />
     </>
     )
 }

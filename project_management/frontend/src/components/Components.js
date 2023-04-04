@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress } from "@mui/material";
+import { Box, Button, CircularProgress, Portal, Snackbar, Alert } from "@mui/material";
 import React, { useEffect, useRef } from "react"; 
 
 export const InputField = ({type="text", label, children, multiline=false, halfWidth=false, wide=false, width=null, error=false, noMargin=false, ...props}) => {
@@ -46,6 +46,22 @@ export const InputField = ({type="text", label, children, multiline=false, halfW
         </div>
     )
 };
+
+export const SnackBar = ({snack, setSnack}) => (
+    <>
+        <Portal>
+            {/* Notification Snackbar */}
+            <Snackbar
+                anchorOrigin={{vertical: "bottom", horizontal:"center"}}
+                open={snack['active']}
+                autoHideDuration={12000}
+                onClose={(e) => setSnack(prev => ({...prev, 'active': false}))}
+                >
+                <Alert onClose={(e) => setSnack(prev => ({...prev, 'active': false}))} severity={snack['variant']} sx={{width: '100%'}}>{snack['message']}</Alert>
+            </Snackbar>
+        </Portal>
+    </>
+)
 
 export const FileUploadSection = ({onSubmit, waiting, id, type, button}) => ( <>
     <input type="file" id={id} accept={type} className="fileUpload"/>

@@ -69,7 +69,7 @@ class ClientContact(models.Model):
     position = models.CharField(max_length=50)
     phone = models.CharField(max_length=12)
     email = models.EmailField(max_length=80)
-    region = models.ForeignKey(ClientRegion, on_delete=PROTECT)
+    region = models.ForeignKey(ClientRegion, on_delete=PROTECT, null=True)
     client = models.ForeignKey(Client, on_delete=PROTECT)
 
     def __str__(self):
