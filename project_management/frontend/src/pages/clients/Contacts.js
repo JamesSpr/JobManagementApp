@@ -78,39 +78,50 @@ const Contacts = () => {
 
     // Fetch Clients Data
     useEffect(() => {
+        const controller = new AbortController();
         setNewContact(prev => ({...prev, 'client': client}));
-        axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `query clientContacts($client: String!) {
-                    clientContacts(client: $client) {
-                        id
-                        firstName
-                        lastName
-                        position
-                        phone
-                        email
-                        region {
+        
+        const fetchData = async () => {
+            await axiosPrivate({
+                method: 'post',
+                signal: controller.signal,
+                data: JSON.stringify({
+                    query: `query clientContacts($client: String!) {
+                        clientContacts(client: $client) {
                             id
+                            firstName
+                            lastName
+                            position
+                            phone
+                            email
+                            region {
+                                id
+                            }
                         }
+                        clientRegions(client: $client) {
+                            id
+                            shortName
+                        }
+                    }`,
+                    variables: {
+                        client: client
                     }
-                    clientRegions(client: $client) {
-                        id
-                        shortName
-                    }
-                }`,
-                variables: {
-                    client: client
-                }
-            }),
-        }).then((response) => {
-            const res = response?.data?.data;
-            //Flatten clientContacts region oject
-            const contacts = res?.clientContacts.map(obj => ({...obj, region: obj.region.id}))
-            setData(contacts);
-            setRegions(res?.clientRegions);
-            setLoading(false);
-        });
+                }),
+            }).then((response) => {
+                const res = response?.data?.data;
+                //Flatten clientContacts region oject
+                const contacts = res?.clientContacts.map(obj => ({...obj, region: obj?.region?.id}))
+                setData(contacts);
+                setRegions(res?.clientRegions);
+                setLoading(false);
+            });
+        }
+        fetchData();
+
+        return () => {
+            controller.abort();
+        }
+        
     }, [])
     
     const editableCell = ({ getValue, row: { index }, column: { id }, table }) => {
