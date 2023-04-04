@@ -120,14 +120,14 @@ const Clients = () => {
                     query: `
                     mutation createClient($name: String!) { 
                         create_client: createClient(name: $name) {
-                        client {
-                            name
+                            client {
+                                name
+                            }
                         }
-                    }
-                }`,
-                variables: { 
-                    name: newClient,
-                },
+                    }`,
+                    variables: { 
+                        name: newClient,
+                    },
                 }),
             }).then((response) => {
                 const res = response?.data?.data;

@@ -37,8 +37,8 @@ const JobTable = ({tableData, users, jobStages}) => {
         'id': false, 'client': true, 'jobNumber':true, 
         'po': false, 'sr': false, 'otherId': false, 
         'location': true, 'building': true, 'title': true, 
-        'dateIssued': true, 'priority': true, 'overdueDate': true,
-        'stage': true, 'approvedPrice': false, 'invoice': false, 'invoiceDate': false, 
+        'dateIssued': true, 'priority': true, 'overdueDate': true, 'stage': true, 
+        'approvedPrice': false, 'billSum': false, 'grossProfit': false, 'invoice': false, 'invoiceDate': false, 
         'invoiceCreatedDate': false, 'region': false, 'detailedLocation': false, 'description': false
     });
     const [showFooter, setShowFooter] = useState(false);
@@ -128,7 +128,6 @@ const JobTable = ({tableData, users, jobStages}) => {
         let sum = 0.0
 
         for(var i = 0; i < props.table.getFilteredRowModel().flatRows.length; i++) {
-            // console.log(props.table.getFilteredRowModel().flatRows[i].getValue(props.column.id))
             sum += Number(props.table.getFilteredRowModel().flatRows[i].getValue(props.column.id))
         }
         return sum
@@ -259,6 +258,22 @@ const JobTable = ({tableData, users, jobStages}) => {
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
             footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
             size: 140,
+        },
+        {
+            accessorFn: row => (row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount), 0) / 1.1) ?? 0,
+            id: 'billSum',
+            header: () => 'Bill Amount',
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
+            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            size: 120,
+        },
+        {
+            accessorFn: row => (row?.estimateSet[row?.estimateSet?.findIndex(element => element?.approvalDate)]?.price ?? 0) - ((row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount), 0) / 1.1) ?? 0),
+            id: 'grossProfit',
+            header: () => 'Gross Profit',
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
+            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            size: 120,
         },
         {
             accessorFn: row => row?.jobinvoiceSet?.[0]?.invoice?.number ?? "",

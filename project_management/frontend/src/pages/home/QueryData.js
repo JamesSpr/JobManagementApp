@@ -47,6 +47,9 @@ export const fetchData = (number, next="") => (JSON.stringify({
                             datePaid
                         }
                     }
+                    billSet {
+                        amount
+                    }
                     bsafeLink
                 }
             }
@@ -99,6 +102,9 @@ export const fetchArchivedData = () => (JSON.stringify({
                             dateIssued
                             datePaid
                         }
+                    }
+                    billSet {
+                        amount
                     }
                     bsafeLink
                 }

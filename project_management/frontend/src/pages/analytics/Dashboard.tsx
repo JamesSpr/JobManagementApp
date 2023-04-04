@@ -34,7 +34,7 @@ const Dashboard = () => {
         end: string
         frequency: number
     }
-    const [filterParams, setFilterParams] = useState<FilterParameters>({start: '', end:'', frequency:0})
+    const [filterParams, setFilterParams] = useState<FilterParameters>({start: '', end:'', frequency:1})
     const [labels, setLabels] = useState<string[]>([])
 
     const [bills, setBills] = useState<chartData[]>([{id: '', myobUid:'', number: '', amount: '', dateCreated: new Date()}]);
@@ -97,7 +97,7 @@ const Dashboard = () => {
 
                 const minDate = new Date(Math.min(...((res.invoices).concat(res.bills)).map((element: chartData) => (new Date(element.dateCreated))))).toISOString().split("T")[0]
                 const maxDate = new Date(Math.max(...((res.invoices).concat(res.bills)).map((element: chartData) => (new Date(element.dateCreated))))).toISOString().split("T")[0]
-                setFilterParams({start: minDate, end: maxDate, frequency: 4})
+                setFilterParams({start: minDate, end: maxDate, frequency: 1})
 
                 setLoading(false);
 
@@ -139,15 +139,14 @@ const Dashboard = () => {
     const updateChartData = () => {
 
         const frequency = getFilterFrequency();
-        console.log(frequency)
 
         let billData = Array(frequency).fill(0.0);
         let invoiceData = Array(frequency).fill(0.0);
         let runningData = Array(frequency).fill(0.0);
-        setData([]);
-
+        
         const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
+        
+        setData([]);
         setLabels([])
 
         // Build the chart labels based on the frequency
@@ -160,8 +159,6 @@ const Dashboard = () => {
             labels.push(monthLabels[Math.floor(labelCounter/filterParams.frequency)])
             labelCounter ++;
         }
-        console.log(labels)
-
 
         const startYear = new Date(filterParams.start).getFullYear()
         const startMonth = new Date(filterParams.start).getMonth()
@@ -216,11 +213,6 @@ const Dashboard = () => {
                 },
             ],
         })
-
-
-        // setChartIncome(invoiceData);
-        // setChartBills(billData);
-        // setChartRunningTotal(runningData);
     }
 
     function Table ({data, columns}: {data: chartData[], columns: ColumnDef<chartData>[]}) {
@@ -237,42 +229,42 @@ const Dashboard = () => {
             <>
                 <table>
                     <thead>
-                    {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id}>
-                        {headerGroup.headers.map(header => {
-                            return (
-                            <th key={header.id} colSpan={header.colSpan}>
-                                {header.isPlaceholder ? null : (
-                                <div>
-                                    {flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
+                        {table.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id} >
+                            {headerGroup.headers.map(header => {
+                                return (
+                                <th key={header.id} colSpan={header.colSpan} style={{padding: '0 20px'}}>
+                                    {header.isPlaceholder ? null : (
+                                    <div>
+                                        {flexRender(
+                                        header.column.columnDef.header,
+                                        header.getContext()
+                                        )}
+                                    </div>
                                     )}
-                                </div>
-                                )}
-                            </th>
-                            )
-                        })}
-                        </tr>
-                    ))}
+                                </th>
+                                )
+                            })}
+                            </tr>
+                        ))}
                     </thead>
                     <tbody>
-                    {table.getRowModel().rows.map(row => {
-                        return (
-                        <tr key={row.id}>
-                            {row.getVisibleCells().map(cell => {
+                        {table.getRowModel().rows.map(row => {
                             return (
-                                <td key={cell.id}>
-                                {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                )}
-                                </td>
+                            <tr key={row.id}>
+                                {row.getVisibleCells().map(cell => {
+                                return (
+                                    <td key={cell.id}>
+                                    {flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext()
+                                    )}
+                                    </td>
+                                )
+                                })}
+                            </tr>
                             )
-                            })}
-                        </tr>
-                        )
-                    })}
+                        })}
                     </tbody>
                 </table>
                 
@@ -326,18 +318,18 @@ const Dashboard = () => {
     const columns = useMemo<ColumnDef<chartData>[]>(() => [
         {
             accessorKey: 'number',
-            header: () => "Invoice/Bill Number",
+            header: () => "Number",
             cell: info => info.getValue(),
         },
         {
             accessorKey: 'amount',
-            header: () => "Invoice/Bill Amount",
+            header: () => "Amount",
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
             footer: props => props.column.id,
         },
         {
             accessorKey: 'dateCreated',
-            header: () => "Invoice/Bill Date",
+            header: () => "Date",
             cell: info => info.getValue().toDateString(),
         },
     ], [] )
@@ -362,14 +354,14 @@ const Dashboard = () => {
                     </Grid>
                     <Grid item xs={12}>
                         <InputField type="select" label="Frequency" value={filterParams?.frequency} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, frequency: e.target.value as unknown as number}))}>
-                            <option key={0} value={4}>Weekly</option>
-                            <option key={2} value={1}>Monthly</option>
+                            <option key={0} value={1}>Monthly</option>
+                            <option key={1} value={4}>Weekly</option>
                         </InputField>
                         <InputField type="date" label="Filter Start Date" value={filterParams?.start} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, start: e.target.value}))}> </InputField>
                         <InputField type="date" label="Filter End Date"  value={filterParams?.end} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, end: e.target.value}))}> </InputField>
                         <Button variant="outlined" onClick={updateChartData}>Update Chart</Button>
                     </Grid>
-                    <div style={{ position: "relative", margin: "auto", width: "80vw" }}>
+                    <div style={{ position: "relative", margin: "auto", width: "60vw" }}>
                         <Chart type='bar' data={chartData} style={{height: '100%', width: '100%'}}/>
                     </div>
                     <Grid item xs={12}>
