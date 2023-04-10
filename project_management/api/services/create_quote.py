@@ -14,6 +14,9 @@ import sys
 sys.path.append("...")
 from accounts.models import CustomUser
 
+QUOTE_PATH = "api/templates/QUOTE.docx"
+PO_PATH = "api/templates/PURCHASE ORDER.docx"
+
 class CreateQuote(graphene.Mutation):
     class Arguments:
         job_id = graphene.String()
@@ -40,7 +43,7 @@ class CreateQuote(graphene.Mutation):
             return CreateQuote(success=False, message="Quote Already Exists")
 
         # Create File
-        document = Document(os.path.join(os.getcwd(), 'api/templates/QuoteTemplate v2.docx'))
+        document = Document(os.path.join(os.getcwd(), QUOTE_PATH))
 
         # Get data from job
         quote_date = date.today().strftime("%d/%m/%Y").strip()
@@ -68,7 +71,7 @@ class CreateQuote(graphene.Mutation):
             '[State]': state, 
             '[Postcode]': postcode, 
             '[ContactName]': contact_name, 
-            '[ContactEmail]': contact_email, 
+            '[ContactEmail]': contact_email.capitalize().strip(), 
             '[ContactPhone]': contact_phone,
             '[JobName]': job_name,
             '[QuoterPhone]': estimate.quote_by.phone.strip(),
@@ -81,8 +84,8 @@ class CreateQuote(graphene.Mutation):
             '[Scope]': scope,
             '[QuoterSignature]': rf'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\temp\user_{estimate.quote_by.first_name.lower()}-signature.png',
             '[CompanyLogo]' : r'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\temp\aurify_logo-quote.png',
-            '[Quoter]': estimate.quote_by.first_name.capitalize().strip() + " " + estimate.quote_by.last_name.capitalize().strip(),
-            '[QuoterRole]': estimate.quote_by.position.capitalize().strip(),
+            '[Quoter]': estimate.quote_by.first_name.title().strip() + " " + estimate.quote_by.last_name.capitalize().strip(),
+            '[QuoterRole]': estimate.quote_by.position.title().strip(),
         }
 
         for item in mailMergeTableItems:
