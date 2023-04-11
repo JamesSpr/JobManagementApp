@@ -61,7 +61,11 @@ export interface IAuth {
         username: String;
         refreshToken: String;
         defaultPaginationAmount: Number;
-        company?: String;
+        company?: {
+            id: String;
+            name: String;
+            logo: String;
+        };
     },
     myob: {
         id: String;

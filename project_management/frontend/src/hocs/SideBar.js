@@ -14,7 +14,7 @@ const SideBar = () => {
     }
 
     const sideBarUpperOptions = ['Clients', 'Contacts', 'Locations', 'Regions', 'Contractors', 'Invoices', 'Bills']
-    const sideBarLowerOptions = ['Staff', 'Analytics', 'Financials', 'Settings', 'MYOB']
+    const sideBarLowerOptions = ['Staff', 'Admin', 'Analytics', 'Financials', 'Settings', 'MYOB']
 
     return(
         <Drawer

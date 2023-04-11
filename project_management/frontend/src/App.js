@@ -28,6 +28,7 @@ import Bills from "./pages/bill/Bills";
 import Wizard from "./pages/wizard/Wizard";
 import WizQuote from "./pages/wizard/WizQuote";
 import CompanyDashboard from "./pages/analytics/CompanyDashboard";
+import CompanyAdmin from "./pages/admin/Company";
 
 const App = () => {
     return ( 
@@ -64,6 +65,7 @@ const App = () => {
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >
                             <Route path="analytics" element={<Dashboard />} />
                             <Route path="financials" element={<CompanyDashboard />} />
+                            <Route path="admin" element={<CompanyAdmin />} />
                             <Route path="contractors" element={<Contractors />} />
                             <Route path="invoices" element={<Invoices />} />
                             <Route path="bills" element={<Bills />} />

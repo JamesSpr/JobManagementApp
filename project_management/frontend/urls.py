@@ -32,6 +32,7 @@ urlpatterns = [
     path('missing', index, name="missing"),
     path('unauthorized', index, name="unauthorized"),
     path('settings', index, name="settings"),
+    path('admin', index, name="admin"),
     path('myaccount', index, name="my-account"),
     path('myob', index, name="myob-integration"),
 

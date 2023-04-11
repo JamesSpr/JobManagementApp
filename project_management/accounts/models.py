@@ -16,6 +16,7 @@ class MyAccountManager(BaseUserManager):
 
         user.username = user.email
         user.role = 'GUS'
+        user.company = Company.objects.get(name="Aurify")
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -30,6 +31,7 @@ class MyAccountManager(BaseUserManager):
         
         user.username = user.email
         user.role = 'DEV'
+        user.company = Company.objects.get(name="Aurify")
         user.set_password(password)
         user.is_admin = True
         user.is_staff = True
