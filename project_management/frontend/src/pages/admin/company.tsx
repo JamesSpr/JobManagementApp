@@ -1,7 +1,7 @@
 import React, { FC, ReactNode, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import useAuth from "../auth/useAuth";
-import { Box, Tab, Tabs } from '@mui/material';
+import { Box, Tab, Tabs, Grid } from '@mui/material';
 
 type TabPanelProps = {
     children: ReactNode,
@@ -54,15 +54,13 @@ const CompanyAdmin = () => {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={value} onChange={ (event, newValue) => {setValue(newValue)}} indicatorColor="primary" centered>
                 <Tab label={'About'} {...a11yProps(0)}/>
-                <Tab label={'Employee'} {...a11yProps(1)}/>
+                <Tab label={'Employees'} {...a11yProps(1)}/>
                 <Tab label={'Insurances'} {...a11yProps(2)}/>
             </Tabs>
         </Box>
         
         <TabPanel key={0} value={value} index={0}>
-            <p>Name</p>
-            <p>Logo</p>
-            <p>Other Settings</p>
+            <About />
         </TabPanel>         
         <TabPanel key={1} value={value} index={1}>
             <Employees />
@@ -75,15 +73,52 @@ const CompanyAdmin = () => {
     )
 }
 
+const About = () => {
+    return (
+        <>
+            <Grid container
+                direction={'column'}
+                alignItems={'center'}
+            >
+                <Grid item xs={12}>
+                    <p>Name</p>
+                    <p>Logo</p>
+                    <p>Other Settings</p>
+                </Grid>
+            </Grid>
+        </>
+    )
+}
+
 const Employees = () => {
     return (
-        <p>Employee Permissions</p>
+        <>
+            <Grid container
+                direction={'column'}
+                alignItems={'center'}
+            >
+                <Grid item xs={12}>
+                    <p>Employee Permissions</p>
+
+                </Grid>
+            </Grid>
+        </>
     )
 }
 
 const Insurances = () => {
     return (
-        <p>Insurances</p>
+        <>
+            <Grid container
+                direction={'column'}
+                alignItems={'center'}
+            >
+                <Grid item xs={12}>
+                    <p>Insurances</p>
+
+                </Grid>
+            </Grid>
+        </>
     )
 }
 

@@ -6,7 +6,7 @@ import Footer from './Footer';
 import useAuth from "../pages/auth/useAuth";
 import { EstimateProvider } from '../context/EstimateProvider';
 
-const drawerWidth = 230;
+const drawerWidth = 115;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
     ({ theme, open }) => ({
