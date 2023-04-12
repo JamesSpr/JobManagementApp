@@ -119,18 +119,21 @@ const Insurances = () => {
     const columns = useMemo<ColumnDef<InsuranceDataType>[]>(() => [
         {
             accessorKey: 'description',
-            header: () => "description",
+            header: () => "Description",
             cell: info => info.getValue(),
+            size: 200,
         },
         {
             accessorKey: 'expiry',
             header: () => "Expiry Date",
             cell: info => info.getValue().toDateString(),
+            size: 150,
         },
         {
             accessorKey: 'active',
             header: () => "Active",
             cell: info => info.getValue(),
+            size: 80,
         },
     ], [] )
 

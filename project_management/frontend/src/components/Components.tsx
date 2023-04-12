@@ -1,8 +1,10 @@
 
 import React, { FC, ReactNode, useEffect, useRef } from "react"; 
 import { Box, Button, CircularProgress, Portal, Snackbar, Alert } from "@mui/material";
-import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel, Table, ColumnDef, RowData } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table, RowData, ColumnDef,
+    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType } from "../types/types";
+import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
 
 export const InputField:FC<InputFieldType> = ({type="text", label, children, multiline=false, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
 
@@ -116,35 +118,77 @@ export const PaginationControls = <Type extends RowData>({table}: {table: Table<
     : <></>
 )
 
-export const PaginatedTable = <Type extends RowData>({data, columns}: {data: Type[], columns: ColumnDef<Type>[]}) => {
+interface PaginatedTableType <T extends object> {
+    data: T[]
+    columns: ColumnDef<T>[]
+    rowSelection?: {}
+    setRowSelection?: () => {}
+    columnFilters?: []
+    setColumnFilters?: () => []
+    globalFilter?: ''
+    setGlobalFilter?: () => ''
+    sorting?: []
+    setSorting?: () => []
+}
+export const PaginatedTable = <T extends object>({data, columns, columnFilters, setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting}: PaginatedTableType<T>) => {
     const table = useReactTable({
         data,
         columns,
         // Pipeline
+        state: {
+            columnFilters,
+            globalFilter,
+            sorting,
+        },
+        onColumnFiltersChange: setColumnFilters,
+        onGlobalFilterChange: setGlobalFilter,
+        onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFacetedRowModel: getFacetedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        getFacetedUniqueValues: getFacetedUniqueValues(),
+        getFacetedMinMaxValues: getFacetedMinMaxValues(),
+        globalFilterFn: fuzzyFilter,
+        enableMultiSort: true,
     })
 
     return (
         <>
-            <table>
+            <table style={{width: table.getTotalSize(), paddingBottom: '10px', margin: '0 auto'}}>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id} >
+                        <tr key={headerGroup.id}>
                         {headerGroup.headers.map(header => {
                             return (
-                            <th key={header.id} colSpan={header.colSpan} style={{padding: '0 20px'}}>
-                                {header.isPlaceholder ? null : (
-                                <div>
-                                    {flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
+                                <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
+                                    {header.isPlaceholder ? null : (
+                                    <>
+                                        <div {...{
+                                            className: header.column.getCanSort()
+                                            ? 'cursor-pointer select-none'
+                                            : '',
+                                            onClick: header.column.getToggleSortingHandler(),
+                                        }}>
+                                            {flexRender(
+                                                header.column.columnDef.header,
+                                                header.getContext()
+                                            )}
+                                            {{
+                                                asc: ' ▲',
+                                                desc: ' ▼',
+                                            }[header.column.getIsSorted() as string] ?? null}
+                                        </div>
+                                        {header.column.getCanFilter() && columnFilters ? (
+                                            <div>
+                                                <TableFilter column={header.column} table={table} />
+                                            </div>
+                                        ) : null}
+                                    </>
                                     )}
-                                </div>
-                                )}
-                            </th>
-                            )
+                                </th>
+                            );
                         })}
                         </tr>
                     ))}
@@ -152,19 +196,23 @@ export const PaginatedTable = <Type extends RowData>({data, columns}: {data: Typ
                 <tbody>
                     {table.getRowModel().rows.map(row => {
                         return (
-                        <tr key={row.id}>
-                            {row.getVisibleCells().map(cell => {
-                            return (
-                                <td key={cell.id}>
-                                {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                )}
-                                </td>
-                            )
-                            })}
-                        </tr>
-                        )
+                            <tr key={row.id} 
+                                style={{height: '20px'}}
+                            >
+                                {row.getVisibleCells().map(cell => {
+                                    return (
+                                        <td key={cell.id} style={{padding: '4px 5px'}}>
+                                        {
+                                            flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext()
+                                            )
+                                        }
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        );
                     })}
                 </tbody>
             </table>
@@ -173,6 +221,7 @@ export const PaginatedTable = <Type extends RowData>({data, columns}: {data: Typ
         </>
     )
 }
+
 
 export const SnackBar = ({snack, setSnack}: {snack: {active: boolean, variant: 'error' | 'info' | 'success' | 'warning' , message: string}, setSnack: React.Dispatch<React.SetStateAction<string>>}) => (
     <>
