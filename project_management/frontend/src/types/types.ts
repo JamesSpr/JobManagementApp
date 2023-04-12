@@ -78,3 +78,5 @@ export type AuthContextType = {
     auth?: IAuth;
     setAuth: (auth: IAuth) => void;
 }
+
+export type HTMLElementChange = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from '../../hooks/axios';
 import useAuth from '../auth/useAuth';
 import { Button, Grid, Typography } from '@mui/material';
-import { InputField } from '../../components/Components';
+import { InputField } from '../../components/Components'
 import Register from './Register';
 // import Register from './Register';
 

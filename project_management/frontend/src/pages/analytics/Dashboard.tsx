@@ -9,6 +9,7 @@ import { Chart } from 'react-chartjs-2';
 import { Button, Grid } from "@mui/material";
 import { InputField, PaginationControls } from "../../components/Components";
 import { TableFilter } from "../../components/FuzzyFilter";
+import { HTMLElementChange } from "../../types/types";
 
 interface chartData {
     id: string,
@@ -353,12 +354,12 @@ const Dashboard = () => {
                         <h4>Filters</h4>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField type="select" label="Frequency" value={filterParams?.frequency} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, frequency: e.target.value as unknown as number}))}>
+                        <InputField type="select" label="Frequency" value={filterParams?.frequency} onChange={(e: React.ChangeEvent<HTMLElementChange>) => setFilterParams(prev => ({...prev, frequency: e.target.value as unknown as number}))}>
                             <option key={0} value={1}>Monthly</option>
                             <option key={1} value={4}>Weekly</option>
                         </InputField>
-                        <InputField type="date" label="Filter Start Date" value={filterParams?.start} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, start: e.target.value}))}> </InputField>
-                        <InputField type="date" label="Filter End Date"  value={filterParams?.end} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterParams(prev => ({...prev, end: e.target.value}))}> </InputField>
+                        <InputField type="date" label="Filter Start Date" value={filterParams?.start} onChange={(e: React.ChangeEvent<HTMLElementChange>) => setFilterParams(prev => ({...prev, start: e.target.value}))}> </InputField>
+                        <InputField type="date" label="Filter End Date"  value={filterParams?.end} onChange={(e: React.ChangeEvent<HTMLElementChange>) => setFilterParams(prev => ({...prev, end: e.target.value}))}> </InputField>
                         <Button variant="outlined" onClick={updateChartData}>Update Chart</Button>
                     </Grid>
                     <div style={{ position: "relative", margin: "auto", width: "60vw" }}>

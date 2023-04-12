@@ -3,7 +3,7 @@ import axios from '../../hooks/axios.js';
 import { Button, Grid, Typography, TextField, Tooltip } from '@mui/material';
 import DoneIcon from '@mui/icons-material/Done';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import { InputField } from '../../components/Components.js';
+import { InputField } from '../../components/Components';
 
 const Register = () => {
 

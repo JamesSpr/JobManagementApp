@@ -107,6 +107,8 @@ const Employees = () => {
 }
 
 const Insurances = () => {
+
+
     return (
         <>
             <Grid container
@@ -114,8 +116,8 @@ const Insurances = () => {
                 alignItems={'center'}
             >
                 <Grid item xs={12}>
-                    <p>Insurances</p>
-
+                    <p>Insurances Information/Details</p>
+                    <p>Add Insurances/Update</p>
                 </Grid>
             </Grid>
         </>
