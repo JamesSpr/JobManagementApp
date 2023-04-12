@@ -1,7 +1,9 @@
-import React, { FC, ReactNode, useState, useEffect } from "react";
+import React, { FC, ReactNode, useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import useAuth from "../auth/useAuth";
 import { Box, Tab, Tabs, Grid } from '@mui/material';
+import { ColumnDef } from "@tanstack/table-core";
+import { PaginatedTable } from "../../components/Components";
 
 type TabPanelProps = {
     children: ReactNode,
@@ -31,7 +33,7 @@ const CompanyAdmin = () => {
     const { auth } = useAuth();
     const navigate = useNavigate();
 
-    const [value, setValue] = useState(0); // Active Tab Value
+    const [value, setValue] = useState(2); // Active Tab Value
 
     useEffect(() => {
         if(!auth || !auth?.user.company) {
@@ -106,8 +108,33 @@ const Employees = () => {
     )
 }
 
+interface InsuranceDataType {
+    description: string
+    expiry: Date
+    active: boolean
+}
+
 const Insurances = () => {
 
+    const columns = useMemo<ColumnDef<InsuranceDataType>[]>(() => [
+        {
+            accessorKey: 'description',
+            header: () => "description",
+            cell: info => info.getValue(),
+        },
+        {
+            accessorKey: 'expiry',
+            header: () => "Expiry Date",
+            cell: info => info.getValue().toDateString(),
+        },
+        {
+            accessorKey: 'active',
+            header: () => "Active",
+            cell: info => info.getValue(),
+        },
+    ], [] )
+
+    const [data, setData] = useState<InsuranceDataType[]>([{description: "Certificate of Currency", expiry: new Date(), active: false}])
 
     return (
         <>
@@ -117,6 +144,7 @@ const Insurances = () => {
             >
                 <Grid item xs={12}>
                     <p>Insurances Information/Details</p>
+                    <PaginatedTable columns={columns} data={data} />
                     <p>Add Insurances/Update</p>
                 </Grid>
             </Grid>

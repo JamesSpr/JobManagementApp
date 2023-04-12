@@ -2,29 +2,9 @@
 import React, { FC, ReactNode, useEffect, useRef } from "react"; 
 import { Box, Button, CircularProgress, Portal, Snackbar, Alert } from "@mui/material";
 import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel, Table, ColumnDef, RowData } from '@tanstack/react-table'
-import { HTMLElementChange } from "../types/types";
+import { HTMLElementChange, InputFieldType } from "../types/types";
 
-
-interface InputType {
-    type: string
-    label?:string
-    children?: ReactNode
-    multiline?: boolean
-    halfWidth?: boolean
-    wide?: boolean
-    width?: number
-    error?: boolean
-    noMargin?: boolean
-    value?: any
-    defaultValue?:any
-    onChange: (event: React.ChangeEvent<HTMLElementChange>) => void
-    style?: React.CSSProperties
-    props?: any
-}
-
-
-
-export const InputField:FC<InputType> = ({type="text", label, children, multiline=false, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
+export const InputField:FC<InputFieldType> = ({type="text", label, children, multiline=false, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
 
     const textareaRef = useRef<HTMLTextAreaElement>(document.createElement("txt") as HTMLTextAreaElement);
     useEffect(() => {

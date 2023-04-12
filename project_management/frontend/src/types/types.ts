@@ -1,3 +1,5 @@
+import React, { ReactNode } from 'react';
+
 export type User = {
     node: {
         id: Number,
@@ -77,6 +79,23 @@ export interface IAuth {
 export type AuthContextType = {
     auth?: IAuth;
     setAuth: (auth: IAuth) => void;
+}
+
+export interface InputFieldType {
+    type: string
+    label?:string
+    children?: ReactNode
+    multiline?: boolean
+    halfWidth?: boolean
+    wide?: boolean
+    width?: number
+    error?: boolean
+    noMargin?: boolean
+    value?: any
+    defaultValue?:any
+    onChange: (event: React.ChangeEvent<HTMLElementChange>) => void
+    style?: React.CSSProperties
+    props?: any
 }
 
 export type HTMLElementChange = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
