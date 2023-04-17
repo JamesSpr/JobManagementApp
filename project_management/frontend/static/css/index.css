@@ -178,6 +178,12 @@ tr.EmptyTableData:hover {
 .width750 {
   width: 750px;
 }
+.width800 {
+  width: 800px;
+}
+.width1000 {
+  width: 1000px;
+}
 
 .halfWidth {
   width: 125px;

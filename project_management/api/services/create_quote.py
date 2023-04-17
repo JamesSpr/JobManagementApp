@@ -55,7 +55,7 @@ class CreateQuote(graphene.Mutation):
         postcode = job.location.postcode.strip()
         job_name = str(job).strip()
         location = job.location.name.strip()
-        scope = job.scope.strip()
+        scope = estimate.scope.strip()
 
         contact_name = job.requester.first_name.strip() + " " + job.requester.last_name.strip()
         contact_email = job.requester.email.strip()

@@ -585,6 +585,7 @@ class EstimateInput(graphene.InputObjectType):
     price = graphene.Float()
     issue_date = graphene.Date()
     approval_date = graphene.Date()
+    scope = graphene.String()
     quote_by = graphene.Field(QuoteByInput)
     estimateheaderSet = graphene.List(EstimateHeaderInput)
 
@@ -604,24 +605,18 @@ class CreateEstimateFromSet(graphene.Mutation):
         jobs_path = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
 
         for est in estimate_set:
-            created = False
             # Get existing estimate for that job with the same name
             print("Saving Estimate:", est.name)
             if Estimate.objects.filter(job_id=job, id=est.id).exists():
                 estimate = Estimate.objects.get(job_id=job, id=est.id)
-            else:
-                print("Creating New")
-                estimate = Estimate.objects.create(job_id=job, name=est.name, quote_by=CustomUser.objects.get(id=est.quote_by.id))
-                created = True
-                if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
-                    os.mkdir(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
-
-            if not created: # If not created
                 existingId = estimate.id
                 estimate.delete()
                 estimate.id = existingId
-
-            estimate.job_id = job
+            else:
+                print("Creating New")
+                estimate = Estimate.objects.create(job_id=job, name=est.name, quote_by=CustomUser.objects.get(id=est.quote_by.id))
+                if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
+                    os.mkdir(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
 
             # If the estimate name is changed, update the existing folder name
             if est.name != estimate.name:
@@ -630,12 +625,15 @@ class CreateEstimateFromSet(graphene.Mutation):
                 if os.path.exists(current_estimate_folder):
                     os.rename(current_estimate_folder, new_estimate_folder)
 
+            estimate.job_id = job
             estimate.name = est.name
             estimate.description = est.description
             estimate.price = est.price
             estimate.quote_by = CustomUser.objects.get(id=est.quote_by.id)
             estimate.issue_date = None if not est.issue_date or est.issue_date == "" else est.issue_date
             estimate.approval_date = None if not est.approval_date or est.approval_date == "" else est.approval_date
+            estimate.scope = est.scope
+
             # None if input.completion_date == datetime.date(1970, 1, 1) else input.completion_date
             estimate.save()
             for header in est.estimateheaderSet:

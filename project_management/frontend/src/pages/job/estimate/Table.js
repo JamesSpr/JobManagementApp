@@ -13,6 +13,7 @@ import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
+import { InputField } from '../../../components/Components';
 
 function useSkipper() {
     const shouldSkipRef = useRef(true)
@@ -34,9 +35,11 @@ const EstimateTable = ({estimateData, accessorId}) => {
 
     // Intialise Data
     const [data, setData] = useState([]);
+    const [scope, setScope] = useState('');
 
     useEffect(() => {
         setData(estimateData.estimateheaderSet);
+        setScope(estimateData.scope);
     }, [])
     
     // useEffect(() => {
@@ -348,7 +351,7 @@ const EstimateTable = ({estimateData, accessorId}) => {
                         <>
                             {!estimateData['approvalDate'] && 
                                 <IconButton onClick={(e) => {
-                                    handleSaveEstimate(table.options.data);
+                                    handleSaveEstimate(table.options.data, table.options.meta.getScope());
                                 }}> 
                                     <SaveIcon />
                                 </IconButton>
@@ -399,6 +402,9 @@ const EstimateTable = ({estimateData, accessorId}) => {
         getExpandedRowModel: getExpandedRowModel(),
         autoResetPageIndex,
         meta: {
+            getScope: () => {
+                return scope;
+            },
             updateData: (Row, columnId, value) => {
                 skipAutoResetPageIndex();
                 
@@ -641,12 +647,15 @@ const EstimateTable = ({estimateData, accessorId}) => {
         }
     }
 
-    const handleSaveEstimate = (tableData) => {
+    const handleSaveEstimate = (tableData, scope) => {
         // Calculate sum of child elements
         let estimateSum = 0.00;
         tableData.map(item => {
             estimateSum += parseFloat(item.gross);
         })
+
+        console.log(tableData)
+        console.log("SOW:", scope)
 
         // Update the current estimateSet
         setEstimateSet(prev => prev.map((row, index) => {
@@ -654,6 +663,7 @@ const EstimateTable = ({estimateData, accessorId}) => {
                 const savedEstimateOption = produce(prev[index], draft => {
                     draft.price = estimateSum.toFixed(2);
                     draft.estimateheaderSet = tableData;
+                    draft.scope = scope;
                 })
                 return savedEstimateOption;
             }
@@ -677,6 +687,7 @@ const EstimateTable = ({estimateData, accessorId}) => {
     return (
         // <div tabIndex="-1" onBlur={(e) => handleBlur(e)}>
         <>
+            <InputField multiline width={1000} name="scope" label="Detailed Scope of Works" value={scope} onChange={e => setScope(e.target.value)}/>
             <TableContainer sx={{paddingBottom: "20px"}}>
                 <Table {...{sx: { width: table.getTotalSize()},}}>
                     <TableHead>

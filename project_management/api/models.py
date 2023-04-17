@@ -294,6 +294,7 @@ class Estimate(models.Model):
     quote_by = models.ForeignKey(CustomUser, on_delete=PROTECT)
     issue_date = models.DateField(blank=True, null=True)
     approval_date = models.DateField(blank=True, null=True)
+    scope = models.TextField(max_length=500, blank=True)
 
     def __str__(self):
         return str(self.job_id) + " : " + self.name

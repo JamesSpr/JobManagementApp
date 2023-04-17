@@ -197,6 +197,7 @@ const JobPage = () => {
                                     price
                                     issueDate
                                     approvalDate
+                                    scope
                                     quoteBy {
                                         id
                                     }
@@ -433,6 +434,7 @@ const JobPage = () => {
                             price
                             issueDate
                             approvalDate
+                            scope
                             quoteBy {
                                 id
                             }
@@ -954,7 +956,7 @@ const JobPage = () => {
                 {/* Estimate Builder */}
                 <Grid item xs={12} align="center">
                     <Typography variant='body1'>Quote Details</Typography>
-                    <InputField multiline wide name="scope" label="Scope of Works" value={job.scope} onChange={handleInput}/>
+                    <InputField multiline wide name="scope" label="General Scope of Works" value={job.scope} onChange={handleInput}/>
                 </Grid>
                 <Grid item xs={12} align="center" />
                 <Grid item xs={12} align="center" style={{overflowX: 'auto'}}>
