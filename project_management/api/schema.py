@@ -632,7 +632,7 @@ class CreateEstimateFromSet(graphene.Mutation):
             estimate.quote_by = CustomUser.objects.get(id=est.quote_by.id)
             estimate.issue_date = None if not est.issue_date or est.issue_date == "" else est.issue_date
             estimate.approval_date = None if not est.approval_date or est.approval_date == "" else est.approval_date
-            estimate.scope = est.scope
+            estimate.scope = "" if not est.scope else est.scope
 
             # None if input.completion_date == datetime.date(1970, 1, 1) else input.completion_date
             estimate.save()
