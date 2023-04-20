@@ -6,6 +6,7 @@ import { ColumnDef } from "@tanstack/table-core";
 import { FileUploadSection, InputField, PaginatedTable, ProgressButton } from "../../components/Components";
 import CloseIcon from '@mui/icons-material/Close';
 import { HTMLElementChange } from "../../types/types";
+import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
 type TabPanelProps = {
     children: ReactNode,
@@ -145,17 +146,63 @@ const Insurances = () => {
         },
     ], [] )
 
+    const axiosPrivate = useAxiosPrivate();
     const [data, setData] = useState<InsuranceDataType[]>([{description: "Public and Products Liability", expiry: new Date(), active: false}])
-    const [newInsurance, setNewInsurance] = useState({thumbnailPath: ''});
+    const [newInsurancePath, setNewInsurancePath] = useState('');
     const [waiting, setWaiting] = useState({update: false})
     
     const [newDialog, setNewDialog] = useState(false);
 
-    const handleNewInsurance = () => {
+    const handleNewInsurance = async () => {
 
-        // Post insurance to backend
+        setWaiting(prev => ({...prev, update: true}));
+        const target = document.getElementById('upload_insurances') as HTMLInputElement;
+        const [file] = target?.files as FileList;
 
-        setNewInsurance({thumbnailPath: ''});
+        if (!file) {
+            setWaiting(prev => ({...prev, 'create': false}));
+            return;
+        }
+
+        let fileReader = new FileReader();
+        fileReader.readAsDataURL(file)
+        fileReader.onload = async () => {
+            let data = fileReader.result
+
+            // Post insurance to backend and get path
+            await axiosPrivate({
+                method: 'post',
+                data: JSON.stringify({
+                    query: `
+                    mutation ($file: String!) {
+                        upload: pdfToImage(file: $file) {
+                            success
+                            path
+                        }
+                    }`,
+                    variables: {
+                        file: data,
+                    },
+                }),
+            }).then((response) => {
+                const res = response?.data?.data?.upload; 
+                console.log(res);
+                if(res.success) {
+                    setNewInsurancePath(res.path);
+                }
+                else {
+                    // setSnackVariant('error');
+                    // setSnackMessage(res.message);
+                    console.log("Error Uploading Insurance", res)
+                }
+            }).catch((err) => {
+                console.log("error:", err);
+                // setSnackVariant('error');
+                // setSnackMessage(res.message);
+            }).finally(() => {
+                setWaiting(prev => ({...prev, update: false}));
+            });
+        }
 
         setNewDialog(true);
     }
@@ -180,11 +227,11 @@ const Insurances = () => {
                     <p>Insurances Information/Details</p>
                     <PaginatedTable columns={columns} data={data} />
                     <p>Create or Update Insurances</p>
-                    <FileUploadSection onSubmit={handleNewInsurance} waiting={waiting.update} id="update_insurances" type=".pdf" button="Upload Insurances"/>
+                    <FileUploadSection onSubmit={handleNewInsurance} waiting={waiting.update} id="upload_insurances" type=".pdf" button="Upload Insurances"/>
                 </Grid>
             </Grid>
 
-            <NewInsurance open={newDialog} onClose={handleClose} newInsurance={newInsurance.thumbnailPath}/>
+            <NewInsurance open={newDialog} onClose={handleClose} newInsurance={newInsurancePath}/>
         </>
     )
 }
@@ -227,7 +274,7 @@ const NewInsurance = ({ open, onClose, newInsurance }: {open: boolean, onClose: 
                         <Grid item xs={12} style={{margin: '10px 0px', overflow: 'hidden auto'}}>
                             <Typography variant='h6'></Typography>
                             <Grid item xs={12}>
-                                <InputField type="text" width={200} label="Description" name="description" 
+                                <InputField type="text" width={300} label="Description" name="description" 
                                     error={fieldError['description']} value={insurance.description} onChange={handleChange}/> 
                                 <InputField type="date" width={200} label="Expiry Date" name="expiryDate" 
                                     error={fieldError['expiryDate']} value={insurance.expiryDate} onChange={handleChange}/> 
@@ -239,7 +286,7 @@ const NewInsurance = ({ open, onClose, newInsurance }: {open: boolean, onClose: 
                             </Grid>
                         </Grid>
                         <Grid item xs={12} style={{display: 'flex', justifyContent: 'center'}}>
-                            <div className='pdf-preview'>
+                            <div className='pdf-preview-large'>
                                 <img src={"\\" + newInsurance} alt="PDF Preview"/>
                             </div>
                         </Grid>

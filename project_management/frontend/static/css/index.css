@@ -554,3 +554,10 @@ a {
   max-height: 750px;
   border: 1px solid black;
 }
+
+.pdf-preview-large {
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 1000px;
+  border: 1px solid black;
+}

@@ -31,12 +31,15 @@ export const InputField:FC<InputFieldType> = ({type="text", label, children, mul
     if(noMargin) {
         boxStyle += ' no-margin'
     }
-
     if(halfWidth) {
         styleClass += " halfWidth";
     }
     else if(wide) {
         styleClass += " wideInput";
+    }
+
+    if(type == "date") {
+        props = {...props, max: '9999-12-31'}
     }
 
     return (

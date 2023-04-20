@@ -17,7 +17,7 @@ from .models import Estimate, EstimateHeader, EstimateItem, Job, JobInvoice, Loc
 from .services.import_csv import UploadClientContactsCSV, UploadClientRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote, CreateBGISEstimate
-from .services.add_to_spreadsheet import AddJobToSpreadsheet
+from .services.get_pdf_thumbnail import PDFToImage
 
 main_folder_path = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs"
 
@@ -1307,6 +1307,7 @@ class Mutation(graphene.ObjectType):
     
     extract_remittance_advice = ExtractRemittanceAdvice.Field()
     extract_bill_details = ExtractBillDetails.Field()
+    pdf_to_image = PDFToImage.Field()
     
     check_folder = CheckFolder.Field()
     
