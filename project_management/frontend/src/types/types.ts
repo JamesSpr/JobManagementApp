@@ -83,7 +83,8 @@ export type AuthContextType = {
 
 export interface InputFieldType {
     type: string
-    label?:string
+    name?: string
+    label?: string
     children?: ReactNode
     multiline?: boolean
     halfWidth?: boolean

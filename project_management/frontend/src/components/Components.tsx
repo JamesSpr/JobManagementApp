@@ -241,7 +241,7 @@ export const SnackBar = ({snack, setSnack}: {snack: {active: boolean, variant: '
 
 export const FileUploadSection = ({onSubmit, waiting, id, type, button}: {onSubmit: () => void, waiting: {}, id: string, type: string, button: string}) => ( <>
     <input type="file" id={id} accept={type} className="fileUpload"/>
-    <Box sx={{ m: 1, position: 'relative' }}>
+    <Box sx={{ m: 1, position: 'relative', display: 'flex', justifyContent: 'center' }}>
         <Button variant="outlined" onClick={onSubmit}>{button}</Button>
         {waiting && (
             <CircularProgress size={24} 
