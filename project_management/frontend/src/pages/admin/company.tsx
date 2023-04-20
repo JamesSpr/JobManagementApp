@@ -4,9 +4,11 @@ import useAuth from "../auth/useAuth";
 import { Box, Tab, Tabs, Grid, Dialog, DialogContent, Typography, IconButton } from '@mui/material';
 import { ColumnDef } from "@tanstack/table-core";
 import { FileUploadSection, InputField, PaginatedTable, ProgressButton } from "../../components/Components";
-import CloseIcon from '@mui/icons-material/Close';
 import { HTMLElementChange } from "../../types/types";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+
+import CloseIcon from '@mui/icons-material/Close';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 type TabPanelProps = {
     children: ReactNode,
@@ -112,12 +114,19 @@ const Employees = () => {
 }
 
 interface InsuranceDataType {
+    id: string
     description: string
+    start: Date
     expiry: Date
     active: boolean
+    thumbnail: string
 }
 
 const Insurances = () => {
+
+    const previewInsurance = (thumbnail: string) => {
+        console.log(thumbnail)
+    }
 
     const columns = useMemo<ColumnDef<InsuranceDataType>[]>(() => [
         {
@@ -125,6 +134,12 @@ const Insurances = () => {
             header: () => "Description",
             cell: info => info.getValue(),
             size: 200,
+        },
+        {
+            accessorKey: 'start',
+            header: () => "Start Date",
+            cell: info => info.getValue().toDateString(),
+            size: 150,
         },
         {
             accessorKey: 'expiry',
@@ -144,10 +159,23 @@ const Insurances = () => {
             },
             size: 80,
         },
+        {
+            accessorKey: 'thumbnail',
+            header: () => "Preview",
+            cell: info => {
+                if(info.getValue() == "") return (<></>)
+                return(
+                    <IconButton onClick={() => previewInsurance(info.getValue())}>
+                        <PictureAsPdfIcon />
+                    </IconButton> 
+                )
+            },
+            size: 80,
+        },
     ], [] )
 
     const axiosPrivate = useAxiosPrivate();
-    const [data, setData] = useState<InsuranceDataType[]>([{description: "Public and Products Liability", expiry: new Date(), active: false}])
+    const [data, setData] = useState<InsuranceDataType[]>([{id: '', description: "Public and Products Liability", start: new Date(), expiry: new Date(), active: false, thumbnail: ''}])
     const [newInsurancePath, setNewInsurancePath] = useState('');
     const [waiting, setWaiting] = useState({update: false})
     
@@ -174,21 +202,23 @@ const Insurances = () => {
                 method: 'post',
                 data: JSON.stringify({
                     query: `
-                    mutation ($file: String!) {
-                        upload: pdfToImage(file: $file) {
+                    mutation ($file: String!, $filename: String!) {
+                        upload: pdfToImage(file: $file, filename: $filename) {
                             success
-                            path
+                            filePath
+                            thumbnailPath
                         }
                     }`,
                     variables: {
                         file: data,
+                        filename: file.name
                     },
                 }),
             }).then((response) => {
                 const res = response?.data?.data?.upload; 
                 console.log(res);
                 if(res.success) {
-                    setNewInsurancePath(res.path);
+                    setNewInsurancePath(res.thumbnailPath);
                 }
                 else {
                     // setSnackVariant('error');
@@ -226,24 +256,59 @@ const Insurances = () => {
                 <Grid item xs={12}>
                     <p>Insurances Information/Details</p>
                     <PaginatedTable columns={columns} data={data} />
-                    <p>Create or Update Insurances</p>
+                    <p>Upload Insurances</p>
                     <FileUploadSection onSubmit={handleNewInsurance} waiting={waiting.update} id="upload_insurances" type=".pdf" button="Upload Insurances"/>
                 </Grid>
             </Grid>
 
-            <NewInsurance open={newDialog} onClose={handleClose} newInsurance={newInsurancePath}/>
+            <NewInsurance open={newDialog} onClose={handleClose} newInsurance={newInsurancePath} data={data} setData={setData}/>
         </>
     )
 }
 
-const NewInsurance = ({ open, onClose, newInsurance }: {open: boolean, onClose: (event: {}, reason: string) => void, newInsurance: string}) => {
+const NewInsurance = ({ open, onClose, newInsurance, data, setData }: {open: boolean, onClose: (event: {}, reason: string) => void, newInsurance: string, data: {}, setData: (value: InsuranceDataType[]) => void}) => {
 
+    const axiosPrivate = useAxiosPrivate()
     const [insurance, setInsurance] = useState({description:'', expiryDate: '', active: true});
     const [fieldError, setFieldError] = useState({description: false, expiryDate: false});
     const [waiting, setWaiting] = useState(false);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         setWaiting(true);
+
+        await axiosPrivate({
+                method: 'post',
+                data: JSON.stringify({
+                    query: `
+                    mutation ($file: String!) {
+                        save: pdfToImage(file: $file) {
+                            success
+                            path
+                        }
+                    }`,
+                    variables: {
+                        file: data,
+                    },
+                }),
+            }).then((response) => {
+                const res = response?.data?.data?.save;
+                if(res.success) {
+                    
+                }
+                else {
+                    // setSnackVariant('error');
+                    // setSnackMessage(res.message);
+                    console.log("Error Uploading Insurance Information", res)
+                }
+            }).catch((err) => {
+                console.log("error:", err);
+                // setSnackVariant('error');
+                // setSnackMessage(res.message);
+            }).finally(() => {
+                setWaiting(false);
+            });
+
+        
     }
 
     const handleClose = () => {

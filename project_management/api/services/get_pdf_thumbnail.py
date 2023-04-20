@@ -8,20 +8,30 @@ from PIL import Image
 from io import BytesIO
 import numpy as np
 
+FOLDERPATH = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Admin\Insurances"
+
 class PDFToImage(graphene.Mutation):
     class Arguments:
         file = graphene.String()
+        filename = graphene.String()
 
     success = graphene.Boolean()
-    path = graphene.String()
+    thumbnail_path = graphene.String()
+    file_path = graphene.String()
 
     @classmethod
-    def mutate(self, root, info, file):
+    def mutate(self, root, info, file, filename):
         if not file: 
             return self(success=False)
 
         file = file.replace("data:application/pdf;base64,", "")
         pdf = base64.b64decode(file, validate=True)
+
+        file_path = os.path.join(FOLDERPATH, filename)
+        # Save pdf to remittance advice folder
+        f = open(file_path, 'wb')
+        f.write(pdf)
+        f.close()
 
         # write pdf to temp file so we can convert to a thumbnail image
         tf_pdf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
@@ -51,4 +61,4 @@ class PDFToImage(graphene.Mutation):
 
         os.remove(tf_pdf.name) # remove temp file
 
-        return self(success=True, path=thumbnail_image_path)
+        return self(success=True, thumbnail_path=thumbnail_image_path, file_path=file_path)

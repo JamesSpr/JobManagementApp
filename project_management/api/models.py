@@ -325,3 +325,13 @@ class EstimateItem(models.Model):
 
     def __str__(self):
         return str(self.header_id) + " - " + self.description
+
+
+class Insurance(models.Model):
+    id = models.AutoField(primary_key=True, unique=True)
+    description = models.CharField(max_length=80)
+    start_date = models.DateField()
+    expiry_date = models.DateField()
+    active = models.BooleanField(default=True)
+    filename = models.CharField(max_length=255)
+    thumbnail = models.CharField(max_length=64)
