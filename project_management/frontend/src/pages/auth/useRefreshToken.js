@@ -31,7 +31,7 @@ const useRefreshToken = () => {
             }),
             withCredentials: true
         }).then((res) => {
-            console.log("Setting RT", res.data.data.updateUserRefreshToken.user.refreshToken)
+            // console.log("Setting RT", res.data.data.updateUserRefreshToken.user.refreshToken)
             setAuth(prev => ({
                 ...prev, 
                 user: {
@@ -128,7 +128,7 @@ const useRefreshToken = () => {
                 return res.data.refreshToken.token;
             }
             else { // Token is not valid
-                console.log("Token no longer valid", userAuth?.refreshToken, response)
+                // console.log("Token no longer valid", userAuth?.refreshToken, response)
                 setAuth({});
                 navigate('/login', {state: {from: location}, replace: true});
                 return;
@@ -162,7 +162,7 @@ const useRefreshToken = () => {
             }),
             withCredentials: true
         }).then((res) => {
-            console.log("Revoking", userAuth?.refreshToken, res);
+            // console.log("Revoking", userAuth?.refreshToken, res);
         })
         // .catch((err) => {
         //     if (axiosInstance.isCancel(err)) {
