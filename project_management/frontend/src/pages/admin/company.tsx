@@ -116,8 +116,8 @@ const Employees = () => {
 interface InsuranceDataType {
     id: string
     description: string
-    start: Date
-    expiry: Date
+    startDate: string
+    expiryDate: string
     active: boolean
     thumbnail: string
 }
@@ -136,15 +136,15 @@ const Insurances = () => {
             size: 200,
         },
         {
-            accessorKey: 'start',
+            accessorKey: 'startDate',
             header: () => "Start Date",
-            cell: info => info.getValue().toDateString(),
+            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : '',
             size: 150,
         },
         {
-            accessorKey: 'expiry',
+            accessorKey: 'expiryDate',
             header: () => "Expiry Date",
-            cell: info => info.getValue().toDateString(),
+            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : '',
             size: 150,
         },
         {
@@ -175,7 +175,7 @@ const Insurances = () => {
     ], [] )
 
     const axiosPrivate = useAxiosPrivate();
-    const [data, setData] = useState<InsuranceDataType[]>([{id: '', description: "Public and Products Liability", start: new Date(), expiry: new Date(), active: false, thumbnail: ''}])
+    const [data, setData] = useState<InsuranceDataType[]>([{id: '', description: "Public and Products Liability", startDate: '2023-04-20', expiryDate: '2024-04-20', active: false, thumbnail: ''}])
     const [newInsurancePath, setNewInsurancePath] = useState('');
     const [waiting, setWaiting] = useState({update: false})
     
@@ -269,7 +269,7 @@ const Insurances = () => {
 const NewInsurance = ({ open, onClose, newInsurance, data, setData }: {open: boolean, onClose: (event: {}, reason: string) => void, newInsurance: string, data: {}, setData: (value: InsuranceDataType[]) => void}) => {
 
     const axiosPrivate = useAxiosPrivate()
-    const [insurance, setInsurance] = useState({description:'', expiryDate: '', active: true});
+    const [insurance, setInsurance] = useState<InsuranceDataType>({id:'', description:'', startDate: '', expiryDate: '', active: true, thumbnail: ''});
     const [fieldError, setFieldError] = useState({description: false, expiryDate: false});
     const [waiting, setWaiting] = useState(false);
 
@@ -341,7 +341,11 @@ const NewInsurance = ({ open, onClose, newInsurance, data, setData }: {open: boo
                             <Grid item xs={12}>
                                 <InputField type="text" width={300} label="Description" name="description" 
                                     error={fieldError['description']} value={insurance.description} onChange={handleChange}/> 
-                                <InputField type="date" width={200} label="Expiry Date" name="expiryDate" 
+                            </Grid>
+                            <Grid item xs={12}>
+                                <InputField type="date" width={150} label="Start Date" name="startDate" 
+                                    error={fieldError['expiryDate']} value={insurance.startDate} onChange={handleChange}/> 
+                                <InputField type="date" width={150} label="Expiry Date" name="expiryDate" 
                                     error={fieldError['expiryDate']} value={insurance.expiryDate} onChange={handleChange}/> 
                             </Grid>
                             <Grid item xs={12}>

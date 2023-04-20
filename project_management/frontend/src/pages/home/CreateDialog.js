@@ -167,10 +167,12 @@ const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => 
             method: 'post',
             data: JSON.stringify({
                 query: `
-                query nextId { 
-                    nextId
+                query nextId ($item: String){ 
+                    nextId (item: $item)
                 }`,
-                variables: {},
+                variables: {
+                    item: "job"
+                },
             }),
         }).then((response) => {
             const res = response?.data?.data.nextId;

@@ -13,7 +13,7 @@ from django.db import connection
 from accounts.models import CustomUser
 from api.services.create_completion_documents import CreateCompletionDocuments
 from .services.email import AllocateJobEmail, CloseOutEmail, EmailQuote
-from .models import Estimate, EstimateHeader, EstimateItem, Job, JobInvoice, Location, Contractor, Client, ClientContact, ClientRegion, Invoice, Bill
+from .models import Insurance, Estimate, EstimateHeader, EstimateItem, Job, JobInvoice, Location, Contractor, Client, ClientContact, ClientRegion, Invoice, Bill
 from .services.import_csv import UploadClientContactsCSV, UploadClientRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote, CreateBGISEstimate
@@ -1152,6 +1152,41 @@ class TransferInvoice(graphene.Mutation):
         job_invoice.save()
         return self(success=True, message="Invoice & Folder successfully transferred")
 
+class InsuranceType(DjangoObjectType):
+    class Meta:
+        model = Insurance
+        fields = '__all__'
+
+class InsuranceInputType(graphene.InputObjectType):
+    id = graphene.String()
+    description = graphene.String()
+    start_date = graphene.Date()
+    expiry_date = graphene.Date()
+    active = graphene.Boolean()
+    filename = graphene.String()
+    thumbnail = graphene.String()
+
+class CreateInsurance(graphene.Mutation):
+    class Arguments:
+        insurance = graphene.List(InsuranceInputType)
+
+    success = graphene.Boolean()
+    data = InsuranceType
+
+    @classmethod
+    def mutate(self, root, info, insurance):
+
+        ins = Insurance()
+        ins.description = insurance.description
+        ins.start_date = insurance.startDate
+        ins.expiry_date = insurance.expiryDate
+        ins.active = True
+        ins.filename = insurance.filename
+        ins.thumbnail = insurance.thumbnail
+        ins.save()
+
+        return self(success=True, data=ins)
+
 
 class Query(graphene.ObjectType):
     job_page = relay.ConnectionField(JobConnection)
@@ -1169,7 +1204,7 @@ class Query(graphene.ObjectType):
         # return Job.objects.all()
 
     jobs = graphene.List(JobType)
-    next_id = graphene.String()
+    next_id = graphene.String(item=graphene.String())
     job_all = DjangoFilterConnectionField(JobType)
     estimates = graphene.List(EstimateType)
     estimate_headers = graphene.List(EstimateHeaderType)
@@ -1182,11 +1217,16 @@ class Query(graphene.ObjectType):
     invoices = graphene.List(InvoiceType)
     job_invoices = graphene.List(JobInvoiceType)
     bills = graphene.List(BillType)
+    insurace = graphene.List(InsuranceType)
 
     @login_required
-    def resolve_next_id(root, info, **kwargs):
+    def resolve_insurance(roof, info, **kwargs):
+        return Insurance.objects.all()
+
+    @login_required
+    def resolve_next_id(root, info, item, **kwargs):
         cursor = connection.cursor()
-        cursor.execute(f"SELECT last_value FROM api_job_id_seq")
+        cursor.execute(f"SELECT last_value FROM api_{item}_id_seq")
         row = cursor.fetchone()
         cursor.close()
         return row[0] + 1 
@@ -1361,3 +1401,4 @@ class Mutation(graphene.ObjectType):
     create_bgis_estimate = CreateBGISEstimate.Field()
     create_completion_documents = CreateCompletionDocuments.Field()
 
+    create_insurance = CreateInsurance.Field()
