@@ -1158,20 +1158,19 @@ class InsuranceType(DjangoObjectType):
         fields = '__all__'
 
 class InsuranceInputType(graphene.InputObjectType):
-    id = graphene.String()
     description = graphene.String()
-    start_date = graphene.Date()
-    expiry_date = graphene.Date()
+    startDate = graphene.Date()
+    expiryDate = graphene.Date()
     active = graphene.Boolean()
     filename = graphene.String()
     thumbnail = graphene.String()
 
 class CreateInsurance(graphene.Mutation):
     class Arguments:
-        insurance = graphene.List(InsuranceInputType)
+        insurance = InsuranceInputType()
 
     success = graphene.Boolean()
-    data = InsuranceType
+    data = graphene.Field(InsuranceType)
 
     @classmethod
     def mutate(self, root, info, insurance):
@@ -1217,7 +1216,7 @@ class Query(graphene.ObjectType):
     invoices = graphene.List(InvoiceType)
     job_invoices = graphene.List(JobInvoiceType)
     bills = graphene.List(BillType)
-    insurace = graphene.List(InsuranceType)
+    insurance = graphene.List(InsuranceType)
 
     @login_required
     def resolve_insurance(roof, info, **kwargs):

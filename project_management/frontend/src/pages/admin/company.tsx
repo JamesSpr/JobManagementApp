@@ -114,15 +114,66 @@ const Employees = () => {
 }
 
 interface InsuranceDataType {
-    id: string
+    id?: string
     description: string
     startDate: string
     expiryDate: string
     active: boolean
     thumbnail: string
+    filename?: string
 }
 
 const Insurances = () => {
+    
+    const axiosPrivate = useAxiosPrivate();
+    const [data, setData] = useState<InsuranceDataType[]>([])
+    const [newInsurancePaths, setNewInsurancePaths] = useState({thumbnail: '', filename: ''});
+    const [waiting, setWaiting] = useState({update: false})
+    
+    const [newDialog, setNewDialog] = useState(false);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        const fetchData = async () => {
+            // Start Loading
+
+            await axiosPrivate({
+                method: 'post',
+                signal: controller.signal,
+                data: JSON.stringify({
+                    query: `
+                    query {
+                        insurance {
+                            id
+                            description
+                            startDate
+                            expiryDate
+                            active
+                            thumbnail
+                        }
+                    }`,
+                    variables: {},
+                }),
+            }).then((response) => {
+                const res = response?.data?.data?.insurance; 
+                console.log(res);
+                setData(res);
+            }).catch((err) => {
+                console.log("error fetching data:", err);
+            }).finally(() => {
+                // Stop Loading
+            });
+        }
+
+        fetchData();
+        
+        return () => {
+            controller.abort();
+            // Stop Loading
+        }
+
+    }, [])
 
     const previewInsurance = (thumbnail: string) => {
         console.log(thumbnail)
@@ -174,13 +225,6 @@ const Insurances = () => {
         },
     ], [] )
 
-    const axiosPrivate = useAxiosPrivate();
-    const [data, setData] = useState<InsuranceDataType[]>([{id: '', description: "Public and Products Liability", startDate: '2023-04-20', expiryDate: '2024-04-20', active: false, thumbnail: ''}])
-    const [newInsurancePath, setNewInsurancePath] = useState('');
-    const [waiting, setWaiting] = useState({update: false})
-    
-    const [newDialog, setNewDialog] = useState(false);
-
     const handleNewInsurance = async () => {
 
         setWaiting(prev => ({...prev, update: true}));
@@ -218,7 +262,7 @@ const Insurances = () => {
                 const res = response?.data?.data?.upload; 
                 console.log(res);
                 if(res.success) {
-                    setNewInsurancePath(res.thumbnailPath);
+                    setNewInsurancePaths({filename: res.filePath, thumbnail: res.thumbnailPath});
                 }
                 else {
                     // setSnackVariant('error');
@@ -241,10 +285,10 @@ const Insurances = () => {
         if (reason !== 'backdropClick') {
             setNewDialog(false);
         }
-    }
-
-    const updateInsurances = () => {
-        setWaiting(prev => ({...prev, update: true}))
+        else {
+            setNewInsurancePaths({thumbnail: '', filename: ''})
+            setNewDialog(false);
+        }
     }
 
     return (
@@ -261,18 +305,22 @@ const Insurances = () => {
                 </Grid>
             </Grid>
 
-            <NewInsurance open={newDialog} onClose={handleClose} newInsurance={newInsurancePath} data={data} setData={setData}/>
+            <NewInsurance open={newDialog} onClose={handleClose} newInsurance={newInsurancePaths} setData={setData}/>
         </>
     )
 }
 
-const NewInsurance = ({ open, onClose, newInsurance, data, setData }: {open: boolean, onClose: (event: {}, reason: string) => void, newInsurance: string, data: {}, setData: (value: InsuranceDataType[]) => void}) => {
+const NewInsurance = ({ open, onClose, newInsurance, setData }: {open: boolean, onClose: (event: {}, reason: string) => void, newInsurance: {thumbnail: string, filename: string}, setData: React.Dispatch<React.SetStateAction<InsuranceDataType[]>>}) => {
 
     const axiosPrivate = useAxiosPrivate()
-    const [insurance, setInsurance] = useState<InsuranceDataType>({id:'', description:'', startDate: '', expiryDate: '', active: true, thumbnail: ''});
+    const [insurance, setInsurance] = useState<InsuranceDataType>({description:'', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''});
     const [fieldError, setFieldError] = useState({description: false, expiryDate: false});
     const [waiting, setWaiting] = useState(false);
 
+    useEffect(() => {
+        setInsurance(prev => ({...prev, thumbnail: newInsurance.thumbnail, filename: newInsurance.filename}))
+    }, [newInsurance])
+    
     const handleSubmit = async () => {
         setWaiting(true);
 
@@ -280,20 +328,30 @@ const NewInsurance = ({ open, onClose, newInsurance, data, setData }: {open: boo
                 method: 'post',
                 data: JSON.stringify({
                     query: `
-                    mutation ($file: String!) {
-                        save: pdfToImage(file: $file) {
+                    mutation createInsurance($insurance: InsuranceInputType!) {
+                        create: createInsurance(insurance: $insurance) {
                             success
-                            path
+                            data {
+                                id
+                                description
+                                startDate
+                                expiryDate
+                                active
+                                thumbnail
+                            }
                         }
                     }`,
                     variables: {
-                        file: data,
+                        insurance: insurance,
                     },
                 }),
             }).then((response) => {
-                const res = response?.data?.data?.save;
+                const res = response?.data?.data?.create;
+                console.log(res);
                 if(res.success) {
-                    
+                    setData((old: any) => ([...old, res.data]))
+                    setInsurance({description:'', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''})
+                    onClose({}, "");
                 }
                 else {
                     // setSnackVariant('error');
@@ -350,13 +408,13 @@ const NewInsurance = ({ open, onClose, newInsurance, data, setData }: {open: boo
                             </Grid>
                             <Grid item xs={12}>
                                 <div style={{display: 'flex', justifyContent: 'center'}}>
-                                    <ProgressButton name="Submit" waiting={waiting} onClick={() => handleSubmit} buttonVariant="outlined"/>
+                                    <ProgressButton name="Submit" waiting={waiting} onClick={handleSubmit} buttonVariant="outlined"/>
                                 </div>
                             </Grid>
                         </Grid>
                         <Grid item xs={12} style={{display: 'flex', justifyContent: 'center'}}>
                             <div className='pdf-preview-large'>
-                                <img src={"\\" + newInsurance} alt="PDF Preview"/>
+                                <img src={"\\" + newInsurance.thumbnail} alt="PDF Preview"/>
                             </div>
                         </Grid>
                     </Grid>
