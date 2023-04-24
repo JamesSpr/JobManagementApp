@@ -38,7 +38,8 @@ const JobTable = ({tableData, users, jobStages}) => {
         'po': false, 'sr': false, 'otherId': false, 
         'location': true, 'building': true, 'title': true, 
         'dateIssued': true, 'priority': true, 'overdueDate': true, 'stage': true, 
-        'approvedPrice': false, 'billSum': false, 'grossProfit': false, 'invoice': false, 'invoiceDate': false, 
+        'issueDate': false, 'approvalDate': false, 'quotedPrice': false, 'approvedPrice': false,
+         'billSum': false, 'grossProfit': false, 'invoice': false, 'invoiceDate': false, 
         'invoiceCreatedDate': false, 'region': false, 'detailedLocation': false, 'description': false
     });
     const [showFooter, setShowFooter] = useState(false);
@@ -257,6 +258,43 @@ const JobTable = ({tableData, users, jobStages}) => {
             header: () => 'Approved Price',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
             footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            size: 140,
+        },
+        {
+            accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
+                if(element.issueDate) {
+                    return true;
+                }
+                return false;
+            })]?.issueDate ?? "" : "",
+            id: 'issueDate',
+            header: () => 'Date Quote Sent',
+            cell: info => info.getValue(),
+            size: 140,
+        },
+        {
+            accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
+                if(element.issueDate) {
+                    return true;
+                }
+                return false;
+            })]?.price ?? "" : "",
+            id: 'quotedPrice',
+            header: () => 'Quoted Price',
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
+            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            size: 140,
+        },
+        {
+            accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
+                if(element.approvalDate) {
+                    return true;
+                }
+                return false;
+            })]?.approvalDate ?? "" : "",
+            id: 'approvalDate',
+            header: () => 'Approval Date',
+            cell: info => info.getValue(),
             size: 140,
         },
         {
