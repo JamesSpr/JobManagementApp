@@ -2,7 +2,7 @@
 import React, { FC, ReactNode, useEffect, useRef } from "react"; 
 import { Box, Button, CircularProgress, Portal, Snackbar, Alert } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table, RowData, ColumnDef,
-    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender } from '@tanstack/react-table'
+    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType } from "../types/types";
 import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
 
@@ -132,8 +132,9 @@ interface PaginatedTableType <T extends object> {
     setGlobalFilter?: () => ''
     sorting?: []
     setSorting?: () => []
+    rowStyles?: {}
 }
-export const PaginatedTable = <T extends object>({data, columns, columnFilters, setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting}: PaginatedTableType<T>) => {
+export const PaginatedTable = <T extends object>({data, columns, columnFilters, setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles}: PaginatedTableType<T>) => {
     const table = useReactTable({
         data,
         columns,

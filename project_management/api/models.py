@@ -330,6 +330,7 @@ class EstimateItem(models.Model):
 class Insurance(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     description = models.CharField(max_length=80)
+    issue_date = models.DateField()
     start_date = models.DateField()
     expiry_date = models.DateField()
     active = models.BooleanField(default=True)

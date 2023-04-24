@@ -116,6 +116,7 @@ const Employees = () => {
 interface InsuranceDataType {
     id?: string
     description: string
+    issueDate: string
     startDate: string
     expiryDate: string
     active: boolean
@@ -147,6 +148,7 @@ const Insurances = () => {
                         insurance {
                             id
                             description
+                            issueDate
                             startDate
                             expiryDate
                             active
@@ -187,6 +189,12 @@ const Insurances = () => {
             size: 200,
         },
         {
+            accessorKey: 'issueDate',
+            header: () => "Issue Date",
+            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : '',
+            size: 150,
+        },
+        {
             accessorKey: 'startDate',
             header: () => "Start Date",
             cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : '',
@@ -195,7 +203,9 @@ const Insurances = () => {
         {
             accessorKey: 'expiryDate',
             header: () => "Expiry Date",
-            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : '',
+            cell: info => (<div style={{background: (new Date(info.getValue()) < new Date()) && info?.row?.original?.active ? 'red' : ''}}>
+                {info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : ''}
+            </div>),
             size: 150,
         },
         {
@@ -299,7 +309,7 @@ const Insurances = () => {
             >
                 <Grid item xs={12}>
                     <p>Insurances Information/Details</p>
-                    <PaginatedTable columns={columns} data={data} />
+                    <PaginatedTable columns={columns} data={data}/>
                     <p>Upload Insurances</p>
                     <FileUploadSection onSubmit={handleNewInsurance} waiting={waiting.update} id="upload_insurances" type=".pdf" button="Upload Insurances"/>
                 </Grid>
@@ -313,7 +323,7 @@ const Insurances = () => {
 const NewInsurance = ({ open, onClose, newInsurance, setData }: {open: boolean, onClose: (event: {}, reason: string) => void, newInsurance: {thumbnail: string, filename: string}, setData: React.Dispatch<React.SetStateAction<InsuranceDataType[]>>}) => {
 
     const axiosPrivate = useAxiosPrivate()
-    const [insurance, setInsurance] = useState<InsuranceDataType>({description:'', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''});
+    const [insurance, setInsurance] = useState<InsuranceDataType>({description:'', issueDate: '', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''});
     const [fieldError, setFieldError] = useState({description: false, expiryDate: false});
     const [waiting, setWaiting] = useState(false);
 
@@ -350,7 +360,7 @@ const NewInsurance = ({ open, onClose, newInsurance, setData }: {open: boolean, 
                 console.log(res);
                 if(res.success) {
                     setData((old: any) => ([...old, res.data]))
-                    setInsurance({description:'', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''})
+                    setInsurance({description:'', issueDate: '', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''})
                     onClose({}, "");
                 }
                 else {

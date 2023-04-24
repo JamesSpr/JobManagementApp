@@ -7,7 +7,13 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 from PyPDF2.generic import BooleanObject, NameObject, IndirectObject, NumberObject
 from PyPDF2.errors import PdfReadWarning
 import warnings
+import sys
+sys.path.append("...")
+from api.models import Insurance
 
+
+def get_insurances():
+    return Insurance.objects.filter(active=True).order_by('expiry_date')
 
 def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date):
     if paths['invoice'] == "":
@@ -24,17 +30,28 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
         if paths['purchaseOrder'] == "":
             return {'success': False, 'message': "Bad Purchase Order Path"}
     
-    ## Check insurances expiry date
-    if date.today() > insurance_expiry_date:
+
+    insurances = get_insurances()
+    workers_insurance = {}
+    for i in insurances:
+        if i.description == "Workers Insurance":
+            workers_insurance = i
+
+    if not workers_insurance:
+        return {'success': False, 'message': "No Workers Insurance Found. Please ensure there is an insurance with the description 'Workers Insurance'"}
+
+    ## Check the first insurances expiry date
+    if date.today() > insurances[0].expiry_date:
         return {'success': False, 'message': "Insurances have expired. Please update!"}
     
     ## Collect data to add to invoice
     invoice_date = datetime.strptime(invoice['Date'].split("T")[0], '%Y-%m-%d')
     start_date = job.commencement_date
     finish_date = job.completion_date
-    print(invoice_date, start_date, finish_date)
+    
     addData = {
         "contact number/identifier/name": str(job),
+        "principal contractor": job.client.name,
         "date 1a": start_date.day,
         "date 1b": start_date.month,
         "date 1c": str(start_date.year)[-2:],
@@ -44,6 +61,9 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
         "date 3a": invoice_date.day,
         "date 3b": invoice_date.month,
         "date 3c": str(invoice_date.year)[-2:],
+        "date 4a": workers_insurance.issue_date.day,
+        "date 4b": workers_insurance.issue_date.month,
+        "date 4c": str(workers_insurance.issue_date.year)[-2:],
         "date 5a": invoice_date.day,
         "date 5b": invoice_date.month,
         "date 5c": str(invoice_date.year)[-2:]
@@ -71,15 +91,15 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
 
     warnings.filterwarnings("ignore", category=PdfReadWarning)
 
-    isd = "myob\scripts\Insurance and Stat Declaration.pdf"
-    isd_pdf = PdfFileReader(isd)
+    stat_dec = "myob\scripts\StatDec.pdf"
+    stat_dec_pdf = PdfFileReader(stat_dec)
 
     invoice_pdf = PdfFileReader(paths['invoice'])
     writer = PdfFileWriter()
     set_need_appearances_writer(writer)
 
-    data = isd_pdf.getPage(3)
-    dictionary = isd_pdf.getFields()
+    data = stat_dec_pdf.getPage(0)
+    dictionary = stat_dec_pdf.getFields()
 
     if job.client.name == "BGIS":
         if (invoice['Subtotal'] > 500.00):
@@ -89,7 +109,13 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
             writer.appendPagesFromReader(invoice_pdf)
             writer.addPage(approval)
             writer.appendPagesFromReader(breakdown_pdf)
-            writer.appendPagesFromReader(isd_pdf)
+
+            for i in insurances:
+                ins_page = PdfFileReader(i.filename)
+                writer.appendPagesFromReader(ins_page)
+                ins_page = ''
+
+            writer.appendPagesFromReader(stat_dec_pdf)
             writer.updatePageFormFieldValues(data, addData)
             
             # Make Fields Read Only
@@ -103,14 +129,22 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
 
         else:
             writer.appendPagesFromReader(invoice_pdf)
-            writer.appendPagesFromReader(isd_pdf)
+            for i in insurances:
+                ins_page = PdfFileReader(i.filename)
+                writer.appendPagesFromReader(ins_page)
+                ins_page = ''
+            writer.appendPagesFromReader(stat_dec_pdf)
             writer.updatePageFormFieldValues(data, addData)
     else:
         purchaseOrder_pdf = PdfFileReader(paths['purchaseOrder'])
         po = purchaseOrder_pdf.getPage(0)
         writer.appendPagesFromReader(invoice_pdf)
         writer.addPage(po)
-        writer.appendPagesFromReader(isd_pdf)
+        for i in insurances:
+            ins_page = PdfFileReader(i.filename)
+            writer.appendPagesFromReader(ins_page)
+            ins_page = ''
+        writer.appendPagesFromReader(stat_dec_pdf)
         writer.updatePageFormFieldValues(data, addData)
 
     invoiceFile = os.path.join(accounts_folder, "Invoice for PO" + job.po + ".pdf")

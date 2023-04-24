@@ -1222,6 +1222,7 @@ class Query(graphene.ObjectType):
     def resolve_insurance(roof, info, **kwargs):
         return Insurance.objects.all()
 
+
     @login_required
     def resolve_next_id(root, info, item, **kwargs):
         cursor = connection.cursor()
@@ -1314,23 +1315,17 @@ class UpdateJobStatus(graphene.Mutation):
     
         return self(success=True)
 
+from datetime import date
 class TestFeature(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
     def mutate(self, root, info):
-        locations = Location.objects.all()
-        for location in locations:
-            loc = Location.objects.filter(name = location.name)
-            for i, l in enumerate(loc):
-                if i != 0:
-                    location1 = Location.objects.get(id=l.id)
-                    print(location1.id)
-                    location1.delete()
-                    # print(loc[len(loc)-1].id)
-                    # l = loc[len(loc)-1]
-                    # l.save()
-                    # print(loc[len(loc)-1])
+        
+        insurances = Insurance.objects.filter(active=True).order_by('expiry_date')
+        
+        for i in insurances:
+            print(i.filename)
     
         return self(success=True)
 

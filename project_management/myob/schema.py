@@ -1391,6 +1391,9 @@ class myobCreateInvoice(graphene.Mutation):
 
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files.strip(".xlsm") + ".pdf")
+                else:
+                    found['approval'] = True
+                    found['estimate'] = True
 
                 if estimate.price > 500.00 and not all(found.values()):
                     return self(success=False, message="Error. Not all required files can be found:" + str(found))
@@ -2002,7 +2005,10 @@ class generateInvoice(graphene.Mutation):
 
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files.strip(".xlsm") + ".pdf")
-            
+                else:
+                    found['approval'] = True
+                    found['estimate'] = True
+
             else:
                 ## Check the required invoice files that are stored in the relevant estimate folder
                 found = {"invoice": False, "purchaseOrder": False}
