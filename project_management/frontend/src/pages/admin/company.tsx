@@ -324,7 +324,7 @@ const NewInsurance = ({ open, onClose, newInsurance, setData }: {open: boolean, 
 
     const axiosPrivate = useAxiosPrivate()
     const [insurance, setInsurance] = useState<InsuranceDataType>({description:'', issueDate: '', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''});
-    const [fieldError, setFieldError] = useState({description: false, expiryDate: false});
+    const [fieldError, setFieldError] = useState({description: false, issueDate: false, startDate: false, expiryDate: false});
     const [waiting, setWaiting] = useState(false);
 
     useEffect(() => {
@@ -340,7 +340,7 @@ const NewInsurance = ({ open, onClose, newInsurance, setData }: {open: boolean, 
                     query: `
                     mutation createInsurance($insurance: InsuranceInputType!) {
                         create: createInsurance(insurance: $insurance) {
-                            success
+                            success 
                             data {
                                 id
                                 description
@@ -407,12 +407,14 @@ const NewInsurance = ({ open, onClose, newInsurance, setData }: {open: boolean, 
                         <Grid item xs={12} style={{margin: '10px 0px', overflow: 'hidden auto'}}>
                             <Typography variant='h6'></Typography>
                             <Grid item xs={12}>
-                                <InputField type="text" width={300} label="Description" name="description" 
+                                <InputField type="text" width={450} label="Description" name="description" 
                                     error={fieldError['description']} value={insurance.description} onChange={handleChange}/> 
                             </Grid>
                             <Grid item xs={12}>
+                                <InputField type="date" width={150} label="Issue Date" name="issueDate" 
+                                    error={fieldError['issueDate']} value={insurance.issueDate} onChange={handleChange}/> 
                                 <InputField type="date" width={150} label="Start Date" name="startDate" 
-                                    error={fieldError['expiryDate']} value={insurance.startDate} onChange={handleChange}/> 
+                                    error={fieldError['startDate']} value={insurance.startDate} onChange={handleChange}/> 
                                 <InputField type="date" width={150} label="Expiry Date" name="expiryDate" 
                                     error={fieldError['expiryDate']} value={insurance.expiryDate} onChange={handleChange}/> 
                             </Grid>

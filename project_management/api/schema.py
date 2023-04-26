@@ -1158,7 +1158,9 @@ class InsuranceType(DjangoObjectType):
         fields = '__all__'
 
 class InsuranceInputType(graphene.InputObjectType):
+    id = graphene.String()
     description = graphene.String()
+    issueDate = graphene.Date()
     startDate = graphene.Date()
     expiryDate = graphene.Date()
     active = graphene.Boolean()
@@ -1177,6 +1179,7 @@ class CreateInsurance(graphene.Mutation):
 
         ins = Insurance()
         ins.description = insurance.description
+        ins.issue_date = insurance.issueDate
         ins.start_date = insurance.startDate
         ins.expiry_date = insurance.expiryDate
         ins.active = True
@@ -1185,6 +1188,31 @@ class CreateInsurance(graphene.Mutation):
         ins.save()
 
         return self(success=True, data=ins)
+    
+class UpdateInsurance(graphene.Mutation):
+    class Arguments:
+        insurance = InsuranceInputType()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, insurance):
+
+        if not Insurance.objects.filter(id=insurance.id).exists():
+            return self(success=True, message="Insurances Updated Successfully")
+
+        ins = Insurance.objects.filter(id = insurance.id)[0]
+        if insurance.description: ins.description = insurance.description
+        if insurance.issueDate: ins.issue_date = insurance.issueDate
+        if insurance.startDate: ins.start_date = insurance.startDate
+        if insurance.expiryDate: ins.expiry_date = insurance.expiryDate
+        if insurance.active: ins.active = insurance.active
+        if insurance.filename: ins.filename = insurance.filename
+        if insurance.thumbnail: ins.thumbnail = insurance.thumbnail
+        ins.save()
+
+        return self(success=True, message="Insurances Updated Successfully")
 
 
 class Query(graphene.ObjectType):
@@ -1396,3 +1424,4 @@ class Mutation(graphene.ObjectType):
     create_completion_documents = CreateCompletionDocuments.Field()
 
     create_insurance = CreateInsurance.Field()
+    update_insurance = UpdateInsurance.Field()
