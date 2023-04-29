@@ -15,7 +15,7 @@ const Bills = () => {
     const [loading, setLoading] = useState(true);
 
     // Keyboard shortcuts
-    const handleKeyPress = useCallback((e) => {
+    const handleKeyPress = useCallback((e: { code: string; metaKey: any; ctrlKey: any; preventDefault: () => void; }) => {
         if (e.code === 'KeyS' && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
             e.preventDefault();
             // console.log(saveCommand)

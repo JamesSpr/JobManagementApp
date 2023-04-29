@@ -123,6 +123,7 @@ export const PaginationControls = <Type extends RowData>({table}: {table: Table<
 
 interface PaginatedTableType <T extends object> {
     data: T[]
+    setData?: (arg0: any) => {}
     columns: ColumnDef<T>[]
     rowSelection?: {}
     setRowSelection?: () => {}
@@ -134,7 +135,32 @@ interface PaginatedTableType <T extends object> {
     setSorting?: () => []
     rowStyles?: {}
 }
-export const PaginatedTable = <T extends object>({data, columns, columnFilters, setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles}: PaginatedTableType<T>) => {
+
+function useSkipper() {
+    const shouldSkipRef = React.useRef(true)
+    const shouldSkip = shouldSkipRef.current
+  
+    // Wrap a function with this to skip a pagination reset temporarily
+    const skip = React.useCallback(() => {
+      shouldSkipRef.current = false
+    }, [])
+  
+    React.useEffect(() => {
+      shouldSkipRef.current = true
+    })
+  
+    return [shouldSkip, skip] as const
+}
+  
+declare module '@tanstack/react-table' {
+    interface TableMeta<TData extends RowData> {
+      updateData: (rowIndex: number, columnId: string, value: unknown) => void
+    }
+}
+
+export const PaginatedTable = <T extends object>({data, setData, columns, columnFilters, setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles}: PaginatedTableType<T>) => {
+    
+    const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
     const table = useReactTable({
         data,
         columns,
@@ -156,6 +182,27 @@ export const PaginatedTable = <T extends object>({data, columns, columnFilters, 
         getFacetedMinMaxValues: getFacetedMinMaxValues(),
         globalFilterFn: fuzzyFilter,
         enableMultiSort: true,
+        autoResetPageIndex,
+        // Provide our updateData function to our table meta
+        meta: {
+            updateData: (rowIndex: any, columnId: any, value: any) => {
+                // Skip page index reset until after next rerender
+                if(setData) {
+                    skipAutoResetPageIndex()
+                    setData((old: any) =>
+                        old.map((row: any, index: any) => {
+                        if (index === rowIndex) {
+                            return {
+                            ...old[rowIndex]!,
+                            [columnId]: value,
+                            }
+                        }
+                        return row
+                        })
+                    )
+                }
+            },
+        },
     })
 
     return (

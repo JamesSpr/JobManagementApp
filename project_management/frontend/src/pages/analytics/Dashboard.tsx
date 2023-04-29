@@ -325,13 +325,13 @@ const Dashboard = () => {
         {
             accessorKey: 'amount',
             header: () => "Amount",
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
             footer: props => props.column.id,
         },
         {
             accessorKey: 'dateCreated',
             header: () => "Date",
-            cell: info => info.getValue().toDateString(),
+            cell: info => (info.getValue() as Date).toDateString(),
         },
     ], [] )
     

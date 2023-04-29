@@ -1,9 +1,9 @@
-import React, { createContext, useState } from "react";
+import React, { ReactNode, createContext, useState } from "react";
 import { AuthContextType, IAuth } from '../types/types';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider: React.FC<React.ReactNode> = ({ children }) => {
+export const AuthProvider = ({ children }: { children?: ReactNode }) => {
     const [ auth, setAuth ] = useState<IAuth>();
 
     return (

@@ -124,6 +124,14 @@ interface InsuranceDataType {
     filename?: string
 }
 
+import { RowData } from '@tanstack/react-table'
+import '@tanstack/react-table';
+declare module '@tanstack/react-table' {
+    interface TableMeta<TData extends RowData> {
+      updateData: (rowIndex: number, columnId: string, value: unknown) => void
+    }
+}
+
 const Insurances = () => {
     
     const axiosPrivate = useAxiosPrivate();
@@ -181,30 +189,53 @@ const Insurances = () => {
         console.log(thumbnail)
     }
 
+    const EditableCell = ({ getValue, row: { index }, column: { id }, table }: 
+        { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
+        const initialValue = getValue()
+        // We need to keep and update the state of the cell normally
+        const [value, setValue] = useState(initialValue)
+    
+        // When the input is blurred, we'll call our table meta's updateData function
+        const onBlur = () => {
+            table.options.meta?.updateData(index, id, value)
+        }
+    
+        // If the initialValue is changed external, sync it up with our state
+        useEffect(() => {
+            setValue(initialValue)
+        }, [initialValue])
+    
+        return (
+            <input className="dataTableInput" value={value as string} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
+        )
+    }
+    
+
     const columns = useMemo<ColumnDef<InsuranceDataType>[]>(() => [
         {
             accessorKey: 'description',
             header: () => "Description",
-            cell: info => info.getValue(),
-            size: 200,
+            cell: EditableCell,
+            // cell: info => info.getValue(),
+            size: 300,
         },
         {
             accessorKey: 'issueDate',
             header: () => "Issue Date",
-            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : '',
+            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue() as string)) : '',
             size: 150,
         },
         {
             accessorKey: 'startDate',
             header: () => "Start Date",
-            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : '',
+            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue() as string)) : '',
             size: 150,
         },
         {
             accessorKey: 'expiryDate',
             header: () => "Expiry Date",
-            cell: info => (<div style={{background: (new Date(info.getValue()) < new Date()) && info?.row?.original?.active ? 'red' : ''}}>
-                {info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue())) : ''}
+            cell: info => (<div style={{background: (new Date(info.getValue() as string) < new Date()) && info?.row?.original?.active ? 'red' : ''}}>
+                {info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue() as string)) : ''}
             </div>),
             size: 150,
         },
@@ -215,7 +246,7 @@ const Insurances = () => {
                 const [checked, setChecked] = useState(info.getValue());
 
                 return (
-                    <input type="checkbox" checked={checked} onChange={() => {setChecked(!checked)}} /> 
+                    <input type="checkbox" checked={checked as boolean} onChange={() => {setChecked(!checked)}} /> 
                 )
             },
             size: 80,
@@ -226,7 +257,7 @@ const Insurances = () => {
             cell: info => {
                 if(info.getValue() == "") return (<></>)
                 return(
-                    <IconButton onClick={() => previewInsurance(info.getValue())}>
+                    <IconButton onClick={() => previewInsurance(info.getValue() as string)}>
                         <PictureAsPdfIcon />
                     </IconButton> 
                 )
@@ -309,7 +340,7 @@ const Insurances = () => {
             >
                 <Grid item xs={12}>
                     <p>Insurances Information/Details</p>
-                    <PaginatedTable columns={columns} data={data}/>
+                    <PaginatedTable columns={columns} data={data} setData={() => setData}/>
                     <p>Upload Insurances</p>
                     <FileUploadSection onSubmit={handleNewInsurance} waiting={waiting.update} id="upload_insurances" type=".pdf" button="Upload Insurances"/>
                 </Grid>
