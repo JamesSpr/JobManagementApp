@@ -182,7 +182,7 @@ class ExtractBillDetails(graphene.Mutation):
 
                         if Contractor.objects.filter(abn=abn).exists():
                             contractor = Contractor.objects.get(abn=abn)
-                            print("Contractor:",contractor)
+                            if debug: print("Contractor:",contractor)
                             data.update({'contractor': contractor.id})
 
                     if debug: print("ABN:", abn_regex)

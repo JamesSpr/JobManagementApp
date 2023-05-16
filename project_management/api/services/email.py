@@ -112,11 +112,11 @@ class CloseOutEmail(graphene.Mutation):
         if not job.location:
             return cls(success=False, message="Please Ensure Job Location Is Not Empty")
 
-        if not job.commencement_date:
-            return cls(success=False, message="Please Ensure Job Commencement Date Is Not Empty")
+        if not job.inspection_date:
+            return cls(success=False, message="Please Ensure Job Inspection Date Is Not Empty")
 
         if not job.completion_date:
-            return cls(success=False, message="Please Ensure v Completion Date Is Not Empty")
+            return cls(success=False, message="Please Ensure Job Completion Date Is Not Empty")
 
         if job.total_hours == 0:
             return cls(success=False, message="Job's Hours must not be 0")
@@ -152,7 +152,7 @@ class CloseOutEmail(graphene.Mutation):
         Hi {job.location.region.short_name} EMOS,<br><br>
         
         All works have been completed for PO{job.po}. Details Below:<br>
-        <b>Works Commenced</b>: {job.commencement_date.strftime('%d/%m/%y')}<br>
+        <b>Works Commenced</b>: {job.inspection_date.strftime('%d/%m/%y')}<br>
         <b>Work Completed</b>: {job.completion_date.strftime('%d/%m/%y')}<br> 
         {jobTimes}
         <b>Total Hours</b>: {job.total_hours}<br>
