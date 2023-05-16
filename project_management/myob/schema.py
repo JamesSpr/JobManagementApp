@@ -1785,7 +1785,7 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
         invoices = graphene.List(InvoiceInput)
-        date_paid = graphene.Date()
+        date_paid = graphene.Date(required=False)
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -1793,7 +1793,7 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
     converted = graphene.List(graphene.String)
 
     @classmethod
-    def mutate(self, root, info, uid, invoices):
+    def mutate(self, root, info, uid, invoices, date_paid=None):
         env = environ.Env()
         environ.Env.read_env()
 
@@ -1880,13 +1880,11 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
                     converted.append(order['Number'])
                     del invoices[:query_limit]
 
-                    updatedInvoices = []
-
-
+            updatedInvoices = []
             for inv in _invoices:
                 invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
                 if invoice:
-                    if not inv.date_issued: invoice.date_issued = inv.date_issued
+                    if not invoice.date_issued: invoice.date_issued = inv.date_issued
                     if date_paid: invoice.date_paid = date_paid
                     invoice.save()
 

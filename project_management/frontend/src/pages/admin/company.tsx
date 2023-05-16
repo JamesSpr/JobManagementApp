@@ -206,7 +206,7 @@ const Insurances = () => {
         }, [initialValue])
     
         return (
-            <input className="dataTableInput" value={value as string} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
+            <input className="dataTableInput" value={value as any} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
         )
     }
     

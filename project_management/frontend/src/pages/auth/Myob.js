@@ -609,6 +609,7 @@ const MyobActivate = () => {
                         success
                         message
                         obj
+                        items
                     }
                 }`,
                 variables: {
@@ -616,8 +617,8 @@ const MyobActivate = () => {
                 }
             })
         }).then((response) => {
-            // console.log("success", response);
-            const res = response.data?.data?.custom;
+            console.log(response);
+            // const res = response.data?.data?.custom;
             if(res.success) {
                 console.log(res.message, JSON.parse(res?.obj))
                 // const items = JSON.stringify(res.items);

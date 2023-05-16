@@ -591,43 +591,17 @@ const JobPage = () => {
                 },
             }),
         }).then((response) => {
-            // console.log("Converting", response);
+            console.log("Converting", response);
             const res = response?.data?.data?.convert_sale;
 
             if(res.success){
-                axiosPrivate({
-                    method: 'post',
-                    data: JSON.stringify({
-                        query: `
-                        mutation updateInvoices($invoices: [InvoiceUpdateInput]!) {
-                            update_invoices: updateInvoices(invoices: $invoices) {
-                                success
-                                message
-                            }
-                        }`,
-                        variables: {
-                            invoices: [{
-                                "number": invoice.number,
-                                "dateIssued": new Date().toISOString().slice(0, 10)
-                            }],
-                        },
-                    }),
-                }).then((response) => {
-                    // console.log("Updating", response);
-                    const res = response?.data?.data?.update_invoices;
-
-                    setWaiting(prev => ({...prev, 'invoiceSubmit': false}));
-                    setSnack(true);
-                    if(res.success) {
-                        setSnackVariant('success');
-                        setSnackMessage("Invoice Converted & Submission Tracked");
-                        setInvoice(prev => ({...prev, "dateIssued": new Date().toISOString().slice(0, 10)}))
-                    }
-                    else {
-                        setSnackVariant('error');
-                        setSnackMessage("Error: " + res.message);
-                    }
-                });
+                setSnackVariant('success');
+                setSnackMessage("Invoice Converted & Submission Tracked");
+                setInvoice(prev => ({...prev, "dateIssued": new Date().toISOString().slice(0, 10)}))
+            }
+            else {
+                setSnackVariant('error');
+                setSnackMessage("Error: " + res.message);
             }           
         })
     }
@@ -1030,7 +1004,7 @@ const JobPage = () => {
                             <Box sx={{ m: 1, position: 'relative' }}>
                                 <Button variant="outlined" 
                                     style={{margin: '5px'}}
-                                    onClick={(() => handleSubmitInvoice())}
+                                    onClick={() => handleSubmitInvoice()}
                                     disabled={!invoice || updateRequired || invoice.dateIssued}
                                     >
                                     Submitted Invoice

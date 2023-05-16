@@ -1055,25 +1055,21 @@ class CreateInvoice(graphene.Mutation):
 
 class UpdateInvoice(graphene.Mutation):
     class Arguments:
-        number = graphene.String()
-        amount = graphene.Float()
-        date_created = graphene.Date()
-        date_issued = graphene.Date()
-        date_paid = graphene.Date()
+        invoice = InvoiceUpdateInput()
 
     success = graphene.Boolean()
 
     @classmethod
-    def mutate(self, root, info, number, amount = None, date_created = None, date_issued = None, date_paid = None):
-        if not Invoice.objects.filter(number=number).exists():
+    def mutate(self, root, info, invoice):
+        if not Invoice.objects.filter(number=invoice.number).exists():
             return self(success=False)
         
-        invoice = Invoice.objects.get(number=number)
-        if amount: invoice.amount = amount
-        if date_created: invoice.date_created = date_created
-        if date_issued: invoice.date_issued = date_issued
-        if date_paid: invoice.date_paid = date_paid
-        invoice.save()
+        inv = inv.objects.get(number=invoice.number)
+        if invoice.amount: inv.amount = invoice.amount
+        if invoice.date_created: inv.date_created = invoice.date_created
+        if invoice.date_issued: inv.date_issued = invoice.date_issued
+        if invoice.date_paid: inv.date_paid = invoice.date_paid
+        inv.save()
 
         return self(success=True)
 
@@ -1093,7 +1089,7 @@ class UpdateInvoices(graphene.Mutation):
         for inv in invoices:
             invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
             if invoice:
-                if not inv.date_issued: invoice.date_issued = inv.date_issued
+                if not invoice.date_issued: invoice.date_issued = inv.date_issued
                 if date_paid: invoice.date_paid = date_paid
                 invoice.save()
 
