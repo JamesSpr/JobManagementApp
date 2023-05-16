@@ -26,9 +26,10 @@ const Dashboard = () => {
     const [clients, setClients] = useState([]);
     const [data, setData] = useState<chartData[]>([]);
 
-    const [chartIncome, setChartIncome] = useState([0.0])
-    const [chartBills, setChartBills] = useState([0.0])
-    const [chartRunningTotal, setChartRunningTotal] = useState([0.0])
+    const [invoiceTotal, setInvoiceTotal] = useState(0.0);
+    const [billTotal, setBillTotal] = useState(0.0);
+    const [operatingExpenses, setOperatingExpenses] = useState(0.0);
+    const [otherCosts, setOtherCosts] = useState(0.0);
 
     interface FilterParameters {
         start: string
@@ -40,7 +41,6 @@ const Dashboard = () => {
 
     const [bills, setBills] = useState<chartData[]>([{id: '', myobUid:'', number: '', amount: '', dateCreated: new Date()}]);
     const [invoices, setInvoices] = useState<chartData[]>([{id: '', myobUid:'', number: '', amount: '', dateCreated: new Date()}]);
-    const [runningTotal, setRunningTotal] = useState([0.0]);
 
     // Get Data
     useEffect(() => {
@@ -144,6 +144,9 @@ const Dashboard = () => {
         let billData = Array(frequency).fill(0.0);
         let invoiceData = Array(frequency).fill(0.0);
         let runningData = Array(frequency).fill(0.0);
+
+        let totalBill = 0.0;
+        let totalInvoice = 0.0;
         
         const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         
@@ -167,6 +170,7 @@ const Dashboard = () => {
             if(invoices[i]['dateCreated'] >= new Date(filterParams.start) && invoices[i]['dateCreated'] <= new Date(filterParams.end)) {
                 // console.log("Invoice", invoiceData, invoices[i]['dateCreated'].getMonth() - startMonth + (invoices[i]['dateCreated'].getFullYear() - startYear) * 12, parseFloat(invoices[i]['amount']))
                 invoiceData[(invoices[i]['dateCreated'].getMonth() - startMonth) + ((invoices[i]['dateCreated'].getFullYear() - startYear) * 12)] += parseFloat(invoices[i]['amount'])
+                totalInvoice += parseFloat(invoices[i]['amount'])
                 setData(prev => [...prev, invoices[i]]);
             }
         }
@@ -174,6 +178,7 @@ const Dashboard = () => {
         for(let i = 0; i < bills.length; i++) {
             if(bills[i]['dateCreated'] >= new Date(filterParams.start) && bills[i]['dateCreated'] <= new Date(filterParams.end)) {
                 billData[(bills[i]['dateCreated'].getMonth() - startMonth) + ((bills[i]['dateCreated'].getFullYear() - startYear) * 12)] -= parseFloat(bills[i]['amount'])
+                totalBill += parseFloat(bills[i]['amount'])
                 setData(prev => [...prev, bills[i]]);
             }
         }
@@ -187,6 +192,8 @@ const Dashboard = () => {
             }
         }
 
+        setInvoiceTotal(parseFloat(totalInvoice.toFixed(2)))
+        setBillTotal(parseFloat(totalBill.toFixed(2)))
         setChartData({
             labels,
             datasets: [
@@ -296,13 +303,13 @@ const Dashboard = () => {
               borderColor: 'rgb(255, 99, 132)',
               borderWidth: 2,
               fill: false,
-              data: chartRunningTotal,
+              data: [0.0],
             },
             {
               type: 'bar' as const,
               label: 'Income',
               backgroundColor: 'rgb(75, 192, 192)',
-              data: chartIncome,
+              data: [0.0],
               borderColor: 'white',
               borderWidth: 2,
             },
@@ -310,7 +317,7 @@ const Dashboard = () => {
               type: 'bar' as const,
               label: 'Outgoing',
               backgroundColor: 'rgb(53, 162, 235)',
-              data: chartBills,
+              data: [0.0],
             },
         ],
     })
@@ -335,6 +342,10 @@ const Dashboard = () => {
         },
     ], [] )
     
+
+    const getTotalProfitLoss = () => {
+        return new Intl.NumberFormat('en-AU', {style:'currency', currency:'AUD'}).format((invoiceTotal ?? 0) - (billTotal ?? 0) - (operatingExpenses ?? 0) - (otherCosts ?? 0))
+    }
 
     return ( 
         <>
@@ -366,8 +377,17 @@ const Dashboard = () => {
                         <Chart type='bar' data={chartData} style={{height: '100%', width: '100%'}}/>
                     </div>
                     <Grid item xs={12}>
-                        <Table {...{data, columns}} />
+                        <InputField type="number" label="Total Income" value={invoiceTotal} onChange={() => {}}/>
+                        <InputField type="number" label="Total Bills" value={billTotal} onChange={() => {}}/>
+                        <InputField type="number" label="Operating Expenses" value={operatingExpenses} onChange={e => {setOperatingExpenses(parseFloat(e.target.value))}} step={0.01}/>
+                        <InputField type="number" label="Other Costs" value={otherCosts} onChange={e => {setOtherCosts(parseFloat(e.target.value))}} step={0.01}/>
                     </Grid>
+                    <Grid item xs={12}>
+                        <p>Maintenance Total: {getTotalProfitLoss()}</p>
+                    </Grid>
+                    {/* <Grid item xs={12}>
+                        <Table {...{data, columns}} />
+                    </Grid> */}
                 </Grid>
             </>
             }

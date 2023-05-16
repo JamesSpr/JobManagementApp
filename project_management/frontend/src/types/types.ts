@@ -97,6 +97,7 @@ export interface InputFieldType {
     defaultValue?:any
     onChange: (event: React.ChangeEvent<HTMLElementChange>) => void
     style?: React.CSSProperties
+    step?: number
     props?: any
 }
 
