@@ -49,7 +49,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         data = []
         calculated_total = 0.0
         
-        debug = True
+        debug = False
         with BytesIO(pdf) as pdf_file:
             reader = PdfReader(pdf_file)
             # num_pages = len(reader.pages)
@@ -74,10 +74,10 @@ class ExtractRemittanceAdvice(graphene.Mutation):
                         if debug: print("NSW Department of Defence")
 
                     advice_date_match = re.findall(patterns[0], pdf_data)
-                    print(advice_date_match)
+                    if debug: print(advice_date_match)
                     advice_date = set(advice_date_match)
                     advice_date = list(advice_date)
-                    print(advice_date)
+                    if debug: print(advice_date)
                     # if not len(advice_date) == 1:
                     #     return self(success=False, message="Error retrieving date for remittance advice. Please Contact Admin")
                     advice_date = datetime.strptime(advice_date_match[0], '%d/%m/%Y').date()
@@ -106,7 +106,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
                         data.append({"number":invoices[i], "amount":float(prices[i].replace(",", ""))})
                 
             total = float(prices[len(prices)-1].replace(",", ""))
-            print(f" Price Validation: {round(calculated_total,2) == total} -> (${round(calculated_total,2)} / ${total})")
+            if debug: print(f" Price Validation: {round(calculated_total,2) == total} -> (${round(calculated_total,2)} / ${total})")
 
         if not round(calculated_total,2) == total:
             return self(success=True, message="Remittance Advice Totals do not add up. Please Contact Admin", data=data, advice_date=advice_date)
