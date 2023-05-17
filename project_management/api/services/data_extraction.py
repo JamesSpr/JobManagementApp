@@ -28,6 +28,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
     advice_date = graphene.Date()
+    client = graphene.String()
     data = graphene.List(RemittanceAdvice)
     
     @classmethod
@@ -48,32 +49,39 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         data = []
         calculated_total = 0.0
         
-        debug = False
+        debug = True
         with BytesIO(pdf) as pdf_file:
             reader = PdfReader(pdf_file)
             # num_pages = len(reader.pages)
-            
+            client = 0            
 
             for page_num, page in enumerate(reader.pages):
                 print(f" Extracting Page {page_num + 1}/{len(reader.pages)}")
                 pdf_data = page.extract_text()
                 if debug: print(pdf_data)
 
+                patterns = ['[0-3][0-9]\/[0-1][0-9]\/[0-9]{4}', '-?[0-9]{0,3},*?[0-9]{0,3}\.[0-9]{2}', '^0{0,4}[0-9]{4,8}']
                 if page_num == 0:
-                    advice_date_match = re.findall('[0-3][0-9]\/[0-1][0-9]\/[0-9]{4}', pdf_data)
+                    dep_edu = re.findall('NSW DEPARTMENT OF EDUCATION', pdf_data)
+                    if len(dep_edu) >= 1:
+                        patterns = ['[0-3][0-9]\/[0-1][0-9]\/[0-9]{4}', '-?[0-9]{0,3},*?[0-9]{0,3}\.[0-9]{2}', ' 0{0,4}[0-9]{4,8} ']
+                        client = 5
+                        if debug: print("NSW Department of Defence")
+
+                    advice_date_match = re.findall(patterns[0], pdf_data)
                     print(advice_date_match)
                     advice_date = set(advice_date_match)
                     advice_date = list(advice_date)
                     print(advice_date)
-                    if not len(advice_date) == 1:
-                        return self(success=False, message="Error retrieving date for remittance advice. Please Contact Admin")
+                    # if not len(advice_date) == 1:
+                    #     return self(success=False, message="Error retrieving date for remittance advice. Please Contact Admin")
                     advice_date = datetime.strptime(advice_date_match[0], '%d/%m/%Y').date()
-                        
-                prices = re.findall('-?[0-9]{0,3},*?[0-9]{0,3}\.[0-9]{2}', pdf_data)
-                invoices = re.findall('^0{0,4}[0-9]{4,8}', pdf_data, re.MULTILINE)
+                
+                prices = re.findall(patterns[1], pdf_data)
+                invoices = re.findall(patterns[2], pdf_data, re.MULTILINE)
 
                 for i in range(len(invoices)):
-                    invoices[i] = invoices[i].zfill(8)
+                    invoices[i] = invoices[i].strip().zfill(8)
 
                 if debug: print(prices)
                 if debug: print(invoices)
@@ -98,7 +106,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         if not round(calculated_total,2) == total:
             return self(success=True, message="Remittance Advice Totals do not add up. Please Contact Admin", data=data, advice_date=advice_date)
 
-        return self(success=True, message="Successfully extracted remittance advice", data=data, advice_date=advice_date)
+        return self(success=True, message="Successfully extracted remittance advice", data=data, advice_date=advice_date, client=client)
 
 class ExtractBillDetails(graphene.Mutation):
     class Arguments:

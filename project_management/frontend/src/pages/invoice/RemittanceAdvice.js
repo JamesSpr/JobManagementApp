@@ -251,7 +251,7 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
                 <Grid container spacing={1} align="center">
                     { data && remittanceDate ? <>
                         <Grid item xs={12}>
-                            <InputField width={200}
+                            <InputField width={300}
                                 type="select"
                                 label="Client"
                                 value={client}
