@@ -45,6 +45,7 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
                                 number
                                 amount
                             }
+                            client
                         }
                     }`,
                     variables: { 
@@ -54,12 +55,13 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
                 }),
                 }).then((response) => {
                     const res = response?.data?.data?.remittance_advice;
-                    console.log("Extraction", res)
+                    console.log("Extraction", res);
                     setWaiting(prev => ({...prev, 'remittance': false}));
-                    setRemittanceDate(res.adviceDate)
-                    setData(res.data)
+                    setRemittanceDate(res.adviceDate);
+                    setData(res.data);
+                    setClient(res.client);
                     if(!res?.success) {
-                        setSnack({'active': true, variant:'error', message: res.message})
+                        setSnack({'active': true, variant:'error', message: res.message});
                     }
                 });
             } catch (err) {

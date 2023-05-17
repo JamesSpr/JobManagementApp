@@ -53,7 +53,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         with BytesIO(pdf) as pdf_file:
             reader = PdfReader(pdf_file)
             # num_pages = len(reader.pages)
-            client = 0            
+            client = 0
 
             for page_num, page in enumerate(reader.pages):
                 print(f" Extracting Page {page_num + 1}/{len(reader.pages)}")
@@ -62,6 +62,11 @@ class ExtractRemittanceAdvice(graphene.Mutation):
 
                 patterns = ['[0-3][0-9]\/[0-1][0-9]\/[0-9]{4}', '-?[0-9]{0,3},*?[0-9]{0,3}\.[0-9]{2}', '^0{0,4}[0-9]{4,8}']
                 if page_num == 0:
+                    cath_sch = re.findall('Catholic Schools', pdf_data)
+                    if len(cath_sch) >= 1:
+                        patterns = ['[0-3][0-9]\/[0-1][0-9]\/[0-9]{4}', '-?[0-9]{0,3},*?[0-9]{0,3}\.[0-9]{2}', ' 0+[0-9]{4,8} ']
+                        client = 2
+                        if debug: print("Catholic Schools")
                     dep_edu = re.findall('NSW DEPARTMENT OF EDUCATION', pdf_data)
                     if len(dep_edu) >= 1:
                         patterns = ['[0-3][0-9]\/[0-1][0-9]\/[0-9]{4}', '-?[0-9]{0,3},*?[0-9]{0,3}\.[0-9]{2}', ' 0{0,4}[0-9]{4,8} ']
