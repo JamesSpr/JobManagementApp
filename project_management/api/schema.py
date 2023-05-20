@@ -905,6 +905,25 @@ class CreateContractor(graphene.Mutation):
         new_contractor.save()
 
         return self(success=True, contractor=new_contractor)
+    
+class UpdateContractor(graphene.Mutation):
+    class Arguments:
+        contractor = ContractorInput()
+         
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, contractor):
+        cont = Contractor.objects.filter(id=contractor.id)[0]
+        if contractor.myob_uid: cont.myob_uid = contractor.myob_uid
+        if contractor.name: cont.name = contractor.name.strip()
+        if contractor.abn: cont.abn = contractor.abn.strip()
+        if contractor.bsb: cont.bsb = contractor.bsb.strip()
+        if contractor.bank_account_name: cont.bank_account_name = contractor.bank_account_name.strip()
+        if contractor.bank_account_number: cont.bank_account_number = contractor.bank_account_number.strip()
+        cont.save()
+
+        return self(success=True)
 
 class DeleteContractor(graphene.Mutation):
     class Arguments:
@@ -1394,7 +1413,7 @@ class Mutation(graphene.ObjectType):
     delete_client_contact = DeleteClientContact.Field()
 
     create_contractor = CreateContractor.Field()
-    # update_contractor = UpdateContractor.Field()
+    update_contractor = UpdateContractor.Field()
     delete_contractor = DeleteContractor.Field()
 
     create_estimate = CreateEstimate.Field()
