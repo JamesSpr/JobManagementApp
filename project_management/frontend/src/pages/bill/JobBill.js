@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect }  from 'react';
 import { useParams } from 'react-router-dom';
-import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel } from '@tanstack/react-table'
 import { Dialog, DialogContent, Grid, Typography, IconButton, Portal, Snackbar, Alert } from '@mui/material';
 import { FileUploadSection, InputField, ProgressButton } from '../../components/Components';
 
@@ -399,10 +399,17 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
         getCoreRowModel: getCoreRowModel(),
     });  
 
+    
+    const [sorting, setSorting] = useState([{"id": "supplier", "asc": true}])
     const billsTable = useReactTable({
         data: bills,
         columns: billTableColumns,
+        state: {
+            sorting,
+        },
+        onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
     });  
 
     const displayBill = (path) => {
@@ -483,10 +490,10 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
                 },
             }),
             }).then((response) => {
-                console.log(response);
+                // console.log(response);
                 const res = response?.data?.data?.bill;
                 if(res.success) {
-                    console.log(JSON.parse(res.data));
+                    // console.log(JSON.parse(res.data));
                     setNewBill(JSON.parse(res.data));
                     setBillAttachment({
                         'data': res.billFileData,

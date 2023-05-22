@@ -909,7 +909,7 @@ class CreateContractor(graphene.Mutation):
 class UpdateContractor(graphene.Mutation):
     class Arguments:
         contractor = ContractorInput()
-         
+        
     success = graphene.Boolean()
 
     @classmethod

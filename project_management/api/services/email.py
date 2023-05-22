@@ -79,6 +79,12 @@ class AllocateJobEmail(graphene.Mutation):
                                 {poc}
                                 {alt_poc}
                                 <br>
+                                <b>Time Inspected</b>: 
+                                <br>
+                                <b>Time Started</b>: 
+                                <br>
+                                <b>Time Completed</b>: 
+                                <br>
                                 {bsafe_link}
                                 
                                 <br>
