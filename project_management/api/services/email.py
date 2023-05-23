@@ -84,7 +84,7 @@ class AllocateJobEmail(graphene.Mutation):
                                 <b>Time Started</b>: 
                                 <br>
                                 <b>Time Completed</b>: 
-                                <br>
+                                <br><br>
                                 {bsafe_link}
                                 
                                 <br>

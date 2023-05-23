@@ -1031,9 +1031,11 @@ class DeleteJobInvoice(graphene.Mutation):
         return self(ok=True)
 
 class InvoiceUpdateInput(graphene.InputObjectType):
+    myob_uid = graphene.String()
     number = graphene.String()
-    date_issued = graphene.Date()
     amount = graphene.Float()
+    date_created = graphene.Date()
+    date_issued = graphene.Date()
     date_paid = graphene.Date()
 
 class CreateInvoice(graphene.Mutation):
@@ -1049,7 +1051,7 @@ class CreateInvoice(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
-    def mutate(self, root, info, myob_uid, number, amount, date_created, date_issued, date_paid, job):
+    def mutate(self, root, info, myob_uid, number, amount, date_created, date_issued, job):
         if Invoice.objects.filter(number=number).exists():
             return self(success=False)
         
@@ -1059,7 +1061,7 @@ class CreateInvoice(graphene.Mutation):
         invoice.amount = amount
         invoice.date_created = date_created
         invoice.date_issued = date_issued
-        invoice.date_paid = date_paid
+        # invoice.date_paid = date_paid
         invoice.save()
 
         job=Job.objects.get(po=job)
@@ -1083,11 +1085,12 @@ class UpdateInvoice(graphene.Mutation):
         if not Invoice.objects.filter(number=invoice.number).exists():
             return self(success=False)
         
-        inv = inv.objects.get(number=invoice.number)
+        inv = Invoice.objects.get(number=invoice.number)
         if invoice.amount: inv.amount = invoice.amount
         if invoice.date_created: inv.date_created = invoice.date_created
         if invoice.date_issued: inv.date_issued = invoice.date_issued
         if invoice.date_paid: inv.date_paid = invoice.date_paid
+        if invoice.myob_uid: inv.myob_uid = invoice.myob_uid
         inv.save()
 
         return self(success=True)
