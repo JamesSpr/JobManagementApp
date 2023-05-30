@@ -60,7 +60,10 @@ const CreateJob = () => {
         let identifier = "PO" + job?.po; // Default Value is PO
         
         if (job?.po == '') {
-            if(job?.sr != '') {
+            if (job.otherId && job.otherId.includes("VP")) {
+                identifier = job.otherId;
+            }
+            else if(job?.sr != '') {
                 identifier = "SR" + job?.sr;
             }
             else if (job?.otherId != ''){

@@ -38,9 +38,10 @@ const JobTable = ({tableData, users, jobStages}) => {
         'po': false, 'sr': false, 'otherId': false, 
         'location': true, 'building': true, 'title': true, 
         'dateIssued': true, 'priority': true, 'overdueDate': true, 'stage': true, 
-        'issueDate': false, 'approvalDate': false, 'quotedPrice': false, 'approvedPrice': false,
-         'billSum': false, 'grossProfit': false, 'invoice': false, 'invoiceDate': false, 
-        'invoiceCreatedDate': false, 'region': false, 'detailedLocation': false, 'description': false
+        'issueDate': false, 'quotedPrice': false, 'approvalDate': false, 'approvedQuote': false, 'approvedPrice': false, 
+        'inspectionDate': false, 'commencementDate': false, 'completionDate': false, 'closeOutDate': false,
+        'invoice': false, 'invoiceCreatedDate': false,  'invoiceDate': false, 'billSum': false, 'grossProfit': false, 
+        'region': false, 'detailedLocation': false, 'description': false
     });
     const [showFooter, setShowFooter] = useState(false);
     const [allData, setAllData] = useState(false);
@@ -59,16 +60,19 @@ const JobTable = ({tableData, users, jobStages}) => {
         table.getState().pagination.pageSize = 30;
     }, [])
 
-    function defineJobIdentifier(row) {
+    function defineJobIdentifier(job) {
     
-        let identifier = "PO" + row.po; // Default Value is PO
+        let identifier = "PO" + job.po; // Default Value is PO
         
-        if (row.po == '') {
-            if(row.sr != '') {
-                identifier = "SR" + row.sr;
+        if (job.po == '') {
+            if (job.otherId && job.otherId.includes("VP")) {
+                identifier = job.otherId;
             }
-            else if (row.otherId != ''){
-                identifier = row.otherId;
+            else if(job.sr != '') {
+                identifier = "SR" + job.sr;
+            }
+            else if (job.otherId != ''){
+                identifier = job.otherId;
             }
         }
     
@@ -91,8 +95,15 @@ const JobTable = ({tableData, users, jobStages}) => {
                     for(let i = 0; i < res.edges.length; i++) {
                         res.edges[i].node['dateIssued'] = res.edges[i].node['dateIssued'] ? new Date(res.edges[i].node['dateIssued']).toLocaleDateString('en-AU') : ""
                         res.edges[i].node['overdueDate'] = res.edges[i].node['overdueDate'] ? new Date(res.edges[i].node['overdueDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['invoiceDate'] = res.edges[i].node['invoiceDate'] ? new Date(res.edges[i].node['invoiceDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['invoiceCreatedDate'] = res.edges[i].node['invoiceCreatedDate'] ? new Date(res.edges[i].node['invoiceCreatedDate']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['commencementDate'] = res.edges[i].node['commencementDate'] ? new Date(res.edges[i].node['commencementDate']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU') : ""
+                        // res.edges[i].node['jobinvoiceSet']['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet']['invoice']['dateCreated'] ? new Date(res.edges[i].node['jobinvoiceSet']['invoice']['dateCreated']).toLocaleDateString('en-AU') : ""
+                        // res.edges[i].node['jobinvoiceSet']['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet']['invoice']['dateIssued'] ? new Date(res.edges[i].node['jobinvoiceSet']['invoice']['dateIssued']).toLocaleDateString('en-AU') : ""
+                        // res.edges[i].node['jobinvoiceSet']['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet']['invoice']['datePaid'] ? new Date(res.edges[i].node['jobinvoiceSet']['invoice']['datePaid']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU') : ""
                     }
 
                     setAllData(true);
@@ -156,18 +167,18 @@ const JobTable = ({tableData, users, jobStages}) => {
             id: 'jobNumber',
             header: () => 'Job Number',
             cell: info => info.getValue(),
-            footer: '',
+            footer: props => footerCounts(props.column),
             size: 120,
         },
         {
-            accessorFn: row => "PO" + row.po,
+            accessorFn: row => row.po ? "PO" + row.po : ' ',
             id: 'po',
             header: () => 'PO',
             footer: '',
             size: 100,
         },
         {
-            accessorFn: row => "SR" + row.sr,
+            accessorFn: row => row.sr ? "SR" + row.sr : ' ',
             id: 'sr',
             header: () => 'SR',
             footer: '',
@@ -249,19 +260,6 @@ const JobTable = ({tableData, users, jobStages}) => {
         },
         {
             accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
-                if(element.approvalDate) {
-                    return true;
-                }
-                return false;
-            })]?.price ?? "" : "",
-            id: 'approvedPrice',
-            header: () => 'Approved Price',
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
-            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
-            size: 140,
-        },
-        {
-            accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
                 if(element.issueDate) {
                     return true;
                 }
@@ -291,11 +289,70 @@ const JobTable = ({tableData, users, jobStages}) => {
                     return true;
                 }
                 return false;
+            })]?.name ?? "" : "",
+            id: 'approvedQuote',
+            header: () => 'Approved Quote',
+            cell: info => info.getValue(),
+            size: 140,
+        },
+        {
+            accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
+                if(element.approvalDate) {
+                    return true;
+                }
+                return false;
             })]?.approvalDate ?? "" : "",
             id: 'approvalDate',
             header: () => 'Approval Date',
             cell: info => info.getValue(),
+            filterFn: inDateRange,
+            sortingFn: dateSort,
             size: 140,
+        },
+        {
+            accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
+                if(element.approvalDate) {
+                    return true;
+                }
+                return false;
+            })]?.price ?? "" : "",
+            id: 'approvedPrice',
+            header: () => 'Approved Price',
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
+            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            size: 140,
+        },
+        {
+            accessorKey: 'inspectionDate',
+            header: () => 'Inspection Date',
+            cell: info => info.getValue(),
+            filterFn: inDateRange,
+            sortingFn: dateSort,
+            size: 120,
+        },
+        {
+            accessorKey: 'commencementDate',
+            header: () => 'Start Date',
+            cell: info => info.getValue(),
+            filterFn: inDateRange,
+            sortingFn: dateSort,
+            size: 120,
+        },
+        {
+            accessorKey: 'completionDate',
+            header: () => 'Finish Date',
+            cell: info => info.getValue(),
+            filterFn: inDateRange,
+            sortingFn: dateSort,
+            size: 120,
+        },
+        {
+            accessorKey: 'closeOutDate',
+            header: () => 'Close Out Date',
+            cell: info => info.getValue(),
+            filterFn: inDateRange,
+            sortingFn: dateSort,
+            size: 120,
         },
         {
             accessorFn: row => (row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount), 0) / 1.1) ?? 0,
@@ -306,7 +363,9 @@ const JobTable = ({tableData, users, jobStages}) => {
             size: 120,
         },
         {
-            accessorFn: row => (row?.estimateSet[row?.estimateSet?.findIndex(element => element?.approvalDate)]?.price ?? 0) - ((row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount), 0) / 1.1) ?? 0),
+            accessorFn: row => ['FIN', 'INV', 'PAY', 'BSA'].includes(row?.stage) ? 
+                (row?.estimateSet[row?.estimateSet?.findIndex(element => element?.approvalDate)]?.price ?? 0) - ((row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount), 0) / 1.1) ?? 0) 
+                : 0,
             id: 'grossProfit',
             header: () => 'Gross Profit',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
@@ -661,7 +720,6 @@ const Filter = ({column, table, ...props}) => {
 
     const columnFilterValue = column.getFilterValue()
     
-    const dateColumns = ['dateIssued', 'overdueDate', 'invoiceDate', 'invoiceCreatedDate']
     const sortedUniqueValues = useMemo(
       () =>
         typeof firstValue === 'number'
@@ -670,7 +728,16 @@ const Filter = ({column, table, ...props}) => {
       [column.getFacetedUniqueValues()]
     )
   
-    if(dateColumns.includes(column.id)) {
+    const dateColumns = [
+        'dateIssued',
+        'overdueDate',
+        'inspectionDate',
+        'commencementDate',
+        'completionDate',
+        'closeOutDate',
+    ]
+    
+    if(column?.columnDef?.sortingFn?.name === "dateSort") { //dateColumns.includes(column.id)
         return (
             <>
                 <DebouncedInput

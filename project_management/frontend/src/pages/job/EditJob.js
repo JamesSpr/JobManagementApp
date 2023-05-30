@@ -591,7 +591,6 @@ const JobPage = () => {
                 },
             }),
         }).then((response) => {
-            console.log("Converting", response);
             const res = response?.data?.data?.convert_sale;
 
             if(res.success){
@@ -603,13 +602,19 @@ const JobPage = () => {
                 setSnackVariant('error');
                 setSnackMessage("Error: " + res.message);
             }           
+        }).finally(() => {
+            setSnack(true);
+            setWaiting(prev => ({...prev, 'invoiceSubmit': false}));
         })
     }
 
     const getJobName = () => {
         let identifier = "PO" + job.po;
         if(job.po == ''){
-            if ( job.sr != '') {
+            if(job.otherId && job.otherId.includes("VP")) {
+                identifier = job.otherId
+            }
+            else if ( job.sr != '') {
                 identifier = "SR" + job.sr;
             }
             else if (job.otherId != '') {

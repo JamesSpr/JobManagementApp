@@ -2034,10 +2034,14 @@ class generateInvoice(graphene.Mutation):
             
             if not invoice_number or not invoice_uid:
                 return self(success=False, message=json.dumps("Invoice not found"))
+            
+            sale_type = "Order"
+            if inv.date_issued != None:
+                sale_type = "Invoice"
 
             if not found['invoice']:
                 print("Getting PDF")
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
             
                 headers = {                
                     'Authorization': f'Bearer {user.access_token}',
@@ -2066,7 +2070,7 @@ class generateInvoice(graphene.Mutation):
                 return self(success=False, message="Not all required files can be found - " + str(found))
 
             print("Invoice: ", invoice_number)
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$filter=Number eq '{invoice_number}'"
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service?$filter=Number eq '{invoice_number}'"
             
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',

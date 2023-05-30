@@ -602,7 +602,6 @@ class CreateEstimateFromSet(graphene.Mutation):
         print("Saving Estimate Set")
         
         job = get_object_or_404(Job, id=job_id)
-        jobs_path = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
 
         for est in estimate_set:
             # Get existing estimate for that job with the same name
@@ -615,13 +614,13 @@ class CreateEstimateFromSet(graphene.Mutation):
             else:
                 print("Creating New")
                 estimate = Estimate.objects.create(job_id=job, name=est.name, quote_by=CustomUser.objects.get(id=est.quote_by.id))
-                if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
-                    os.mkdir(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
+                if not os.path.exists(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
+                    os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
 
             # If the estimate name is changed, update the existing folder name
             if est.name != estimate.name:
-                current_estimate_folder = os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip())
-                new_estimate_folder = os.path.join(jobs_path, str(job).strip(), "Estimates", str(est.name).strip())
+                current_estimate_folder = os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())
+                new_estimate_folder = os.path.join(main_folder_path, str(job).strip(), "Estimates", str(est.name).strip())
                 if os.path.exists(current_estimate_folder):
                     os.rename(current_estimate_folder, new_estimate_folder)
 
@@ -952,10 +951,15 @@ class BillType(DjangoObjectType):
         fields = '__all__'
 
 class BillInput(graphene.InputObjectType):
+    id = graphene.String()
+    job = graphene.String()
     contractor = graphene.String()
     invoiceNumber = graphene.String()
     invoiceDate = graphene.Date()
     amount = graphene.Float()
+    myobUid = graphene.String()
+    processDate = graphene.Date()
+    imgPath = graphene.String()
 
 class CreateBill(graphene.Mutation):
     class Arguments:
@@ -988,6 +992,32 @@ class CreateBill(graphene.Mutation):
         bill.save()
 
         return self(success=True, message="Bill Successfully Created", bill=bill)
+    
+class UpdateBill(graphene.Mutation):
+    class Arguments:
+        bill = BillInput()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    bill = graphene.Field(BillType)
+
+    @classmethod
+    def mutate(self, root, info, bill):
+        if not Bill.objects.filter(id = bill.id).exists():
+            return self(success=False, message="Bill can not be found.")
+
+        b = Bill.objects.get(id=bill.id)
+        if bill.job: b.job = Job.objects.get(po=bill.job)
+        if bill.myobUid: b.myob_uid = bill.uid
+        if bill.contractor: b.supplier = Contractor.objects.get(name=bill.contractor)
+        if bill.processDate: b.process_date = bill.processDate
+        if bill.amount: b.amount = bill.amount
+        if bill.invoiceDate: b.invoice_date = bill.invoiceDate
+        if bill.invoiceNumber: b.invoice_number = bill.invoiceNumber
+        if bill.imgPath: b.img_path = bill.imgPath
+        b.save()
+
+        return self(success=True, message="Bill Successfully Updated", bill=b)
 
 class DeleteBill(graphene.Mutation):
     class Arguments:
@@ -1432,6 +1462,7 @@ class Mutation(graphene.ObjectType):
     delete_jobinvoice = DeleteJobInvoice.Field()
 
     create_bill = CreateBill.Field()
+    update_bill = UpdateBill.Field()
     delete_bill = DeleteBill.Field()
 
     create_estimate_from_set = CreateEstimateFromSet.Field()

@@ -8,7 +8,7 @@ from PIL import Image
 from io import BytesIO
 import numpy as np
 
-FOLDERPATH = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Admin\Insurances"
+INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Admin\Insurances"
 
 class PDFToImage(graphene.Mutation):
     class Arguments:
@@ -27,7 +27,7 @@ class PDFToImage(graphene.Mutation):
         file = file.replace("data:application/pdf;base64,", "")
         pdf = base64.b64decode(file, validate=True)
 
-        file_path = os.path.join(FOLDERPATH, filename)
+        file_path = os.path.join(INSURANCES_PATH, filename)
         # Save pdf to remittance advice folder
         f = open(file_path, 'wb')
         f.write(pdf)

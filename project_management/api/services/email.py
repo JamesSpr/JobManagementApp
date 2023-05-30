@@ -11,6 +11,7 @@ sys.path.append("...")
 from accounts.models import CustomUser
 
 EMAIL_STYLE="""<body style="font-size:11pt; font-family:'Calibri'; color: rgb(0,0,0)">"""
+JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
 
 class AllocateJobEmail(graphene.Mutation):
     class Arguments:
@@ -194,8 +195,7 @@ class EmailQuote(graphene.Mutation):
     
         # Check to see if file already exists# Save to dropbox
         # This will have to be removed when we move to pdf only quotes
-        jobs_path = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
-        if not os.path.exists(os.path.join(jobs_path, str(job).strip(), "Estimates", str(estimate.name).strip(), 'Aurify Quote ' + str(estimate.name).strip() + '.docx')):
+        if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), 'Aurify Quote ' + str(estimate.name).strip() + '.docx')):
             return EmailQuote(success=False, message="Quote Does Not Exists")
 
         return EmailQuote(success=True, message=f"Quote Sent to {job.location.region.email}")

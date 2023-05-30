@@ -171,7 +171,9 @@ class Job(models.Model):
     def __str__(self):
         identifier = "PO" + self.po
         if self.po == '':
-            if self.sr != '':
+            if "VP" in self.other_id:
+                identifier = self.other_id
+            elif self.sr != '':
                 identifier = "SR" + self.sr
             elif self.other_id != '':
                 identifier = self.other_id

@@ -25,6 +25,10 @@ export const fetchData = (number, next="") => (JSON.stringify({
                     priority
                     dateIssued
                     overdueDate
+                    inspectionDate
+                    commencementDate
+                    completionDate
+                    closeOutDate
                     stage
                     description
                     detailedLocation
@@ -81,6 +85,10 @@ export const fetchArchivedData = () => (JSON.stringify({
                     priority
                     dateIssued
                     overdueDate
+                    inspectionDate
+                    commencementDate
+                    completionDate
+                    closeOutDate
                     stage
                     description
                     detailedLocation

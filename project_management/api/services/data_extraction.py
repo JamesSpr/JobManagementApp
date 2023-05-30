@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from ..models import Contractor
 
-folder_path = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Admin\Remittance Advice"
+REMITTANCE_PATH = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Admin\Accounts\Remittance Advice"
 
 class RemittanceAdvice(graphene.ObjectType):
     number = graphene.String()
@@ -42,7 +42,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         pdf = base64.b64decode(file, validate=True)
 
         # Save pdf to remittance advice folder
-        f = open(os.path.join(folder_path, filename), 'wb')
+        f = open(os.path.join(REMITTANCE_PATH, filename), 'wb')
         f.write(pdf)
         f.close()
 
