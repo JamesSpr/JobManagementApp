@@ -622,9 +622,13 @@ const JobPage = () => {
             }
 
         }
-        let build = job.building;
+
+        let build = job.building + " ";
         if(job.building !== "" && !isNaN(job.building)) {
-            build = "B" + job.building;
+            build = "B" + job.building + " ";
+        }
+        if(job.building === "") {
+            build = "";
         }
 
         let loc = locations[locations.findIndex(element => {
@@ -634,7 +638,7 @@ const JobPage = () => {
             return false;
         })];
         
-        const path = identifier + " - " + loc?.name + " - "  + build + " "  + job.title;
+        const path = identifier + " - " + loc?.name + " - "  + build + job.title;
         return path;
     }
 
@@ -939,7 +943,7 @@ const JobPage = () => {
                 </Grid>
                 <Grid item xs={12} align="center" />
                 <Grid item xs={12} align="center" style={{overflowX: 'auto'}}>
-                    <EstimateModule estimates={initialEstimate} jobId={job.id} updateRequired={updateRequired} users={employees} bills={bills}/>
+                    <EstimateModule estimates={initialEstimate} jobId={job.id} updateRequired={updateRequired} users={employees} bills={bills} client={job.client}/>
                 </Grid>
                 <Grid item xs={12} align="center">
                     <Typography variant='body1'>On-Site Details</Typography>

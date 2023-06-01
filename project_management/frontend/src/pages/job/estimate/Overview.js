@@ -7,7 +7,7 @@ import useAuth from '../../auth/useAuth';
 import { produce } from 'immer';
 import Bill from '../../bill/JobBill';
 
-const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, contractors}) => {
+const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, contractors, client}) => {
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
     const { setSelectedEstimate, estimateSet, setEstimateSet } = useEstimate();
@@ -472,30 +472,32 @@ const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, contracto
                 </Box>
             </Tooltip> 
             
-            <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
-                <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
-                    <Button 
-                        variant="outlined" 
-                        style={{marginRight: '10px'}} 
-                        disabled={Object.keys(rowSelection).length === 0 || updateRequired} 
-                        onClick={handleCreateEstimate}
-                    >
-                        New Estimate
-                    </Button>
-                    {waiting.estimate && (
-                        <CircularProgress size={24} 
-                            sx={{
-                                colour: 'primary', 
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                marginTop: '-12px',
-                                marginLeft: '-12px',
-                            }}
-                        />
-                    )}
-                </Box>
-            </Tooltip>
+            {client.name === "1" ? 
+                <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
+                    <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
+                        <Button 
+                            variant="outlined" 
+                            style={{marginRight: '10px'}} 
+                            disabled={Object.keys(rowSelection).length === 0 || updateRequired} 
+                            onClick={handleCreateEstimate}
+                        >
+                            New Estimate
+                        </Button>
+                        {waiting.estimate && (
+                            <CircularProgress size={24} 
+                                sx={{
+                                    colour: 'primary', 
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    marginTop: '-12px',
+                                    marginLeft: '-12px',
+                                }}
+                            />
+                        )}
+                    </Box>
+                </Tooltip> : <></>
+            }
 
             {lockedEstimate &&
                 <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>

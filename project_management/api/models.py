@@ -178,11 +178,13 @@ class Job(models.Model):
             elif self.other_id != '':
                 identifier = self.other_id
         
-        building = self.building
+        building = self.building + " "
         if not self.building == "" and str(self.building).isdigit():
-            building = "B" + self.building
+            building = "B" + self.building + " "
+        if self.building == "":
+            building = ""
 
-        return str(identifier) + " - " + str(self.location) + " - "  + str(building) + " "  + str(self.title)
+        return str(identifier) + " - " + str(self.location) + " - "  + str(building) + str(self.title)
     
     def save(self, *args, **kwargs):
         self.work_type = "Commercial"

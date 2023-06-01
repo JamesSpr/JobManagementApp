@@ -29,7 +29,7 @@ TabPanel.propTypes = {
     value: PropTypes.number.isRequired,
 }
 
-const EstimateModule = ({ estimates, jobId, updateRequired, users, bills }) => {
+const EstimateModule = ({ estimates, jobId, updateRequired, users, bills, client }) => {
 
     const axiosPrivate = useAxiosPrivate();
     const { estimateSet } = useEstimate();
@@ -131,7 +131,7 @@ const EstimateModule = ({ estimates, jobId, updateRequired, users, bills }) => {
                     </Box>
                     
                     <TabPanel key={0} value={value} index={0}>
-                        {estimateData ? <EstimateOptionsOverview users={users} jobId={jobId} updateRequired={updateRequired} bills={bills} contractors={contractors}/> : <p>Loading...</p> }
+                        {estimateData ? <EstimateOptionsOverview users={users} jobId={jobId} updateRequired={updateRequired} bills={bills} contractors={contractors} client={client}/> : <p>Loading...</p> }
                     </TabPanel>
                     {estimateData.map((item, accessor) => {
                         let index = accessor + 1;
