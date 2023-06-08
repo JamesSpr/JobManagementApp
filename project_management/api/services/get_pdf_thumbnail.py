@@ -8,7 +8,7 @@ from PIL import Image
 from io import BytesIO
 import numpy as np
 
-INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Admin\Insurances"
+INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Insurances"
 
 class PDFToImage(graphene.Mutation):
     class Arguments:

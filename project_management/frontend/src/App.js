@@ -7,7 +7,6 @@ import LoginPage from "./pages/login/Login";
 import Activate from './pages/login/Activate';
 import PasswordReset from "./pages/login/PasswordReset";
 import HomePage from "./pages/home/Home";
-import JobPage from "./pages/job/EditJob (refactored)";
 import Approved from "./pages/job/Approved";
 import EditJobPage from "./pages/job/EditJob";
 import CreateJob from "./pages/job/CreateJob";
@@ -74,7 +73,6 @@ const App = () => {
 
                         <Route element={<RequireAuth allowedRoles={['DEV']} />} >
                             <Route path="settings" element={<Settings />} />
-                            <Route path="test/job/edit/:id" element={<JobPage />} />
                         </Route>
                     </Route>
 

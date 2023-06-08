@@ -16,7 +16,7 @@ from accounts.models import CustomUser
 
 QUOTE_PATH = "api/templates/QUOTE.docx"
 PO_PATH = "api/templates/PURCHASE ORDER.docx"
-JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
+JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
 
 class CreateQuote(graphene.Mutation):
     class Arguments:

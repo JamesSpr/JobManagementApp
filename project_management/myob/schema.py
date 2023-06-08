@@ -21,7 +21,7 @@ import requests
 
 insurance_expiry_date = date(2023, 3, 31)
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
-MAIN_FOLDER_PATH = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs"
+MAIN_FOLDER_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
 
 class MyobUserType(DjangoObjectType):
     class Meta:

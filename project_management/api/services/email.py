@@ -11,7 +11,7 @@ sys.path.append("...")
 from accounts.models import CustomUser
 
 EMAIL_STYLE="""<body style="font-size:11pt; font-family:'Calibri'; color: rgb(0,0,0)">"""
-JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
+JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
 
 class AllocateJobEmail(graphene.Mutation):
     class Arguments:

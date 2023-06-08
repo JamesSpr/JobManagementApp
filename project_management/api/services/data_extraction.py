@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from ..models import Contractor
 
-REMITTANCE_PATH = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Admin\Accounts\Remittance Advice"
+REMITTANCE_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Accounts\Remittance Advice"
 
 class RemittanceAdvice(graphene.ObjectType):
     number = graphene.String()

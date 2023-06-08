@@ -1182,7 +1182,7 @@ const JobPage = () => {
                             </Box>
                         </Tooltip>
                         <Tooltip title="Copy Folder Path">
-                            <IconButton onClick={() => {navigator.clipboard.writeText("Aurify Dropbox\\5. Projects\\02 - Brookfield WR\\00 New System\\Jobs\\" + getJobName())}}><FolderCopyIcon /></IconButton>
+                            <IconButton onClick={() => {navigator.clipboard.writeText("Aurify\\Aurify - Maintenance\\Jobs\\" + getJobName())}}><FolderCopyIcon /></IconButton>
                         </Tooltip>
                         <Tooltip title={job.bsafeLink ? "Open BSAFE Work Order" : "No BSAFE Link Found"}>
                             <Box sx={{display: 'inline-block'}}>

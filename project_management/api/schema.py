@@ -19,7 +19,7 @@ from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetail
 from .services.create_quote import CreateQuote, CreateBGISEstimate
 from .services.get_pdf_thumbnail import PDFToImage
 
-main_folder_path = r"C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs"
+main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
 
 class CustomNode(graphene.relay.Node):
     class Meta:

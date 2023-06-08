@@ -19,7 +19,7 @@ sys.path.append("...")
 from accounts.models import CustomUser
 
 
-JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify Dropbox\5. Projects\02 - Brookfield WR\00 New System\Jobs'
+JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
 
 class CreateBGISEstimate(graphene.Mutation):
     class Arguments:

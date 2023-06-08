@@ -39,6 +39,7 @@ const NewEstimate = ({users, estimateData}) => {
         if(dupe) return
 
         newEstimate['name'] = newEstimate['name'].trim()
+        newEstimate['scope'] = estimateSet[copyOption-1]?.scope ?? "";
         newEstimate['estimateheaderSet'] = estimateSet[copyOption-1]?.estimateheaderSet ?? [];
         newEstimate['price'] = estimateSet[copyOption-1]?.price ?? 0.00;
         newEstimate['quoteBy'] = {'id': newEstimate['quoteBy']};
