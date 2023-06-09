@@ -596,12 +596,14 @@ class CreateEstimateFromSet(graphene.Mutation):
 
     success = graphene.Boolean()
     job = graphene.Field(JobType)
+    message = graphene.String()
 
     @classmethod
     def mutate(self, root, info, estimate_set, job_id):
         print("Saving Estimate Set")
         
         job = get_object_or_404(Job, id=job_id)
+        message = ""
 
         for est in estimate_set:
             # Get existing estimate for that job with the same name
@@ -614,8 +616,12 @@ class CreateEstimateFromSet(graphene.Mutation):
             else:
                 print("Creating New")
                 estimate = Estimate.objects.create(job_id=job, name=est.name, quote_by=CustomUser.objects.get(id=est.quote_by.id))
-                if not os.path.exists(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
-                    os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
+                try:
+                    if not os.path.exists(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
+                        os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
+                except Exception as e:
+                    print("File Name Error for:", str(job).strip())
+                    message = "Job Saved. There is an error with the folder name, please correct in file system."
 
             # If the estimate name is changed, update the existing folder name
             if est.name != estimate.name:
@@ -623,6 +629,7 @@ class CreateEstimateFromSet(graphene.Mutation):
                 new_estimate_folder = os.path.join(main_folder_path, str(job).strip(), "Estimates", str(est.name).strip())
                 if os.path.exists(current_estimate_folder):
                     os.rename(current_estimate_folder, new_estimate_folder)
+
 
             estimate.job_id = job
             estimate.name = est.name
@@ -656,9 +663,11 @@ class CreateEstimateFromSet(graphene.Mutation):
 
         if job: 
             job.save()
-            return self(success=True, job=job)
+            if message == "":
+                message = "Job Uploaded Successfully"
+            return self(success=True, job=job, message=message)
         
-        return self(success=False)
+        return self(success=False, message="Job Not Found, Please contact admin.")
 
 class DeleteEstimate(graphene.Mutation):
     ok = graphene.Boolean()

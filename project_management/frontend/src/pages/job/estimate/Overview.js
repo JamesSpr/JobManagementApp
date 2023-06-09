@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, } from '@tanstack/react-table'
-import { Box, Button, Tooltip, CircularProgress, Portal, Snackbar, Alert } from '@mui/material';
+import { Box, Button, Tooltip, CircularProgress, Portal, Snackbar, Alert, IconButton } from '@mui/material';
 import useEstimate from './useEstimate';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import useAuth from '../../auth/useAuth';
 import { produce } from 'immer';
 import Bill from '../../bill/JobBill';
 
-const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, contractors, client}) => {
+import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteDialog from '../../../components/DeleteDialog';
+
+const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, setUpdateRequired, contractors, client}) => {
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
     const { setSelectedEstimate, estimateSet, setEstimateSet } = useEstimate();
@@ -223,7 +226,71 @@ const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, contracto
             size: 125,
             maxSize: 125,
         },
+        {
+            id: 'deleteButton',
+            minSize: 80,
+            size: 90,
+            maxSize: 90,
+            header: '',
+            cell: ({row}) => (
+            <>
+            
+                <IconButton onClick={(e) => {setDeleteDialog(prev => ({open: true, row: row, 
+                    title: "Delete Estimate", message: "Are you sure you want to delete this estimate? This action can not be undone."}))}}>
+                    <DeleteIcon />
+                </IconButton>
+            </>
+            ),
+        }
     ], []);
+
+    const [deleteDialog, setDeleteDialog] = useState({open: false, row: {}, title: '', message: ''});
+
+    const deleteEstimate = async () => {
+        // Checks
+        if(!deleteDialog || !deleteDialog.row) {
+            setSnack(true);
+            setSnackVariant('error');
+            setSnackMessage("Error Deleting Estimate");
+            return;
+        }
+        
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation deleteEstimate($id: ID!){
+                    delete: deleteEstimate(id: $id) {
+                        ok
+                    }
+                }`,
+            variables: {
+                id: deleteDialog?.row?.original?.id,
+            },
+        }),
+        }).then((response) => {
+            const res = response?.data?.data?.delete
+            if(res?.ok) {
+                // Remove estimate from list
+                setEstimateSet(estimateSet.filter(estimate => estimate.id !== deleteDialog.row.original.id))
+
+                // Provide feedback to user
+                setSnackVariant('success');
+                setSnackMessage("Estimate Deleted");
+            }
+            else {
+                setSnackVariant('error');
+                setSnackMessage("Error Deleting Estimate");
+            }
+        }).catch((err) => {
+            // console.log(err);
+            setSnackVariant('error');
+            setSnackMessage("Please Contact Admin: " + err);
+        }).finally(() => {
+            setSnack(true);
+            setDeleteDialog({open: false, row: {}, title: '', message: ''})
+            setUpdateRequired(false);
+        });
+    }
 
     const handleCreateQuote = async () => {
         setWaiting(prev => ({...prev, quote: true}));
@@ -553,6 +620,13 @@ const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, contracto
                     <Alert onClose={(e) => setSnack(false)} severity={snackVariant} sx={{width: '100%'}}>{snackMessage}</Alert>
                 </Snackbar>
             </Portal>
+
+            <DeleteDialog 
+                open={deleteDialog.open} 
+                close={() => setDeleteDialog(prev => ({...prev, open: false}))} 
+                title={deleteDialog.title} message={deleteDialog.message} 
+                action={() => deleteEstimate()} 
+            />
 
             
 

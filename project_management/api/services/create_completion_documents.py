@@ -130,6 +130,7 @@ class CreateCompletionDocuments(graphene.Mutation):
 
                     # Save and close word document
                     document.SaveAs(swms_filename)
+                    print(swms_filename)
                     document.Close()
                 else:
                     word.Quit()
@@ -157,6 +158,7 @@ class CreateCompletionDocuments(graphene.Mutation):
 
                     # Save and close word document
                     document.SaveAs(pra_filename)
+                    print(pra_filename)
                     document.Close()
                 else:
                     word.Quit()
@@ -184,6 +186,7 @@ class CreateCompletionDocuments(graphene.Mutation):
 
                     # Save and close word document
                     document.SaveAs(sdkt_filename)
+                    print(sdkt_filename)
                     document.Close()
                 else:
                     word.Quit()

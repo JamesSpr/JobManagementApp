@@ -425,6 +425,7 @@ const JobPage = () => {
                     create_estimate_from_set: createEstimateFromSet( estimateSet: $estimateSet, jobId: $jobId)
                 {
                     success
+                    message
                     job {
                         stage
                         estimateSet {
@@ -477,14 +478,14 @@ const JobPage = () => {
                 setEstimateSet(res.job.estimateSet);
                 if(!partialError) {
                     setSnackVariant('success');
-                    setSnackMessage("Successful Upload");
+                    setSnackMessage(res.message);
                     setUpdateRequired(false);
                 }
                 // TODO: Update the id of any new jobs.
             } 
             else {
                 setSnackVariant('error');
-                setSnackMessage("Estimate Upload Error: " + response?.data?.data?.errors[0].message);
+                setSnackMessage("Estimate Upload Error: " + res.message);
             }
         });
     }
@@ -882,7 +883,7 @@ const JobPage = () => {
                     <InputField type="select" name="location" label="Location" value={job.location} onChange={handleInput}>
                         <option key="blank_location" value={""}></option>
                         {locations?.map((loc) => (
-                            loc.client.id === job.client ? <option key={loc.id} value={loc.id}>{loc.name}</option> : <></>
+                            loc.client.id === job.client ? <option key={loc.id} value={loc.id}>{loc.name} ({loc.region.shortName})</option> : <></>
                         ))}
                     </InputField>
                     <InputField name="building" label="Building" value={job.building} onChange={handleInput}/>
@@ -943,7 +944,7 @@ const JobPage = () => {
                 </Grid>
                 <Grid item xs={12} align="center" />
                 <Grid item xs={12} align="center" style={{overflowX: 'auto'}}>
-                    <EstimateModule estimates={initialEstimate} jobId={job.id} updateRequired={updateRequired} users={employees} bills={bills} client={job.client}/>
+                    <EstimateModule estimates={initialEstimate} jobId={job.id} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} users={employees} bills={bills} client={job.client}/>
                 </Grid>
                 <Grid item xs={12} align="center">
                     <Typography variant='body1'>On-Site Details</Typography>
