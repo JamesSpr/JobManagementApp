@@ -678,7 +678,12 @@ class DeleteEstimate(graphene.Mutation):
     @classmethod
     def mutate(self, root, info, id):
         estimate = Estimate.objects.get(id=id)
+
+        if os.path.exists(os.path.join(main_folder_path, str(estimate.job_id), "Estimates", str(estimate.name))):
+            shutil.rmtree(os.path.join(main_folder_path, str(estimate.job_id), "Estimates", str(estimate.name)))
+
         estimate.delete()
+
         return self(ok=True)
 
 class ContractorType(DjangoObjectType):

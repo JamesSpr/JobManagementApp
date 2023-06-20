@@ -124,7 +124,7 @@ const useRefreshToken = () => {
                         accessToken: res.data.refreshToken.token
                     }
                 })
-                console.log(res.data.refreshToken.token)
+                // console.log(res.data.refreshToken.token)
                 return res.data.refreshToken.token;
             }
             else { // Token is not valid

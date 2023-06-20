@@ -34,7 +34,7 @@ const HomePage = () => {
                 data: fetchResources(),
             }).then((response) => {
                 const res = response?.data?.data;
-                console.log("res", res);
+                // console.log("res", res);
                 setLocations(res?.locations);
                 setClients(res?.clients)
                 setClientContacts(res?.clientContacts)
@@ -58,7 +58,7 @@ const HomePage = () => {
                 data: fetchData(120, next),
             }).then((response) => {
                 const res = response?.data?.data?.jobPage;
-                console.log("res", response);
+                // console.log("res", response);
                 if(res) {
                     next = res.pageInfo.startCursor;
                     nextPage = res.pageInfo.hasPreviousPage;
@@ -96,7 +96,7 @@ const HomePage = () => {
                     data: fetchData(20000, next),
                 }).then((response) => {
                     const res = response?.data?.data?.jobPage;
-                    console.log("res", response);
+                    // console.log("res", response);
                     if(res) {
                         next = res.pageInfo.startCursor;
                         nextPage = res.pageInfo.hasPreviousPage;

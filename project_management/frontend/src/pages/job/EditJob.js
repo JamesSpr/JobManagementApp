@@ -550,9 +550,6 @@ const JobPage = () => {
             console.log(response);
             const res = response.data?.data?.myob_create_invoice;
 
-            setWaiting(prev => ({...prev, 'invoice': false}));
-            setSnack(true);
-
             if(res.success) {
                 // console.log(res.message)
                 const result = JSON.parse(res.message);
@@ -566,7 +563,14 @@ const JobPage = () => {
                 setSnackVariant('error');
                 setSnackMessage("Invoice Error: " + res.message);
             }
-        })
+        }).catch((response) => {
+            console.log("Error", response);
+            setSnackVariant('error');
+            setSnackMessage("Error Creating Invoice. Contact Admin");
+        }).finally(() => {
+            setWaiting(prev => ({...prev, 'invoice': false}));
+            setSnack(true);
+        });
         
     }
 

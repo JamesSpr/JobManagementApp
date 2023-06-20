@@ -4,7 +4,7 @@ import graphene
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_ALIGN_VERTICAL
-from docx.shared import Cm
+from docx.shared import Cm, Pt
 
 from datetime import date
 import os
@@ -94,6 +94,7 @@ class CreateQuote(graphene.Mutation):
                     for cell in row.cells:
                         for paragraph in cell.paragraphs:
                             if item in paragraph.text:
+                                paragraph.font = document.styles['Normal']
                                 paragraph.text = paragraph.text.replace(item, mailMergeTableItems[item])
                                 # print(paragraph.text)
 
@@ -112,7 +113,6 @@ class CreateQuote(graphene.Mutation):
                     else:
                         paragraph.text = paragraph.text.replace(item, mailMergeParagraphItems[item])
                         paragraph.left_indent = 0.5
-                        # paragraph.text = mailMergeParagraphItems[item]
 
         # Create estimate table
         for table in document.tables:
