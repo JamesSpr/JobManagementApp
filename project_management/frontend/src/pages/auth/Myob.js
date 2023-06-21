@@ -13,7 +13,9 @@ const MyobActivate = () => {
     const code = searchParams.get('code');
     const navigate = useNavigate();
 
-    const [queries, setQueries] = useState({client: "CompanyName eq 'BGIS'", contractor: "CompanyName eq 'Buildlogic Pty Ltd'", bill: "Number eq '00006510'", order: "Number eq '00001570'", invoice: "Number eq '00001481'", job: "Number eq 'PO8172189'"});
+    const [queries, setQueries] = useState({client: "CompanyName eq 'BGIS'", contractor: "CompanyName eq 'Buildlogic Pty Ltd'", 
+                                            bill: "Number eq '00006510'", order: "Number eq '00001570'", invoice: "Number eq '00001481'",
+                                             job: "Number eq 'PO8172189'", contractorName: "", contractorABN: ""});
     const [fields, setFields] = useState({invoice: ""})
 
     if(code) {
@@ -571,6 +573,36 @@ const MyobActivate = () => {
             }
         })
     }
+
+    const importContractorFromABN = async () => {
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation myobImportContractorFromAbn($uid:String!, $name:String!, $abn:String!) {
+                    contractor: myobImportContractorFromAbn(uid:$uid, name:$name, abn:$abn) {
+                        success
+                        message
+                    }
+                }`,
+                variables: {
+                    uid: auth?.myob.id,
+                    name: queries.contractorName,
+                    abn: queries.contractorABN
+                }
+            })
+        }).then((response) => {
+            // console.log("success", response);
+            const res = response.data?.data?.contractor;
+            if(res.success) {
+                // console.log(res.message)
+                const contractors = JSON.parse(res.message);
+                console.log("Contractors:", contractors)
+            }
+            else {
+                console.log("error!", JSON.parse(res.message) ?? "");
+            }
+        })
+    }
     
     const importBGISInvoices = async () => {
         await axiosPrivate({
@@ -697,70 +729,80 @@ const MyobActivate = () => {
     return (
         <>
             {auth?.user?.role === "DEV" ?
-                <Grid container spacing={2}>
+                <Grid container spacing={2} 
+                alignItems="center" 
+                justifyContent="center"
+                alignContent="center"
+                textAlign="center"
+                direction="column">
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Authentication</Typography>
                     </Grid>
                     <Grid item xs={12}>
-                        <Button onClick={testRefresh}>Refresh</Button>
+                        <Button style={{width: '200px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={testRefresh}>Refresh</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Requests</Typography>
                     </Grid>
                     <Grid item xs={12}>
-                        <Button onClick={getAccounts}>Get Accounts</Button>
-                        <Button onClick={getTaxCodes}>Get Tax Codes</Button>
-                        <Button onClick={getGeneralJournal}>Get General Journal</Button>
-                        <Button onClick={customFunction}>Custom Function</Button>
+                        <Button style={{width: '150px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={getAccounts}>Get Accounts</Button>
+                        <Button style={{width: '150px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={getTaxCodes}>Get Tax Codes</Button>
+                        <Button style={{width: '210px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={getGeneralJournal}>Get General Journal</Button>
+                        <Button style={{width: '180px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={customFunction}>Custom Function</Button>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField wide label="Job Filter" value={queries.job} onChange={(e) => setQueries(prev => ({...prev, job: e.target.value}))}/>
-                        <Button onClick={getJobs}>Get Jobs</Button>
+                        <InputField width={500} label="Job Filter" value={queries.job} onChange={(e) => setQueries(prev => ({...prev, job: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getJobs}>Get Jobs</Button>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField wide label="Client Filter" value={queries.client} onChange={(e) => setQueries(prev => ({...prev, client: e.target.value}))}/>
-                        <Button onClick={getClients}>Get Clients</Button>
+                        <InputField width={500} label="Client Filter" value={queries.client} onChange={(e) => setQueries(prev => ({...prev, client: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getClients}>Get Clients</Button>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField wide label="Contractor Filter" value={queries.contractor} onChange={(e) => setQueries(prev => ({...prev, contractor: e.target.value}))}/>
-                        <Button onClick={getContractors}>Get Contractors</Button>
+                        <InputField width={500} label="Contractor Filter" value={queries.contractor} onChange={(e) => setQueries(prev => ({...prev, contractor: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getContractors}>Get Contractors</Button>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField wide label="Orders Filter" value={queries.order} onChange={(e) => setQueries(prev => ({...prev, order: e.target.value}))}/>
-                        <Button onClick={getOrder}>Get Orders</Button>
+                        <InputField width={500} label="Orders Filter" value={queries.order} onChange={(e) => setQueries(prev => ({...prev, order: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getOrder}>Get Orders</Button>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField wide label="Invoice Filter" value={queries.invoice} onChange={(e) => setQueries(prev => ({...prev, invoice: e.target.value}))}/>
-                        <Button onClick={getInvoice}>Get Invoices</Button>
+                        <InputField width={500} label="Invoice Filter" value={queries.invoice} onChange={(e) => setQueries(prev => ({...prev, invoice: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getInvoice}>Get Invoices</Button>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField wide label="Bill Filter" value={queries.bill} onChange={(e) => setQueries(prev => ({...prev, bill: e.target.value}))}/>
-                        <Button onClick={getBill}>Get Bills</Button>
+                        <InputField width={500} label="Bill Filter" value={queries.bill} onChange={(e) => setQueries(prev => ({...prev, bill: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getBill}>Get Bills</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Sync</Typography>
                     </Grid>
                     <Grid item xs={12}>
-                        <Button onClick={syncJobs}>Jobs</Button>
-                        <Button onClick={syncClients}>Clients</Button>
-                        <Button onClick={syncContractors}>Contractors</Button>
-                        <Button onClick={syncInvoices}>Invoices</Button>
-                        <Button onClick={syncBills}>Bills</Button>
+                        <Button style={{width: '100px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncJobs}>Jobs</Button>
+                        <Button style={{width: '100px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncClients}>Clients</Button>
+                        <Button style={{width: '150px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncContractors}>Contractors</Button>
+                        <Button style={{width: '100px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncInvoices}>Invoices</Button>
+                        <Button style={{width: '100px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncBills}>Bills</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Imports</Typography>
                     </Grid>
                     <Grid item xs={12}>
-                        <Button onClick={importContractorsFromBills}>Contractors from Bills</Button>
-                        <Button onClick={importBGISInvoices}>BGIS Invoices</Button>
+                        <InputField width={250} label="Contractor Name" value={queries.contractorName} onChange={(e) => setQueries(prev => ({...prev, contractorName: e.target.value}))}/>
+                        <InputField width={250} label="Contractor ABN" value={queries.contractorABN} onChange={(e) => setQueries(prev => ({...prev, contractorABN: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={importContractorFromABN}>Import</Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Button style={{width: '250px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={importContractorsFromBills}>Contractors from Bills</Button>
+                        <Button style={{width: '200px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={importBGISInvoices}>BGIS Invoices</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Create</Typography>
                     </Grid>
                     <Grid item xs={12}>
                         <InputField label="Purchase Order #" value={fields.invoice} onChange={(e) => setFields(prev => ({...prev, invoice: e.target.value}))}/>
-                        <Button onClick={createInvoice}>Create Invoice</Button>
-                        <Button onClick={generateInvoice}>Generate Invoice</Button>
+                        <Button style={{width: '180px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={createInvoice}>Create Invoice</Button>
+                        <Button style={{width: '180px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={generateInvoice}>Generate Invoice</Button>
                     </Grid>
                     
                 </Grid>

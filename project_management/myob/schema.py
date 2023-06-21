@@ -1228,6 +1228,58 @@ class myobImportContractorsFromBills(graphene.Mutation):
         else:
             return self(success=False, message="MYOB Connection Error")
 
+class myobImportContractorFromABN(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        name = graphene.String()
+        abn = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, uid, name, abn):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+
+            ## Get Contractor by ABN
+
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=CompanyName eq '{name}' and BuyingDetails/ABN eq '{abn}'"
+            
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.request("GET", url, headers=headers, data={})
+            res = json.loads(response.text)
+
+            if not len(res['Items']) > 0:
+                return self(success=False, message="Contractor not found with the provided details")
+            
+            contractorDetails = res['Items'][0]
+            
+            if Contractor.objects.filter(myob_uid = contractorDetails['UID']).exists():
+                return self(success=False, message="Contractor already exists in the system")
+
+            contractor = Contractor.objects.create(myob_uid = contractorDetails['UID'])
+            contractor.name = contractorDetails['CompanyName']
+            contractor.abn = contractorDetails['BuyingDetails']['ABN']
+            contractor.bsb = contractorDetails['PaymentDetails']['BSBNumber'] if not isna(contractorDetails['PaymentDetails']['BSBNumber'] ) else ""
+            contractor.bank_account_number = contractorDetails['PaymentDetails']['BankAccountNumber'] if not isna(contractorDetails['PaymentDetails']['BankAccountNumber']) else ""
+            contractor.bank_account_name = contractorDetails['PaymentDetails']['BankAccountName'] if not isna(contractorDetails['PaymentDetails']['BankAccountName']) else ""
+            contractor.save()
+
+            return self(success=True, message="Contractor Imported")
+        else:
+            return self(success=False, message="MYOB Connection Error")
+
+
 class myobImportBGISInvoices(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -2132,6 +2184,7 @@ class Mutation(graphene.ObjectType):
     myob_sync_clients = myobSyncClients.Field()
     myob_sync_contractors = myobSyncContractors.Field()
     
+    myob_import_contractor_from_abn = myobImportContractorFromABN.Field()
     myob_import_contractors_from_bills = myobImportContractorsFromBills.Field()
     myob_import_bgis_invoices = myobImportBGISInvoices.Field()
 

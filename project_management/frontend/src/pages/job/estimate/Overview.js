@@ -348,50 +348,44 @@ const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, setUpdate
     const handleCreateEstimate = async () => {
         setWaiting(prev => ({...prev, estimate: true}));
         // console.log(auth);
-        try {
-            await axiosPrivate({
-                method: 'post',
-                data: JSON.stringify({
-                    query: `mutation createBgisEstimate ( $jobId: String!, $selectedEstimate: String!) { 
-                        create_bgis_estimate: createBgisEstimate( jobId: $jobId, selectedEstimate: $selectedEstimate)
-                        {
-                            success
-                            message
-                        }
-                }`,
-                variables: {
-                    jobId: jobId,
-                    selectedEstimate: data[Object.keys(rowSelection)[0]].id,
-                },
-            }),
-            }).then((response) => {
-                const res = response?.data?.data?.create_bgis_estimate
-                if(res?.success) {
-                    setSnack(true);
-                    setSnackVariant('success');
-                    setSnackMessage("Blank Estimate Created");
-                    setWaiting(prev => ({...prev, estimate: false}));
-                }
-                else if (res?.message) {
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Estimate Creation Error: " + res.message);
-                    setWaiting(prev => ({...prev, estimate: false}));
-                }
-                else {
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Estimate Creation Error: " + response?.data?.errors[0]?.message);
-                    setWaiting(prev => ({...prev, estimate: false}));
-                }
-            });
-        } catch (err) {
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation createBgisEstimate ( $jobId: String!, $selectedEstimate: String!) { 
+                    create_bgis_estimate: createBgisEstimate( jobId: $jobId, selectedEstimate: $selectedEstimate)
+                    {
+                        success
+                        message
+                    }
+            }`,
+            variables: {
+                jobId: jobId,
+                selectedEstimate: data[Object.keys(rowSelection)[0]].id,
+            },
+        }),
+        }).then((response) => {
+            const res = response?.data?.data?.create_bgis_estimate
+            if(res?.success) {
+                setSnackVariant('success');
+                setSnackMessage("Blank Estimate Created");
+            }
+            else if (res?.message) {
+                setSnackVariant('error');
+                setSnackMessage("Estimate Creation Error: " + res.message);
+            }
+            else {
+                setSnackVariant('error');
+                setSnackMessage("Estimate Creation Error: " + response?.data?.errors[0]?.message);
+            }
+        }).catch((err) => {
             console.log(err);
-            setSnack(true);
             setSnackVariant('error');
             setSnackMessage("Server Error. Please Contact Admin: " + err);
+        }).finally(() => {
+            setSnack(true);
             setWaiting(prev => ({...prev, estimate: false}));
-        }
+        });
+        
     }
 
     const handleEmailQuote = async () => {

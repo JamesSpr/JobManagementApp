@@ -473,9 +473,9 @@ const EstimateTable = ({estimateData, accessorId}) => {
                                     }
                                 }
 
-
+                                
                                 // Average markup
-                                markup = (gross / extension - 1) * 100;
+                                markup = ((gross / extension) - 1) * 100;
                                 isNaN(markup) ? markup = 0.00 : null;
 
                                 const newEstimateHeader = produce(old[parentId], draft => {
@@ -514,7 +514,8 @@ const EstimateTable = ({estimateData, accessorId}) => {
             totalExtension += parseFloat(row.original['extension']);
         }
     })
-    totalAvgMarkup = totalAvgMarkup / totalItems;
+
+    totalAvgMarkup = ((totalGross/totalExtension)-1) * 100 ;
 
     const handleNewHeader = () => {
         const newId = (data.length ?? 0) + 1;
