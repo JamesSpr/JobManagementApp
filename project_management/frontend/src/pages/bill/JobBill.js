@@ -74,9 +74,8 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
 
     if (data) {
         // Create a data structure with summarised headers and lineitem subRows
-        let summarisedData = {}
-        summarisedData = data.reduce((items, item) => {
-            let counter = 0;
+        let counter = 0;
+        const summarisedData = data.reduce((items, item) => {
             const {id, description, quantity, itemType, rate, extension, gross, header} = item;
 
             // Check if the items descriptions are the same
@@ -100,9 +99,39 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
             return items;
         }, []);
         
+        let summarisedBill = []
+        if(billData.length > 0) {
+            counter = 0;
+            summarisedBill = billData.reduce((items, item) => {
+                // console.log("items", items)
+                // console.log("item", item)
+                const {supplier, amount, ...other} = item;
+                
+                // Check if the items suppliers have the same name
+                const itemIndex = items.findIndex(item => item.supplier.name.trim() === supplier.name.trim())
+
+                if(itemIndex === -1) {
+                    // Create a new header row
+                    const subRows = [{supplier, amount, ...other}]
+                    items.push({supplier, amount, invoiceNumber: 1, subRows}); 
+                    counter += 1;
+                } else {
+                    // Add to the existing header row
+                    items[itemIndex].supplier.name = supplier.name;
+                    items[itemIndex].invoiceNumber = parseInt(items[itemIndex].invoiceNumber) + 1;
+                    items[itemIndex].amount = parseFloat(items[itemIndex].amount) + parseFloat(amount);
+                    items[itemIndex].subRows.push({supplier, amount, ...other});
+                }
+
+                return items
+            }, [])
+
+            // console.log(summarisedBill);
+        }
+
         return <BillHome open={open} handleClose={handleClose} 
             id={id} data={summarisedData} 
-            bills={billData} 
+            bills={summarisedBill} 
             setBillAttachment={setBillAttachment}
             setNewBill={setNewBill} setCreateBill={setCreateBill}/>
     }
@@ -339,19 +368,9 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
             minSize: 20,
             size: 40,
             maxSize: 40,
-            header: ({ table }) => (
-                <IconButton 
-                    style={{padding: '0px 8px'}}
-                    {...{
-                        onClick: table.getToggleAllRowsExpandedHandler(),
-                    }}
-                >
-                    {table.getIsAllRowsExpanded() ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
-                </IconButton>
-            ),
+            header: () => "",
             cell: ({ row }) => (
                 <>
-                    {/* <Checkbox checked={row.getIsSelected()} onChange={row.getToggleSelectedHandler()}/> */}
                     {row.getCanExpand() ? (
                         <IconButton onFocus={(e) => row.getIsSelected() ? null : row.toggleSelected()}
                         style={{padding: '0px 8px'}}
@@ -432,6 +451,29 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
 
     const billTableColumns = useMemo(() => [
         {
+            id: 'expander',
+            minSize: 20,
+            size: 40,
+            maxSize: 40,
+            header: () => "",
+            cell: ({ row }) => (
+                <>
+                    {row.getCanExpand() ? (
+                        <IconButton onFocus={(e) => row.getIsSelected() ? null : row.toggleSelected()}
+                        style={{padding: '0px 8px'}}
+                        {...{
+                            onClick: row.getToggleExpandedHandler(),
+                        }}
+                        >
+                        {row.getIsExpanded() ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
+                        </IconButton>
+                    ) : (
+                        ''
+                    )}
+                </>
+            )
+        },
+        {
             id: 'supplier',
             accessorFn: row => row?.supplier?.name,
             header: () => 'Supplier',
@@ -457,16 +499,18 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
         {
             accessorKey: 'invoiceDate',
             header: () => 'Invoice Date',
+            cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
             minSize: 100,
             size: 100,
             maxSize: 100,
         },
         {
             accessorKey: 'processDate',
-            header: () => 'Processed On',
-            minSize: 105,
-            size: 105,
-            maxSize: 105,
+            header: () => 'Processed',
+            cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
+            minSize: 80,
+            size: 80,
+            maxSize: 80,
         },
         {
             accessorKey: 'imgPath',
@@ -477,23 +521,28 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
                     <RequestPageIcon />
                 </IconButton> : <></>
             ),
-            minSize: 45,
-            size: 45,
-            maxSize: 45,
+            minSize: 40,
+            size: 40,
+            maxSize: 40,
         },
     ], []);
     
     const [sorting, setSorting] = useState([{"id": "supplier", "asc": true}])
+    const [expandedBills, setExpandedBills] = useState({})
     const billsTable = useReactTable({
         data: bills,
         columns: billTableColumns,
         state: {
             sorting,
+            expanded: expandedBills
         },
+        onExpandedChange: setExpandedBills,
+        getSubRows: row => row.subRows,
         onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
-    });  
+        getExpandedRowModel: getExpandedRowModel(),
+    }); 
 
     const displayBill = (path) => {
         console.log(path)
@@ -639,7 +688,7 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
                                         <tr key={row.id} style={{height: '20px'}}>
                                             {row.getVisibleCells().map(cell => {
                                                 return (
-                                                    <td key={cell.id} style={{padding: '4px 5px'}}>
+                                                    <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '',padding: '4px 5px'}}>
                                                         {
                                                             flexRender(
                                                                 cell.column.columnDef.cell,
@@ -685,7 +734,7 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
                                             <tr key={row.id} style={{height: '20px'}}>
                                                 {row.getVisibleCells().map(cell => {
                                                     return (
-                                                        <td key={cell.id} style={{padding: '4px 5px'}}>
+                                                        <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '', padding: '4px 5px'}}>
                                                             {
                                                                 flexRender(
                                                                     cell.column.columnDef.cell,
