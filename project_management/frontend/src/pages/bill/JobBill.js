@@ -1,12 +1,16 @@
 import React, { useState, useMemo, useEffect }  from 'react';
 import { useParams } from 'react-router-dom';
-import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, 
+  getExpandedRowModel, } from '@tanstack/react-table'
 import { Dialog, DialogContent, Grid, Typography, IconButton, Portal, Snackbar, Alert } from '@mui/material';
 import { FileUploadSection, InputField, ProgressButton } from '../../components/Components';
 
+// Icons
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RequestPageIcon from '@mui/icons-material/RequestPage';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import useAuth from '../auth/useAuth';
@@ -39,6 +43,8 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
         setData([])
         estimate?.estimateheaderSet?.map(header => {
             header?.subRows?.map(lineItem => {
+                // Add the header description for meta data
+                lineItem.header = header.description
                 setData(prev => [...prev, lineItem])
             })
         });
@@ -67,8 +73,35 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
     }
 
     if (data) {
+        // Create a data structure with summarised headers and lineitem subRows
+        let summarisedData = {}
+        summarisedData = data.reduce((items, item) => {
+            let counter = 0;
+            const {id, description, quantity, itemType, rate, extension, gross, header} = item;
+
+            // Check if the items descriptions are the same
+            const itemIndex = items.findIndex(item => item.description.trim() === description.trim())
+
+            if(itemIndex === -1) {
+                // Create a new header row
+                const subRows = [{id, description: header, quantity, itemType, rate, extension, gross}]
+                items.push({counter, description, quantity, itemType, rate, extension, gross, subRows}); 
+                counter += 1;
+            } else {
+                // Add to the existing header row
+                items[itemIndex].quantity = parseFloat(items[itemIndex].quantity) + parseFloat(quantity);
+                items[itemIndex].itemType = itemType.slice(-1) == 's' ? itemType : itemType + 's';
+                items[itemIndex].rate = parseFloat(items[itemIndex].rate) + parseFloat(rate);
+                items[itemIndex].extension = parseFloat(items[itemIndex].extension) + parseFloat(extension);
+                items[itemIndex].gross = parseFloat(items[itemIndex].gross) + parseFloat(gross);
+                items[itemIndex].subRows.push({id, description: header, quantity, itemType, rate, extension, gross});
+            }
+
+            return items;
+        }, []);
+        
         return <BillHome open={open} handleClose={handleClose} 
-            id={id} data={data} 
+            id={id} data={summarisedData} 
             bills={billData} 
             setBillAttachment={setBillAttachment}
             setNewBill={setNewBill} setCreateBill={setCreateBill}/>
@@ -302,43 +335,100 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
     // Table Columns
     const estimateTableColumns = useMemo(() => [
         {
+            id: 'expander',
+            minSize: 20,
+            size: 40,
+            maxSize: 40,
+            header: ({ table }) => (
+                <IconButton 
+                    style={{padding: '0px 8px'}}
+                    {...{
+                        onClick: table.getToggleAllRowsExpandedHandler(),
+                    }}
+                >
+                    {table.getIsAllRowsExpanded() ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
+                </IconButton>
+            ),
+            cell: ({ row }) => (
+                <>
+                    {/* <Checkbox checked={row.getIsSelected()} onChange={row.getToggleSelectedHandler()}/> */}
+                    {row.getCanExpand() ? (
+                        <IconButton onFocus={(e) => row.getIsSelected() ? null : row.toggleSelected()}
+                        style={{padding: '0px 8px'}}
+                        {...{
+                            onClick: row.getToggleExpandedHandler(),
+                        }}
+                        >
+                        {row.getIsExpanded() ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
+                        </IconButton>
+                    ) : (
+                        ''
+                    )}
+                </>
+            )
+        },
+        {
             accessorKey: 'description',
             header: () => 'Description',
-            minSize: 150,
-            size: 150,
-            maxSize: 150,
+            minSize: 400,
+            size: 400,
+            maxSize: 400,
         },
         {
             accessorKey: 'quantity',
             header: () => 'Quantity',
-            minSize: 150,
-            size: 150,
-            maxSize: 150,
+            cell: info => parseFloat(info.getValue()).toFixed(2),
+            minSize: 50,
+            size: 50,
+            maxSize: 50,
         },
         {
             accessorKey: 'itemType',
             header: () => 'Units',
-            minSize: 150,
-            size: 150,
-            maxSize: 150,
+            minSize: 50,
+            size: 50,
+            maxSize: 50,
         },
         {
             accessorKey: 'rate',
             header: () => 'Rate',
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
-            minSize: 150,
-            size: 150,
-            maxSize: 150,
+            cell: (info) => (
+                <>
+                    {info.row.getCanExpand() ? (
+                        new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()/info.row.original.subRows.length)
+                    ): (
+                        new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue())
+                    )}
+               </>
+            ) ,
+            minSize: 75,
+            size: 75,
+            maxSize: 75,
         },
         {
             accessorKey: 'extension',
             header: () => 'Amount',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
-            minSize: 150,
-            size: 150,
-            maxSize: 150,
+            minSize: 100,
+            size: 100,
+            maxSize: 100,
         },
     ], []);
+    
+    
+    const [expanded, setExpanded] = useState({})
+    const estimateTable = useReactTable({
+        data,
+        columns: estimateTableColumns,
+        state: {
+            expanded
+        },
+        onExpandedChange: setExpanded,
+        getSubRows: row => row.subRows,
+        getCoreRowModel: getCoreRowModel(),
+        getExpandedRowModel: getExpandedRowModel(),
+    });  
+
 
     const billTableColumns = useMemo(() => [
         {
@@ -392,13 +482,6 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
             maxSize: 45,
         },
     ], []);
-
-    const estimateTable = useReactTable({
-        data,
-        columns: estimateTableColumns,
-        getCoreRowModel: getCoreRowModel(),
-    });  
-
     
     const [sorting, setSorting] = useState([{"id": "supplier", "asc": true}])
     const billsTable = useReactTable({
