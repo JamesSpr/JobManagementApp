@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from "react-router-dom";
-import { IconButton, Button, Box, FormControl, AppBar, Toolbar, Menu, MenuItem } from '@mui/material';
+import { IconButton, Button, Box, FormControl, AppBar, Toolbar, Menu, MenuItem, Typography } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import useAuth from "../pages/auth/useAuth";
+import useApp from '../context/useApp';
 import axios from '../hooks/axios';
 import SideBar from './SideBar';
 
 const Navbar = () => {
     const { auth, setAuth } = useAuth();
+    const { app } = useApp();
     
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -80,30 +82,8 @@ const Navbar = () => {
 
     const authLinks = () => (
         <>
-            {/* <FormControl style={{paddingTop:10, paddingLeft:15, paddingRight:15}} >
-                <Button variant="outlined" onClick={() => {navigate('/locations')}} style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}} >Locations</Button>
-            </FormControl>
-            <FormControl style={{paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}} >Clients</Button>
-            </FormControl>
-            <FormControl style={{paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}}>Contractors</Button>
-            </FormControl>
-            <FormControl style={{paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}}>Analytics</Button>
-            </FormControl> */}
-            {/* <FormControl style={{paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" onClick={(e) => {navigate('/settings');}} style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}}>Settings</Button>
-            </FormControl> */}
-
-            {/* <FormControl style={{float:'right', paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" onClick={logout} style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}}>Logout</Button>
-            </FormControl> */}
-            {/* <FormControl style={{float:'right', paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}}>Account</Button>
-            </FormControl> */}
             <FormControl style={{float:'right', paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px'}} startIcon={<SearchIcon /> }>Search...</Button>
+                <Button variant="outlined" style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px', width: '161px', marginRight: '16px'}} startIcon={<SearchIcon /> }>Search...</Button>
             </FormControl>
         </>
     );
@@ -134,8 +114,15 @@ const Navbar = () => {
                         }}>
                         <img alt="Aurify logo" src={"/static/images/aurify_logo.png"} width='145px'/>
                     </IconButton> 
+
+                    <Box sx={{flexGrow:1, textAlign: 'center'}}>
+                        {app ? <>
+                        <Typography variant='h6'>{app.title ?? ''}</Typography>
+                        <Typography variant='h6'>{app.subTitle ?? ''}</Typography>
+                        </> : <></>}
+                    </Box>
                     
-                    <Box sx={{flexGrow:1}}>
+                    <Box sx={{flexGrow:0}}>
                         {auth?.user ? authLinks() : <></>}
                     </Box>
 

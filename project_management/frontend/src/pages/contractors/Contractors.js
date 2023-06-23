@@ -262,7 +262,7 @@ const Contractors = () => {
                     },
                 }),
             }).then((response) => {
-                console.log(response);
+                // console.log(response);
                 const res = response?.data?.data?.myob_create;
 
                 // TODO: Add Snackbar
@@ -293,7 +293,7 @@ const Contractors = () => {
                                 },
                             }),
                         }).then((response) => {
-                            console.log(response);
+                            // console.log(response);
                             const res = response?.data?.data?.create;
                             // TODO: Add Snackbar
                             if(res.success){

@@ -58,7 +58,7 @@ export type JobStage = {
 }
 
 export interface IAuth {
-    user : {
+    user: {
         id: String;
         username: String;
         refreshToken: String;
@@ -79,6 +79,16 @@ export interface IAuth {
 export type AuthContextType = {
     auth?: IAuth;
     setAuth: (auth: IAuth) => void;
+}
+
+export interface AppType {
+    title: String
+    subTitle: String
+}
+
+export type AppContextType = {
+    app?: AppType;
+    setApp: (app: AppType) => void;
 }
 
 export interface InputFieldType {

@@ -235,7 +235,7 @@ const CreateBill = ({ open, handleClose, handleBack, id, setBills, contractors, 
             }),
         }).then((response) => {
             const res = response?.data?.data?.create; 
-            console.log(res);
+            // console.log(res);
             if(res.success) {
                 setBills(prev => ([...prev, res.bill]));
                 handleBack();
@@ -243,13 +243,13 @@ const CreateBill = ({ open, handleClose, handleBack, id, setBills, contractors, 
             else {
                 setSnackVariant('error');
                 setSnackMessage(res.message);
-                console.log("MYOB Create Bill", res)
+                // console.log("MYOB Create Bill", res)
             }
         }).catch((err) => {
             console.log("error:", err);
             setSnackVariant('error');
             setSnackMessage(res.message);
-            console.log("MYOB Create Bill", res)
+            // console.log("MYOB Create Bill", res)
         }).finally(() => {
             setSnack(true);
             setWaiting(false);
@@ -450,13 +450,9 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
 
     const footerSum = (props) => {
         let sum = 0.0
-        console.log(props.column.id);
-        console.log(props.table.getRowModel());
 
         for(var i = 0; i < props.table.getRowModel().flatRows.length; i++) {
-            console.log(i, sum);
             if(props.table.getRowModel().flatRows[i].depth === 0) {
-                console.log(props.table.getRowModel().flatRows[i].getValue(props.column.id))
                 sum += Number(props.table.getRowModel().flatRows[i].getValue(props.column.id))
             }
         }

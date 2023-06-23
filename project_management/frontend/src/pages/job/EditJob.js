@@ -7,6 +7,7 @@ import EstimateModule from './estimate/Tabs';
 import useEstimate from './estimate/useEstimate';
 import axios from 'axios';
 import useAuth from '../auth/useAuth';
+import useApp from '../../context/useApp';
 import { usePrompt } from '../../hooks/promptBlocker';
 
 import Settings from '@mui/icons-material/Settings';
@@ -26,6 +27,7 @@ const JobPage = () => {
     }
     
     const { auth } = useAuth();
+    const { setApp } = useApp();
     const { estimateSet, setEstimateSet } = useEstimate();
 
     const [job, setJob] = useState({
@@ -291,7 +293,7 @@ const JobPage = () => {
                 },
             }),
             }).then((response) => {
-                console.log(response);
+                // console.log(response);
                 const job_data = response?.data?.data?.job_all?.edges[0]?.node;
                 const location_data = response?.data?.data?.locations;
                 const clients = response?.data?.data?.clients;
@@ -330,13 +332,14 @@ const JobPage = () => {
                 // setInvoiceRef(job_data?.jobinvoiceSet[0]?.id ?? false);
                 setInvoice(job_data?.jobinvoiceSet[0]?.invoice ?? false);
                 jobStages.map((values) => {
-                    job_data.stage === values['name'] ? 
-                        setStage(values['description']) : null;
+                    if(job_data.stage === values['name']){
+                        setStage(values['description'])
+                    }
                 })
 
                 setLoading(false);
                 setUpdateRequired(false);
-                
+
             }).catch((err) => {
                 // TODO: handle error
                 if(err.name === "CanceledError") {
@@ -351,6 +354,15 @@ const JobPage = () => {
             controller.abort();
         }
     }, []);
+
+    useEffect(() => {
+        jobStages.map((values) => {
+            if(job.stage === values['name']){
+                setStage(values['description'])
+                setApp(prev => ({...prev, title: getJobName(), subTitle: values['description']}));
+            }
+        })
+    }, [job.po, job.sr, job.otherId, job.location, job.building, job.title, job.stage])
 
     const handleUploadChanges = async () => {
         let partialError = false;
@@ -850,7 +862,7 @@ const JobPage = () => {
             setSettingsDialog(false);
         }
     }
-
+ 
     return (
         <>
         {loading?
@@ -861,10 +873,10 @@ const JobPage = () => {
         <>
             <Grid container spacing={3}>
                 {/* Title and Stage */}
-                <Grid item xs={12} align="center">
+                {/* <Grid item xs={12} align="center">
                     <Typography variant='h6'>{getJobName()}</Typography>
                     <Typography variant='h6'>{stage}</Typography>
-                </Grid>
+                </Grid> */}
                 {/* Request Details */}
                 <Grid item xs={12} align="center">
                     <InputField type="select" name="client" label="Client" value={job.client} onChange={handleInput}>

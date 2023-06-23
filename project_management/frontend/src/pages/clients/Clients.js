@@ -104,7 +104,7 @@ const Clients = () => {
                 return
             }
 
-            console.log(res)
+            // console.log(res)
             myobUID = res.uid
             successfulMYOBAddition = true
 
@@ -113,7 +113,7 @@ const Clients = () => {
         });
 
         if(successfulMYOBAddition) {
-            console.log(myobUID)
+            // console.log(myobUID)
             await axiosPrivate({
                 method: 'post',
                 data: JSON.stringify({

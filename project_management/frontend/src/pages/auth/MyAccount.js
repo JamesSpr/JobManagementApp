@@ -51,7 +51,7 @@ const MyAccount = () => {
                 }),
             }).then((response) => {
                 const res = response?.data?.data?.user;
-                console.log(res);
+                // console.log(res);
                 setFirstName(res.firstName);
                 setLastName(res.lastName);
                 setPhone(res.phone);
@@ -62,7 +62,7 @@ const MyAccount = () => {
             }).catch((err) => {
                 if (axios.isCancel(err)) {
                     // API Request has been cancelled
-                    console.log("API Request Cancelled!");
+                    // console.log("API Request Cancelled!");
                 } else {
                     // todo:handle error
                     console.log("Please Contact Admin. Error[00001]:", err)
@@ -120,7 +120,7 @@ const MyAccount = () => {
                 
             });
         } catch (err) {
-            console.log(err)
+            // console.log(err)
             setUploadStatusMessage("Server Error: " + err?.response?.data?.errors[0]?.message)
             setWaiting(false);
             setUploadStatus("Error");
@@ -155,7 +155,7 @@ const MyAccount = () => {
                 
             });
         } catch (err) {
-            console.log(err)
+            // console.log(err)
             setUploadStatusMessage("Server Error: " + err?.response?.data?.errors[0]?.message)
             setWaiting(false);
             setUploadStatus("Error");

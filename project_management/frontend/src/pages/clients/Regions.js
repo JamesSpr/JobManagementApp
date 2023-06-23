@@ -218,7 +218,7 @@ const Regions = () => {
             }, 
         }),
         }).then((response) => {
-            console.log(response)
+            // console.log(response)
             const res = response?.data?.data?.delete_region;
             // console.log(res);
             if(res.success){

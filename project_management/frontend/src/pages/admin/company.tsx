@@ -167,7 +167,7 @@ const Insurances = () => {
                 }),
             }).then((response) => {
                 const res = response?.data?.data?.insurance; 
-                console.log(res);
+                // console.log(res);
                 setData(res);
             }).catch((err) => {
                 console.log("error fetching data:", err);
@@ -301,7 +301,7 @@ const Insurances = () => {
                 }),
             }).then((response) => {
                 const res = response?.data?.data?.upload; 
-                console.log(res);
+                // console.log(res);
                 if(res.success) {
                     setNewInsurancePaths({filename: res.filePath, thumbnail: res.thumbnailPath});
                 }
@@ -388,7 +388,7 @@ const NewInsurance = ({ open, onClose, newInsurance, setData }: {open: boolean, 
                 }),
             }).then((response) => {
                 const res = response?.data?.data?.create;
-                console.log(res);
+                // console.log(res);
                 if(res.success) {
                     setData((old: any) => ([...old, res.data]))
                     setInsurance({description:'', issueDate: '', startDate: '', expiryDate: '', active: true, filename: '', thumbnail: ''})

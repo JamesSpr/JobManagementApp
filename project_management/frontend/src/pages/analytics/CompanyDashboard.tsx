@@ -43,7 +43,7 @@ const CompanyDashboard = () => {
                 }),
             }).then((response) => {
                 const res = response?.data?.data;
-                console.log(res);
+                // console.log(res);
 
                 setLastSync(res);
 
@@ -84,7 +84,7 @@ const CompanyDashboard = () => {
             }),
         }).then((response) => {
             const res = response?.data?.data.transactions;
-            console.log(res);
+            // console.log(res);
             setLastSync(prev => ({ ...prev, Transaction: new Date(Date.now()) } as LastSyncType))
         }).catch((err) => {
             // TODO: handle error
@@ -116,7 +116,7 @@ const CompanyDashboard = () => {
             }),
         }).then((response) => {
             const res = response?.data?.data.accounts;
-            console.log(res);
+            // console.log(res);
             setLastSync(prev => ({...prev, Account: new Date(Date.now())} as LastSyncType))
         }).catch((err) => {
             // TODO: handle error
@@ -148,7 +148,7 @@ const CompanyDashboard = () => {
             }),
         }).then((response) => {
             const res = response?.data?.data.jobs;
-            console.log(res);
+            // console.log(res);
             setLastSync(prev => ({...prev, Client: new Date(Date.now())} as LastSyncType))
         }).catch((err) => {
             // TODO: handle error
@@ -180,7 +180,7 @@ const CompanyDashboard = () => {
             }),
         }).then((response) => {
             const res = response?.data?.data.jobs;
-            console.log(res);
+            // console.log(res);
             setLastSync(prev => ({...prev, Job: new Date(Date.now())} as LastSyncType))
         }).catch((err) => {
             // TODO: handle error

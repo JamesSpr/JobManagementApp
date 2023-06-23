@@ -290,7 +290,7 @@ const Contacts = () => {
             }, 
         }),
         }).then((response) => {
-            console.log(response)
+            // console.log(response)
             const res = response?.data?.data?.delete;
             if(res.success){
                 // Clear Dialog Content
@@ -353,7 +353,7 @@ const Contacts = () => {
                     'region': ''
                 });
                 setCreateContact(false);
-                console.log(res);
+                // console.log(res);
                 let contact = res?.clientContact;
                 contact['region'] = contact.region.id;
                 setData(oldArray => [...oldArray, contact]);
@@ -380,7 +380,7 @@ const Contacts = () => {
             }, 
         }),
         }).then((response) => {
-            console.log(response);
+            // console.log(response);
             const res = response?.data?.data.update;
             // TODO: Add Snackbar
             if(res.success){
