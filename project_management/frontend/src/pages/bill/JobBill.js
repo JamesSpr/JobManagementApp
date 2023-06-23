@@ -44,8 +44,8 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
         estimate?.estimateheaderSet?.map(header => {
             header?.subRows?.map(lineItem => {
                 // Add the header description for meta data
-                lineItem.header = header.description
-                setData(prev => [...prev, lineItem])
+                lineItem = {...lineItem, header: header?.description};
+                setData(prev => [...prev, lineItem]);
             })
         });
     }, [estimate])
@@ -448,6 +448,20 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
         getExpandedRowModel: getExpandedRowModel(),
     });  
 
+    const footerSum = (props) => {
+        let sum = 0.0
+        console.log(props.column.id);
+        console.log(props.table.getRowModel());
+
+        for(var i = 0; i < props.table.getRowModel().flatRows.length; i++) {
+            console.log(i, sum);
+            if(props.table.getRowModel().flatRows[i].depth === 0) {
+                console.log(props.table.getRowModel().flatRows[i].getValue(props.column.id))
+                sum += Number(props.table.getRowModel().flatRows[i].getValue(props.column.id))
+            }
+        }
+        return sum
+    }
 
     const billTableColumns = useMemo(() => [
         {
@@ -492,6 +506,7 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
             accessorKey: 'amount',
             header: () => 'Amount',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()/1.1),
+            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)/1.1),
             minSize: 100,
             size: 100,
             maxSize: 100,
@@ -755,6 +770,22 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
                                     )
                                 }
                             </tbody>
+                            <tfoot>
+                                {billsTable.getFooterGroups().map(footerGroup => (
+                                    <tr key={footerGroup.id}>
+                                    {footerGroup.headers.map(header => (
+                                        <th key={header.id} style={{padding: '4px 5px'}}>
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                header.column.columnDef.footer,
+                                                header.getContext()
+                                            )}
+                                        </th>
+                                    ))}
+                                    </tr>
+                                ))}
+                            </tfoot>
                         </table>
                     </Grid>
                     <Grid item xs={12}>
