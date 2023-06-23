@@ -1854,6 +1854,7 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
             user = MyobUser.objects.get(id=uid)
             converted = []
             _invoices = invoices.copy()
+            new_uids = {}
 
             while len(invoices) > 0:
                 query_limit = 35
@@ -1929,6 +1930,9 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
                     if not response.status_code == 201:
                         return self(success=False, message=response.text)
                     
+                    invoice_uid = response.headers['Location'].replace(url, "")
+                    new_uids.update({order['Number']: invoice_uid})
+                    
                     converted.append(order['Number'])
                     del invoices[:query_limit]
 
@@ -1936,6 +1940,7 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
             for inv in _invoices:
                 invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
                 if invoice:
+                    if inv.number in new_uids: invoice.myob_uid = new_uids[inv.number]
                     if not invoice.date_issued: invoice.date_issued = inv.date_issued
                     if date_paid: invoice.date_paid = date_paid
                     invoice.save()

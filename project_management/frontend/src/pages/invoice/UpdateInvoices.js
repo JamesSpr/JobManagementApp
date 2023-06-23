@@ -53,44 +53,44 @@ const UpdateJob = () => {
             const res = response?.data?.data?.convert_sale;
 
             if(res?.success) {
-                axiosPrivate({
-                    method: 'post',
-                    data: JSON.stringify({
-                        query: `
-                        mutation updateInvoices($invoices: [InvoiceUpdateInput]!) {
-                            update_invoices: updateInvoices(invoices: $invoices) {
-                                success
-                                message
-                                jobInvoice {
-                                    job {
-                                        po
-                                    }
-                                    invoice {
-                                        number
-                                        dateIssued
-                                    }
-                                }
-                            }
-                        }`,
-                        variables: {
-                            invoices: invoices,
-                        },
-                    }),
-                }).then((response) => {
-                    console.log(response);
-                    const res = response?.data?.data?.update_invoices;
-                    setWaiting(false);
-                    setSnack(true);
+                // axiosPrivate({
+                //     method: 'post',
+                //     data: JSON.stringify({
+                //         query: `
+                //         mutation updateInvoices($invoices: [InvoiceUpdateInput]!) {
+                //             update_invoices: updateInvoices(invoices: $invoices) {
+                //                 success
+                //                 message
+                //                 jobInvoice {
+                //                     job {
+                //                         po
+                //                     }
+                //                     invoice {
+                //                         number
+                //                         dateIssued
+                //                     }
+                //                 }
+                //             }
+                //         }`,
+                //         variables: {
+                //             invoices: invoices,
+                //         },
+                //     }),
+                // }).then((response) => {
+                //     console.log(response);
+                //     const res = response?.data?.data?.update_invoices;
+                //     setWaiting(false);
+                //     setSnack(true);
 
-                    if(res?.success) {
-                        setSnackVariant('success');
-                        setSnackMessage("Invoices Updated Successfully");
-                    }
-                    else {
-                        setSnackVariant('error');
-                        setSnackMessage("Error updating invoices");
-                    }
-                });
+                //     if(res?.success) {
+                setSnackVariant('success');
+                setSnackMessage("Invoices Updated Successfully");
+                //     }
+                //     else {
+                //         setSnackVariant('error');
+                //         setSnackMessage("Error updating invoices");
+                //     }
+                // });
             }
             else {
                 // console.log("Error", res)
