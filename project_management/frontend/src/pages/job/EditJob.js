@@ -86,6 +86,7 @@ const JobPage = () => {
     const [snackMessage, setSnackMessage] = useState('');
     const [snackVariant, setSnackVariant] = useState('info');
     const [updateRequired, setUpdateRequired] = useState(false);
+    const [titleChange, setTitleChange] = useState(false);
     const [settingsDialog, setSettingsDialog] = useState(false);
 
     // let saveCommand = false;
@@ -339,6 +340,7 @@ const JobPage = () => {
 
                 setLoading(false);
                 setUpdateRequired(false);
+                setTitleChange(true);
 
             }).catch((err) => {
                 // TODO: handle error
@@ -358,11 +360,12 @@ const JobPage = () => {
     useEffect(() => {
         jobStages.map((values) => {
             if(job.stage === values['name']){
-                setStage(values['description'])
                 setApp(prev => ({...prev, title: getJobName(), subTitle: values['description']}));
             }
         })
-    }, [job.po, job.sr, job.otherId, job.location, job.building, job.title, job.stage])
+
+        setTitleChange(false);
+    }, [titleChange])
 
     const handleUploadChanges = async () => {
         let partialError = false;
@@ -890,19 +893,19 @@ const JobPage = () => {
                 </Grid>
                 {/* Job Details */}
                 <Grid item xs={12} align="center"> 
-                    <InputField name="po" label="Purchase Order #" value={job.po} onChange={handleInput} />
-                    <InputField name="sr" label="Service Request #" value={job.sr} onChange={handleInput} />
-                    <InputField name="otherId" label="Other Id" value={job.otherId} onChange={handleInput} />
+                    <InputField name="po" label="Purchase Order #" value={job.po} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                    <InputField name="sr" label="Service Request #" value={job.sr} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                    <InputField name="otherId" label="Other Id" value={job.otherId} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
                 </Grid>
                 {/* Location & Title */}
                 <Grid item xs={12} align="center"> 
-                    <InputField type="select" name="location" label="Location" value={job.location} onChange={handleInput}>
+                    <InputField type="select" name="location" label="Location" value={job.location} onChange={handleInput} onBlur={() => setTitleChange(true)}>
                         <option key="blank_location" value={""}></option>
                         {locations?.map((loc) => (
                             loc.client.id === job.client ? <option key={loc.id} value={loc.id}>{loc.name} ({loc.region.shortName})</option> : <></>
                         ))}
                     </InputField>
-                    <InputField name="building" label="Building" value={job.building} onChange={handleInput}/>
+                    <InputField name="building" label="Building" value={job.building} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
                     <InputField name="detailedLocation" label="Detailed Location" value={job.detailedLocation} onChange={handleInput}/>
                 </Grid>
                 {/* Extra Details */}
@@ -930,7 +933,7 @@ const JobPage = () => {
                 </Grid>
                 {/* Title */}
                 <Grid item xs={12} align="center"> 
-                    <InputField wide name="title" label="Title" value={job.title} onChange={handleInput}/>
+                    <InputField wide name="title" label="Title" value={job.title} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
                 </Grid>
                 {/* Description */}
                 <Grid item xs={12} align="center"> 
