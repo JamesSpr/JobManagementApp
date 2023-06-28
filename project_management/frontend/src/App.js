@@ -10,24 +10,23 @@ import HomePage from "./pages/home/Home";
 import Approved from "./pages/job/Approved";
 import EditJobPage from "./pages/job/EditJob";
 import CreateJob from "./pages/job/CreateJob";
-import Locations from "./pages/clients/Locations";
 import Unauthorized from "./pages/auth/Unauthorized";
 import Settings from "./pages/settings/Settings";
 import Missing from "./pages/Missing";
 import MyAccount from "./pages/auth/MyAccount";
-import Clients from "./pages/clients/Clients";
-import Contacts from "./pages/clients/Contacts";
 import MyobActivate from "./pages/auth/Myob";
 import Contractors from "./pages/contractors/Contractors";
 import Invoices from "./pages/invoice/Invoices";
 import UpdateInvoices from "./pages/invoice/UpdateInvoices";
-import Regions from "./pages/clients/Regions";
 import Dashboard from "./pages/analytics/Dashboard";
 import Bills from "./pages/bill/Bills";
 import Wizard from "./pages/wizard/Wizard";
 import WizQuote from "./pages/wizard/WizQuote";
 import CompanyDashboard from "./pages/analytics/CompanyDashboard";
 import CompanyAdmin from "./pages/admin/Company";
+
+import ClientList from "./pages/clients/ClientList";
+import Client from "./pages/clients/Client";
 
 const App = () => {
     return ( 
@@ -48,13 +47,8 @@ const App = () => {
                             <Route path="job/edit/:id" element={<EditJobPage />} />
                             <Route path="job/approved/:input" element={<Approved />} />
                             <Route path="job/create/:input" element={<CreateJob />} />
-                            <Route path="clients" element={<Clients />} />
-                            <Route path="contacts" element={<Clients />} />
-                            <Route path="contacts/:client" element={<Contacts />} />
-                            <Route path="locations" element={<Clients />} />
-                            <Route path='locations/:client' element={<Locations />} />
-                            <Route path="regions" element={<Clients />} />
-                            <Route path="regions/:client" element={<Regions />} />
+                            <Route path="clients" element={<ClientList />} />
+                            <Route path="client/:client" element={<Client />} />
                             <Route path='myaccount' element={<MyAccount />} />
                             <Route path="myob" element={<MyobActivate />} />
                             <Route path="wizard" element={<Wizard />} />

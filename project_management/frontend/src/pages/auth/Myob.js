@@ -15,7 +15,7 @@ const MyobActivate = () => {
 
     const [queries, setQueries] = useState({client: "CompanyName eq 'BGIS'", contractor: "CompanyName eq 'Buildlogic Pty Ltd'", 
                                             bill: "Number eq '00006510'", order: "Number eq '00001570'", invoice: "Number eq '00001481'",
-                                             job: "Number eq 'PO8172189'", contractorName: "", contractorABN: ""});
+                                             job: "Number eq 'PO8172189'", contractorName: "", contractorABN: "", clientName: ""});
     const [fields, setFields] = useState({invoice: ""})
 
     if(code) {
@@ -574,6 +574,35 @@ const MyobActivate = () => {
         })
     }
 
+    const importClientFromABN = async () => {
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation myobImportClientFromAbn($uid:String!, $name:String!) {
+                    client: myobImportClientFromAbn(uid:$uid, name:$name) {
+                        success
+                        message
+                    }
+                }`,
+                variables: {
+                    uid: auth?.myob.id,
+                    name: queries.clientName,
+                }
+            })
+        }).then((response) => {
+            // console.log("success", response);
+            const res = response.data?.data?.client;
+            if(res.success) {
+                // console.log(res.message)
+                const clients = JSON.parse(res.message);
+                console.log("Clients:", clients)
+            }
+            else {
+                console.log("error!", JSON.parse(res.message) ?? "");
+            }
+        })
+    }
+    
     const importContractorFromABN = async () => {
         await axiosPrivate({
             method: 'post',
@@ -786,6 +815,10 @@ const MyobActivate = () => {
                     </Grid>
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Imports</Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <InputField width={250} label="Client Name" value={queries.clientName} onChange={(e) => setQueries(prev => ({...prev, clientName: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={importClientFromABN}>Import</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <InputField width={250} label="Contractor Name" value={queries.contractorName} onChange={(e) => setQueries(prev => ({...prev, contractorName: e.target.value}))}/>

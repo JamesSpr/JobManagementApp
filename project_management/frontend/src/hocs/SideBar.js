@@ -13,8 +13,8 @@ const SideBar = () => {
         if(newWindow) newWindow.opener = null
     }
 
-    const sideBarUpperOptions = ['Clients', 'Contacts', 'Locations', 'Regions', 'Contractors', 'Invoices', 'Bills']
-    const sideBarLowerOptions = ['Staff', 'Admin', 'Analytics', 'Settings', 'MYOB'] // 'Financials', 
+    const sideBarUpperOptions = ['Clients', 'Contractors', 'Invoices', 'Bills']
+    const sideBarLowerOptions = ['Admin', 'Analytics', 'Settings', 'MYOB'] // 'Financials', 
 
     return(
         <Drawer

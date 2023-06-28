@@ -6,7 +6,7 @@ import numpy as np
 import datetime
 import os
 import glob
-from ..models import ClientContact, Invoice, Job, Location, Client, ClientRegion, Estimate, EstimateHeader, EstimateItem
+from ..models import ClientContact, Invoice, Job, Location, Client, Region, Estimate, EstimateHeader, EstimateItem
 
 import sys
 sys.path.append("...")
@@ -150,7 +150,7 @@ class UploadLocationsCSV(graphene.Mutation):
             loc, created = Location.objects.get_or_create(
                 client_ref = "{:0>4}".format(tmp_data['Number'].to_numpy().tolist()[row]),
                 client = Client.objects.get(name=tmp_data['Client'].to_numpy().tolist()[row]),
-                region = ClientRegion.objects.get(short_name=tmp_data['Region'].to_numpy().tolist()[row]),
+                region = Region.objects.get(short_name=tmp_data['Region'].to_numpy().tolist()[row]),
             )
     
             loc.name = tmp_data['Base'].to_numpy().tolist()[row]
@@ -189,7 +189,7 @@ class UploadClientsCSV(graphene.Mutation):
 
         return UploadClientsCSV(success=True)
 
-class UploadClientRegionsCSV(graphene.Mutation):
+class UploadRegionsCSV(graphene.Mutation):
     class Arguments:
         file = graphene.String()
 
@@ -202,7 +202,7 @@ class UploadClientRegionsCSV(graphene.Mutation):
 
         print("Importing CSV File!")
         for row in range(len(tmp_data.to_numpy().tolist())):
-            cr, created = ClientRegion.objects.get_or_create(
+            cr, created = Region.objects.get_or_create(
                 short_name = tmp_data['short_name'].to_numpy().tolist()[row],
             )
             cr.name = tmp_data['name'].to_numpy().tolist()[row]
@@ -214,7 +214,7 @@ class UploadClientRegionsCSV(graphene.Mutation):
     
         print("Import Complete")
 
-        return UploadClientRegionsCSV(success=True)
+        return UploadRegionsCSV(success=True)
 
 class UploadClientContactsCSV(graphene.Mutation):
     class Arguments:
@@ -234,7 +234,7 @@ class UploadClientContactsCSV(graphene.Mutation):
                 first_name = tmp_data['first_name'].to_numpy().tolist()[row],
                 last_name = tmp_data['last_name'].to_numpy().tolist()[row],
                 client = Client.objects.get(name=tmp_data['company'].to_numpy().tolist()[row]),
-                region = ClientRegion.objects.get(short_name=tmp_data['region'].to_numpy().tolist()[row]),
+                region = Region.objects.get(short_name=tmp_data['region'].to_numpy().tolist()[row]),
             )
             cc.position = tmp_data['position'].to_numpy().tolist()[row]
             cc.email = tmp_data['email'].to_numpy().tolist()[row]

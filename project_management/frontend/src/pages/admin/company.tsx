@@ -57,7 +57,7 @@ const CompanyAdmin = () => {
 
     return (
     <>
-        <h2 style={{textAlign: "center", paddingBottom: '15px'}}>Company Admin Page for {auth?.user?.company?.name}</h2>
+        {/* <h2 style={{textAlign: "center", paddingBottom: '15px'}}>Company Admin Page for {auth?.user?.company?.name}</h2> */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={value} onChange={ (event, newValue) => {setValue(newValue)}} indicatorColor="primary" centered>
                 <Tab label={'About'} {...a11yProps(0)}/>
@@ -122,14 +122,6 @@ interface InsuranceDataType {
     active: boolean
     thumbnail: string
     filename?: string
-}
-
-import { RowData } from '@tanstack/react-table'
-import '@tanstack/react-table';
-declare module '@tanstack/react-table' {
-    interface TableMeta<TData extends RowData> {
-      updateData: (rowIndex: number, columnId: string, value: unknown) => void
-    }
 }
 
 const Insurances = () => {

@@ -50,7 +50,7 @@ class Client(models.Model):
     def __str__(self):
         return self.name
 
-class ClientRegion(models.Model):
+class Region(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     client = models.ForeignKey(Client, on_delete=PROTECT)
     short_name = models.CharField(max_length=30, blank=True)
@@ -69,7 +69,7 @@ class ClientContact(models.Model):
     position = models.CharField(max_length=50)
     phone = models.CharField(max_length=12)
     email = models.EmailField(max_length=80)
-    region = models.ForeignKey(ClientRegion, on_delete=PROTECT, null=True)
+    region = models.ForeignKey(Region, on_delete=PROTECT, null=True)
     client = models.ForeignKey(Client, on_delete=PROTECT)
 
     def __str__(self):
@@ -78,14 +78,14 @@ class ClientContact(models.Model):
 # Site Locations
 class Location(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
-    client_ref = models.CharField(blank=True, null=True, max_length=4)
-    name = models.CharField(max_length=50)
-    address = models.CharField(max_length=100)
-    locality = models.CharField(max_length=50)
+    client_ref = models.CharField(blank=True, null=True, max_length=32)
+    name = models.CharField(max_length=64)
+    address = models.CharField(max_length=128)
+    locality = models.CharField(max_length=64)
     state = models.CharField(max_length=3, choices=STATE_CHOICES, default='NSW')
     postcode = models.CharField(max_length=4, default='0000')
     client = models.ForeignKey(Client, on_delete=PROTECT)
-    region = models.ForeignKey(ClientRegion, on_delete=PROTECT)
+    region = models.ForeignKey(Region, on_delete=PROTECT)
 
     def __str__(self):
         return self.name

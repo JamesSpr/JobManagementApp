@@ -11,30 +11,30 @@ export type User = {
 
 export interface Job {
     id: Number,
-    po: String,
-    sr: String,
-    otherId: String,
+    po: string,
+    sr: string,
+    otherId: string,
     client: {
-        name: String
+        name: string
     }
     location: {
-        name: String,
+        name: string,
         region: {
-            shortName: String
+            shortName: string
         }
     }
-    building: String,
-    title: String,
-    priority: String,
+    building: string,
+    title: string,
+    priority: string,
     dateIssued: Date,
     overdueDate: Date,
-    stage: String,
-    description: String,
-    detailedLocation: String,
+    stage: string,
+    description: string,
+    detailedLocation: string,
     estimateSet: {
         id: Number
-        name: String,
-        description: String,
+        name: string,
+        description: string,
         price: Number,
         issueDate: Date,
         approvalDate: Date,
@@ -44,35 +44,72 @@ export interface Job {
     }
     jobinvoiceSet: {
         invoice: {
-            number: String,
+            number: string,
             dateCreated: Date,
             dateIssued: Date,
             datePaid: Date,
         }
     }
-    bsafeLink: String,
+    bsafeLink: string,
 }
 
 export type JobStage = {
 
 }
 
+
+
+export interface ContactType {
+    id: string
+    firstName: string
+    lastName: string
+    position: string
+    phone: string
+    email: string
+    region: {
+        id: string
+    }
+}
+
+export interface LocationType {
+    id: string
+    clientRef: string
+    name: string
+    address: string
+    locality: string
+    state: string
+    postcode: string
+    region: {
+        shortName: string
+        name: string
+        email: string
+    }
+}
+
+export interface RegionType {
+    id: string
+    shortName: string
+    name: string
+    email: string
+    billToAddress: string
+}
+
 export interface IAuth {
     user: {
-        id: String;
-        username: String;
-        refreshToken: String;
+        id: string;
+        username: string;
+        refreshToken: string;
         defaultPaginationAmount: Number;
         company?: {
-            id: String;
-            name: String;
-            logo: String;
+            id: string;
+            name: string;
+            logo: string;
         };
     },
     myob: {
-        id: String;
+        id: string;
     },
-    accessToken: String;
+    accessToken: string;
     sidebar: Boolean;
 }
     
@@ -82,13 +119,13 @@ export type AuthContextType = {
 }
 
 export interface AppType {
-    title: String
-    subTitle: String
+    title: string
+    subTitle: string
 }
 
 export type AppContextType = {
     app?: AppType;
-    setApp: (app: AppType) => void;
+    setApp: (app: any) => void;
 }
 
 export interface InputFieldType {
@@ -98,6 +135,7 @@ export interface InputFieldType {
     max?: string
     children?: ReactNode
     multiline?: boolean
+    rows?: number
     halfWidth?: boolean
     wide?: boolean
     width?: number
@@ -112,3 +150,20 @@ export interface InputFieldType {
 }
 
 export type HTMLElementChange = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+
+export interface SnackType {
+    active: boolean, 
+    variant: 'error' | 'info' | 'success' | 'warning' , 
+    message: string
+}
+
+export interface SnackBarType {
+    snack: {
+        active: boolean, 
+        variant: 'error' | 'info' | 'success' | 'warning' , 
+        message: string
+    }
+    setSnack: React.Dispatch<React.SetStateAction<SnackType>>
+}
+
+export const AusStates = ['NSW','QLD','VIC','TAS','WA','SA','ACT','NT']

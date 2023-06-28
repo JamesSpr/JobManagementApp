@@ -1,26 +1,36 @@
 
 import React, { FC, ReactNode, useEffect, useRef } from "react"; 
-import { Box, Button, CircularProgress, Portal, Snackbar, Alert } from "@mui/material";
+import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table, RowData, ColumnDef,
-    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row } from '@tanstack/react-table'
-import { HTMLElementChange, InputFieldType } from "../types/types";
+    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta } from '@tanstack/react-table'
+import { HTMLElementChange, InputFieldType, RegionType, SnackBarType } from "../types/types";
 import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
 
-export const InputField:FC<InputFieldType> = ({type="text", label, children, multiline=false, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
+declare module '@tanstack/react-table' {
+    interface TableMeta<TData extends RowData> {
+      updateData: (rowIndex: number, columnId: string, value: unknown) => void
+      getRegions?: () => RegionType[]
+    }
+}
 
-    const textareaRef = useRef<HTMLTextAreaElement>(document.createElement("txt") as HTMLTextAreaElement);
-    useEffect(() => {
-        if(textareaRef && multiline) {
-            textareaRef.current.style.height = "0px";
-            const scrollHeight = textareaRef.current.scrollHeight - 10;
-            textareaRef.current.style.height = scrollHeight + "px";
-        }
-    }, [props.value])
+export const InputField:FC<InputFieldType> = ({type="text", label, children, multiline=false, rows=0, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
 
+    
     let boxStyle = "inputBox"
-
     let styleClass = "inputField";
     error ? styleClass += " inputFieldError" : '';
+
+    const textareaRef = useRef<HTMLTextAreaElement>(document.createElement("txt") as HTMLTextAreaElement);
+    if(rows === 0) {
+        useEffect(() => {
+            if(textareaRef && multiline) {
+                textareaRef.current.style.height = "0px";
+                const scrollHeight = textareaRef.current.scrollHeight - 10;
+                textareaRef.current.style.height = scrollHeight + "px";
+            }
+        }, [props.value])
+        styleClass += " resizeable"
+    }
 
     // Custom styles
     if(width != 0) {
@@ -48,7 +58,11 @@ export const InputField:FC<InputFieldType> = ({type="text", label, children, mul
                 {type === "select" ? 
                     <select className={styleClass} {...props} required>{children}</select> :
                     multiline ?
-                        <textarea ref={textareaRef} className={styleClass} {...props} required/> :
+                        rows == 0 ?
+                            <textarea ref={textareaRef} className={styleClass} {...props} required/> 
+                            :
+                            <textarea rows={rows} className={styleClass} {...props} required/> 
+                        :
                         <input className={styleClass} title="" type={type} {...props} required/> 
                     }
                 <span className={error ? "floating-label inputFieldError" : "floating-label"}>{label}</span>
@@ -123,7 +137,8 @@ export const PaginationControls = <Type extends RowData>({table}: {table: Table<
 
 interface PaginatedTableType <T extends object> {
     data: T[]
-    setData?: (arg0: any) => {}
+    setData?: React.Dispatch<React.SetStateAction<any>>
+    tableMeta?: TableMeta<any>
     columns: ColumnDef<T>[]
     rowSelection?: {}
     setRowSelection?: () => {}
@@ -134,9 +149,12 @@ interface PaginatedTableType <T extends object> {
     sorting?: []
     setSorting?: () => []
     rowStyles?: {}
+    autoResetPageIndex?: boolean
+    skipAutoResetPageIndex?: () => void
+    setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>>
 }
 
-function useSkipper() {
+export const useSkipper = () => {
     const shouldSkipRef = React.useRef(true)
     const shouldSkip = shouldSkipRef.current
   
@@ -151,16 +169,15 @@ function useSkipper() {
   
     return [shouldSkip, skip] as const
 }
-  
-declare module '@tanstack/react-table' {
-    interface TableMeta<TData extends RowData> {
-      updateData: (rowIndex: number, columnId: string, value: unknown) => void
-    }
-}
 
-export const PaginatedTable = <T extends object>({data, setData, columns, columnFilters, setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles}: PaginatedTableType<T>) => {
+export const PaginatedTable = <T extends object>({data, setData, tableMeta, columns, columnFilters, 
+    setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles, 
+    setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex}: PaginatedTableType<T>) => {
+
+
+    const [aRPI, skipARPI] = autoResetPageIndex === undefined || skipAutoResetPageIndex === undefined ? useSkipper() : [autoResetPageIndex, skipAutoResetPageIndex]
     
-    const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
+
     const table = useReactTable({
         data,
         columns,
@@ -182,14 +199,17 @@ export const PaginatedTable = <T extends object>({data, setData, columns, column
         getFacetedMinMaxValues: getFacetedMinMaxValues(),
         globalFilterFn: fuzzyFilter,
         enableMultiSort: true,
-        autoResetPageIndex,
+        autoResetPageIndex: aRPI,
         // Provide our updateData function to our table meta
-        meta: {
+        meta: tableMeta ?? {
             updateData: (rowIndex: any, columnId: any, value: any) => {
                 // Skip page index reset until after next rerender
                 if(setData) {
-                    skipAutoResetPageIndex()
-                    setData((old: any) =>
+                    if(setUpdateRequired !== undefined) {
+                        setUpdateRequired(true);
+                    }
+                    skipARPI()
+                    setData((old: any) => 
                         old.map((row: any, index: any) => {
                         if (index === rowIndex) {
                             return {
@@ -204,6 +224,8 @@ export const PaginatedTable = <T extends object>({data, setData, columns, column
             },
         },
     })
+
+    useEffect(()=> {table.setPageSize(20)},[])
 
     return (
         <>
@@ -273,8 +295,22 @@ export const PaginatedTable = <T extends object>({data, setData, columns, column
     )
 }
 
+export const Footer = ({children}:{children: ReactNode}) => (
+    <>
+        <Box sx={{ flexGrow: 1}}>
+            <AppBar position="fixed" sx={{ top:'auto', bottom: 0, zIndex: (theme) => theme.zIndex.drawer + 1 }}
+            style={{height: '50px', backgroundColor: 'rgb(250,250,250)', boxShadow: 'rgb(0 0 0 / 10%) 0px 1px 1px -1px, rgb(0 0 0 / 10%) 0px 1px 1px 0px, rgb(0 0 0 / 10%) 0px 0 10px 2px'}}>
+                <Toolbar style={{minHeight: '50px'}}>
+                    <Box style={{margin: '0 auto'}}>
+                        {children}
+                    </Box>
+                </Toolbar>
+            </AppBar>
+        </Box>
+    </>
+)
 
-export const SnackBar = ({snack, setSnack}: {snack: {active: boolean, variant: 'error' | 'info' | 'success' | 'warning' , message: string}, setSnack: React.Dispatch<React.SetStateAction<string>>}) => (
+export const SnackBar:FC<SnackBarType> = ({snack, setSnack}) => (
     <>
         <Portal>
             {/* Notification Snackbar */}

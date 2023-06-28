@@ -3,7 +3,7 @@ from genericpath import exists
 import shutil
 from accounts.models import CustomUser
 from api.models import Client, Contractor, Estimate, Job, Invoice, JobInvoice, Bill
-from api.schema import InvoiceUpdateInput, JobInvoiceType
+from api.schema import InvoiceUpdateInput, JobInvoiceType, ClientType
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
@@ -18,6 +18,7 @@ from .models import MyobUser
 from django.utils import timezone
 import environ
 import requests
+import urllib.parse
 
 insurance_expiry_date = date(2023, 3, 31)
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
@@ -214,22 +215,26 @@ class myobGetClients(graphene.Mutation):
 class myobCreateClient(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
-        client = graphene.String()
+        name = graphene.String()
 
     success = graphene.Boolean()
-    uid = graphene.String()
     message = graphene.String()
+    client = graphene.Field(ClientType)
 
     @classmethod
-    def mutate(self, root, info, uid, client):
+    def mutate(self, root, info, uid, name):
         env = environ.Env()
         environ.Env.read_env()
+
+        if(Client.objects.filter(name=name).exists()):
+            return self(success=False, message="Client Already Exists")
 
         if MyobUser.objects.filter(id=uid).exists():
             checkTokenAuth(uid)
             user = MyobUser.objects.get(id=uid)
 
-            client_filter = "" if client == "" else f"?$filter=CompanyName eq'{client}'"
+            name = urllib.parse.quote(name)
+            client_filter = "" if name == "" else f"?$filter=CompanyName eq'{name}'"
             link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer{client_filter}"
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -251,7 +256,7 @@ class myobCreateClient(graphene.Mutation):
                 'Accept-Encoding': 'gzip,deflate',
             }
             payload = json.dumps({
-                'CompanyName': client,
+                'CompanyName': name,
                 'IsActive': True,
                 'SellingDetails': {
                     'SaleLayout': 'NoDefault',
@@ -266,12 +271,15 @@ class myobCreateClient(graphene.Mutation):
                 return self(success=False, message=response.text)
             
             myob_uid = response.headers['Location'].replace(link, "")
+            
+            client = Client()
+            client.name = name
+            client.myob_uid = myob_uid
+            client.save()
 
-            return self(success=True, message=response.text, uid=myob_uid)
+            return self(success=True, client=client, message="Client Successfully Created")
         else:
             return self(success=False, message="MYOB Connection Error")
-
-
 
 class myobGetContractors(graphene.Mutation):
     class Arguments:
@@ -1228,6 +1236,54 @@ class myobImportContractorsFromBills(graphene.Mutation):
         else:
             return self(success=False, message="MYOB Connection Error")
 
+class myobImportClientFromABN(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        name = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, uid, name):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+
+            ## Get Contractor by ABN
+
+            name = urllib.parse.quote(name)
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$filter=CompanyName eq '{name}'"
+
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.request("GET", url, headers=headers, data={})
+            res = json.loads(response.text)
+
+            if res['Items'] and not len(res['Items']) > 0:
+                return self(success=False, message="Client not found with the provided details")
+            
+            clientDetails = res['Items'][0]
+            
+            if(Client.objects.filter(myob_uid=clientDetails['UID']).exists()):
+                return self(success=False, message="Client Already Exists")
+            
+            client = Client()
+            client.name = clientDetails['CompanyName']
+            client.myob_uid = clientDetails['UID']
+            client.save()
+
+            return self(success=True, message="Client Imported")
+        else:
+            return self(success=False, message="MYOB Connection Error")
+        
 class myobImportContractorFromABN(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -1248,8 +1304,9 @@ class myobImportContractorFromABN(graphene.Mutation):
 
             ## Get Contractor by ABN
 
+            name = urllib.parse.quote(name)
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=CompanyName eq '{name}' and BuyingDetails/ABN eq '{abn}'"
-            
+
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1259,7 +1316,7 @@ class myobImportContractorFromABN(graphene.Mutation):
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
 
-            if not len(res['Items']) > 0:
+            if res['Items'] and not len(res['Items']) > 0:
                 return self(success=False, message="Contractor not found with the provided details")
             
             contractorDetails = res['Items'][0]
@@ -1612,7 +1669,7 @@ class myobCreateBill(graphene.Mutation):
                 return self(success=False, message="Please sync job with MYOB before creating invoice!")
 
             # Check to see if bill already exists in the system
-            if Bill.objects.filter(supplier=supplier, invoice_number=newBill['invoiceNumber']).exists():
+            if Bill.objects.filter(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).exists():
                 return self(success=False, message="Bill Already Exists", error=Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber']))
 
             folder_name = str(job)
@@ -2190,6 +2247,7 @@ class Mutation(graphene.ObjectType):
     myob_sync_contractors = myobSyncContractors.Field()
     
     myob_import_contractor_from_abn = myobImportContractorFromABN.Field()
+    myob_import_client_from_abn = myobImportClientFromABN.Field()
     myob_import_contractors_from_bills = myobImportContractorsFromBills.Field()
     myob_import_bgis_invoices = myobImportBGISInvoices.Field()
 

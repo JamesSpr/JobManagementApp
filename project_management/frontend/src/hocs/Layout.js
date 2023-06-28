@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React from 'react';
 import { styled, createTheme, useTheme, ThemeProvider } from '@mui/material/styles';
 import Navbar from './Navbar';
-import Footer from './Footer';
 import useAuth from "../pages/auth/useAuth";
 import { EstimateProvider } from '../context/EstimateProvider';
 

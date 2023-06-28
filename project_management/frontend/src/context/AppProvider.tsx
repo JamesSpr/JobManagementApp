@@ -8,7 +8,6 @@ export const AppProvider = ({ children }: { children?: ReactNode }) => {
     const [app, setApp] = useState<AppType>();
 
     const location = useLocation();
-    
     useEffect(() => {
         setApp(prev => ({...prev, title: '', subTitle: ''}));
     }, [location]);

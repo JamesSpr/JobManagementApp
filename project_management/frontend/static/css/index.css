@@ -194,7 +194,7 @@ tr.EmptyTableData:hover {
   width: 750px;
 }
 
-textarea.inputField {
+textarea.resizeable {
   min-height: 18.4px;
   height: 18.4px;
 }

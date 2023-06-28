@@ -13,8 +13,8 @@ from django.db import connection
 from accounts.models import CustomUser
 from api.services.create_completion_documents import CreateCompletionDocuments
 from .services.email import AllocateJobEmail, CloseOutEmail, EmailQuote
-from .models import Insurance, Estimate, EstimateHeader, EstimateItem, Job, JobInvoice, Location, Contractor, Client, ClientContact, ClientRegion, Invoice, Bill
-from .services.import_csv import UploadClientContactsCSV, UploadClientRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
+from .models import Insurance, Estimate, EstimateHeader, EstimateItem, Job, JobInvoice, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
+from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote, CreateBGISEstimate
 from .services.get_pdf_thumbnail import PDFToImage
@@ -393,60 +393,6 @@ class UpdateJob(graphene.Mutation):
 
         return self(job=job, success=True, message="Job Updated Successfully")
 
-class LocationType(DjangoObjectType):
-    class Meta:
-        model = Location
-        fields = '__all__'
-
-class CreateLocation(graphene.Mutation):
-    class Arguments:
-        client = graphene.String()
-        client_ref = graphene.String()
-        region = graphene.String()
-        name = graphene.String()
-        address = graphene.String()
-        locality = graphene.String()
-        state = graphene.String()
-        postcode = graphene.String()
-
-    location = graphene.Field(LocationType)
-    success = graphene.Boolean()
-
-    @classmethod
-    def mutate(self, root, info, client, client_ref, region, name, address, locality, state, postcode):
-        location, created = Location.objects.get_or_create(
-            client = Client.objects.get(name=client),
-            client_ref = "{:0>4}".format(client_ref),
-            region = ClientRegion.objects.get(id=region),
-            name = name
-        )
-        location.address = address
-        location.locality = locality
-        location.state = state
-        location.postcode = postcode
-        location.save()
-
-        return self(location=location, success=True)
-    
-class DeleteLocation(graphene.Mutation):
-    class Arguments:
-        id = graphene.String()
-
-    ok = graphene.Boolean()
-
-    @classmethod
-    def mutate(self, root, info, id):
-        location = Location.objects.get(id=id)
-        if location:
-            location.delete()
-            return self(ok=True)
-        
-        return self(ok=False)
-
-# class LocationNamesType(DjangoObjectType):
-#     class Meta:
-#         model = Location
-#         fields = ('id', 'name')
 
 class EstimateType(DjangoObjectType):
     class Meta:
@@ -717,50 +663,155 @@ class CreateClient(graphene.Mutation):
 
         return self(success=True, message="Client Successfully Added", client=client)
 
-class ClientRegionType(DjangoObjectType):
+class UpdateClient(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+        name = graphene.String()
+        myob_uid = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    client = graphene.Field(ClientType)
+
+    @classmethod
+    def mutate(self, root, info, id, name = False, myob_uid = False):
+        if(not Client.objects.filter(id=id).exists()):
+            return self(success=False, message="Client Not Found")
+        
+        client = Client.objects.get(id=id)
+        if name: client.name = name
+        if myob_uid: client.myob_uid = myob_uid
+        client.save()
+
+        return self(success=True, message="Client Successfully Updated", client=client)
+
+
+class LocationType(DjangoObjectType):
     class Meta:
-        model = ClientRegion
+        model = Location
         fields = '__all__'
 
-class ClientRegionInput(graphene.InputObjectType):
-    id = graphene.String(required=False)
-    client = graphene.String()
+class LocationInputType(graphene.InputObjectType):
+    id = graphene.String()
+    client_ref = graphene.String()
+    region = graphene.String()
+    name = graphene.String()
+    address = graphene.String()
+    locality = graphene.String()
+    state = graphene.String()
+    postcode = graphene.String()    
+
+class CreateLocation(graphene.Mutation):
+    class Arguments:
+        client = graphene.String()
+        new_location = LocationInputType()
+
+    location = graphene.Field(LocationType)
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, client, new_location):
+        
+        if(Location.objects.filter(client = Client.objects.get(name=client), name = new_location.name).exists()):
+            return self(success=False, message="Location Already Exists")
+
+        location = Location()
+        location.client = Client.objects.get(name=client)
+        location.client_ref = "{:0>4}".format(new_location.client_ref)
+        location.region = Region.objects.get(id=new_location.region)
+        location.name = new_location.name
+        location.address = new_location.address
+        location.locality = new_location.locality
+        location.state = new_location.state
+        location.postcode = new_location.postcode
+        location.save()
+
+        return self(location=location, success=True, message="Location Successfully Created")
+    
+class UpdateLocation(graphene.Mutation):
+    class Arguments:
+        client = graphene.String()
+        locations = graphene.List(LocationInputType)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, client, locations):
+        for loc in locations:
+            location = Location.objects.get(id=loc.id)
+            # location.client = Client.objects.get(name=client),
+            location.client_ref = "{:0>4}".format(loc.client_ref)
+            location.region = Region.objects.get(id=loc.region)
+            location.name = loc.name
+            location.address = loc.address
+            location.locality = loc.locality
+            location.state = loc.state
+            location.postcode = loc.postcode
+            location.save()
+
+        return self(success=True, message="Locations Updated Successfully")    
+    
+class DeleteLocation(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, id):
+        location = Location.objects.get(id=id)
+        if location:
+            location.delete()
+            return self(success=True)
+        
+        return self(success=False)
+
+class RegionType(DjangoObjectType):
+    class Meta:
+        model = Region
+        fields = '__all__'
+
+class RegionInput(graphene.InputObjectType):
+    id = graphene.String()
     name = graphene.String()
     shortName = graphene.String()
     email = graphene.String()
     billToAddress = graphene.String()
 
-class CreateClientRegion(graphene.Mutation):
+class CreateRegion(graphene.Mutation):
     class Arguments:
-        region = ClientRegionInput()
+        client = graphene.String()
+        region = RegionInput()
 
-    client_region = graphene.Field(ClientRegionType)
+    region = graphene.Field(RegionType)
     success = graphene.Boolean()
 
     @classmethod
-    def mutate(self, root, info, region):
-        client_region = ClientRegion()
-        client_region.client = Client.objects.get(name=region.client)
+    def mutate(self, root, info, client, region):
+        client_region = Region()
+        client_region.client = Client.objects.get(name=client)
         client_region.short_name = region.shortName.strip()
         client_region.name = region.name.strip()
         client_region.email = region.email.strip()
         client_region.bill_to_address = region.billToAddress.strip()
 
         client_region.save()
-        return CreateClientRegion(success=True, client_region=client_region)
+        return self(success=True, region=client_region)
 
-class UpdateClientRegion(graphene.Mutation):
+class UpdateRegion(graphene.Mutation):
     class Arguments:
-        regions = graphene.List(ClientRegionInput)
+        regions = graphene.List(RegionInput)
         client = graphene.String()
 
-    # client_region = graphene.Field(ClientRegionType)
+    # client_region = graphene.Field(RegionType)
     success = graphene.Boolean()
 
     @classmethod
     def mutate(self, root, info, regions, client):
         for region in regions:
-            client_region = ClientRegion(id=region.id)
+            client_region = Region(id=region.id)
             client_region.client = Client.objects.get(name=client)
             client_region.short_name = region.shortName.strip()
             client_region.name = region.name.strip()
@@ -770,7 +821,7 @@ class UpdateClientRegion(graphene.Mutation):
 
         return self(success=True)
 
-class DeleteClientRegion(graphene.Mutation):
+class DeleteRegion(graphene.Mutation):
     class Arguments:
         id = graphene.String()
 
@@ -778,7 +829,7 @@ class DeleteClientRegion(graphene.Mutation):
 
     @classmethod
     def mutate(self, root, info, id):
-        client_region = ClientRegion.objects.get(id=id)
+        client_region = Region.objects.get(id=id)
 
         if not client_region:
             return self(success=False) 
@@ -799,6 +850,10 @@ class DeleteClient(graphene.Mutation):
         client.delete()
         return self(ok=True)
 
+class ContractorContactType(DjangoObjectType):
+    class Meta:
+        model = ContractorContact
+        fields = '__all__'
 
 class ClientContactType(DjangoObjectType):
     class Meta:
@@ -815,23 +870,24 @@ class ClientContactInput(graphene.InputObjectType):
     region = graphene.String()
     client = graphene.String()
 
-class CreateClientContact(graphene.Mutation):
+class CreateContact(graphene.Mutation):
     class Arguments:
         contact = ClientContactInput()
+        client = graphene.String()
          
     client_contact = graphene.Field(ClientContactType)
     success = graphene.Boolean()
 
     @classmethod
-    def mutate(self, root, info, contact):
-        if ClientContact.objects.filter(first_name=contact.first_name, last_name=contact.last_name, client=Client.objects.get(name=contact.client)).exists():
+    def mutate(self, root, info, contact, client):
+        if ClientContact.objects.filter(first_name=contact.first_name, last_name=contact.last_name, client=Client.objects.get(name=client)).exists():
             return self(success=False, message="Contact Already Exists")
             
         client_contact = ClientContact()
         client_contact.first_name = contact.first_name.strip()
         client_contact.last_name = contact.last_name.strip()
         client_contact.position = contact.position.strip()
-        client_contact.client = Client.objects.get(name=contact.client)
+        client_contact.client = Client.objects.get(name=client)
 
         # Format Phone Input
         contact.phone = contact.phone.replace("+61", "0").strip() 
@@ -841,11 +897,11 @@ class CreateClientContact(graphene.Mutation):
             client_contact.phone = "{} {}".format(contact.phone.replace(" ","")[0:4], contact.phone.replace(" ","")[4:])
         
         client_contact.email = contact.email.lower().strip()
-        if contact.region: client_contact.region = ClientRegion.objects.get(id=contact.region)
+        if not contact.region == '': client_contact.region = Region.objects.get(id=contact.region)
         client_contact.save()
         return self(success=True, client_contact=client_contact)
 
-class UpdateClientContact(graphene.Mutation):
+class UpdateContact(graphene.Mutation):
     class Arguments:
         contacts = graphene.List(ClientContactInput)
         client = graphene.String()
@@ -863,14 +919,12 @@ class UpdateClientContact(graphene.Mutation):
             client_contact.position = contact.position.strip()
             client_contact.phone = contact.phone.strip()
             client_contact.email = contact.email.strip()
-            client_contact.region = ClientRegion.objects.get(id=contact.region)
+            client_contact.region = Region.objects.get(id=contact.region)
             client_contact.save()
 
         return self(success=True, message="Contacts Updated")    
 
-    
-
-class DeleteClientContact(graphene.Mutation):
+class DeleteContact(graphene.Mutation):
     class Arguments:
         id = graphene.String()
 
@@ -1301,8 +1355,9 @@ class Query(graphene.ObjectType):
     contractors = graphene.List(ContractorType)
     clients = graphene.List(ClientType)
     locations = graphene.List(LocationType, client=graphene.String())
-    client_regions = graphene.List(ClientRegionType, client=graphene.String())
+    regions = graphene.List(RegionType, client=graphene.String())
     client_contacts = graphene.List(ClientContactType, client=graphene.String())
+    contractor_contacts = graphene.List(ContractorContactType, contractor=graphene.String())
     invoices = graphene.List(InvoiceType)
     job_invoices = graphene.List(JobInvoiceType)
     bills = graphene.List(BillType)
@@ -1311,7 +1366,6 @@ class Query(graphene.ObjectType):
     @login_required
     def resolve_insurance(roof, info, **kwargs):
         return Insurance.objects.all()
-
 
     @login_required
     def resolve_next_id(root, info, item, **kwargs):
@@ -1378,14 +1432,15 @@ class Query(graphene.ObjectType):
         return Contractor.objects.all()
     
     @login_required
+    def resolve_contractors_contacts(root, info, contractor=None, **kwargs):
+        if contractor:
+            return ContractorContact.objects.filter(contractor=Contractor.objects.get(name=contractor))
+
+        return ContractorContact.objects.all()
+    
+    @login_required
     def resolve_clients(root, info, **kwargs):
         return Client.objects.all()
-
-    @login_required
-    def resolve_client_regions(root, info, client=None, **kwargs):
-        if client:
-            return ClientRegion.objects.filter(client = Client.objects.get(name=client))
-        return ClientRegion.objects.all()
 
     @login_required
     def resolve_client_contacts(root, info, client=None, **kwargs):
@@ -1393,6 +1448,12 @@ class Query(graphene.ObjectType):
             return ClientContact.objects.filter(client=Client.objects.get(name=client))
 
         return ClientContact.objects.all()
+    
+    @login_required
+    def resolve_regions(root, info, client=None, **kwargs):
+        if client:
+            return Region.objects.filter(client = Client.objects.get(name=client))
+        return Region.objects.all()
 
 class UpdateJobStatus(graphene.Mutation):
     success = graphene.Boolean()
@@ -1423,7 +1484,7 @@ class Mutation(graphene.ObjectType):
     test_feature = TestFeature.Field()
     update_job_status = UpdateJobStatus.Field()
     upload_clients_csv = UploadClientsCSV.Field()
-    upload_client_regions_csv = UploadClientRegionsCSV.Field()
+    upload_client_regions_csv = UploadRegionsCSV.Field()
     upload_client_contacts_csv = UploadClientContactsCSV.Field()
     upload_locations_csv = UploadLocationsCSV.Field()
     upload_jobs_csv = UploadJobsCSV.Field()
@@ -1440,24 +1501,25 @@ class Mutation(graphene.ObjectType):
     close_out_email = CloseOutEmail.Field()
     email_quote = EmailQuote.Field()
 
-    create_location = CreateLocation.Field()
-    delete_location = DeleteLocation.Field()
-
     create_job = CreateJob.Field()
     update_job = UpdateJob.Field()
     delete_job = DeleteJob.Field()
 
     create_client = CreateClient.Field()
-    # update_client = UpdateClient.Field()
+    update_client = UpdateClient.Field()
     delete_client = DeleteClient.Field()
+    
+    create_location = CreateLocation.Field()
+    update_location = UpdateLocation.Field()
+    delete_location = DeleteLocation.Field()
 
-    create_client_region = CreateClientRegion.Field()
-    update_client_region = UpdateClientRegion.Field()
-    delete_client_region = DeleteClientRegion.Field()
+    create_region = CreateRegion.Field()
+    update_region = UpdateRegion.Field()
+    delete_region = DeleteRegion.Field()
 
-    create_client_contact = CreateClientContact.Field()
-    update_client_contact = UpdateClientContact.Field()
-    delete_client_contact = DeleteClientContact.Field()
+    create_contact = CreateContact.Field()
+    update_contact = UpdateContact.Field()
+    delete_contact = DeleteContact.Field()
 
     create_contractor = CreateContractor.Field()
     update_contractor = UpdateContractor.Field()
