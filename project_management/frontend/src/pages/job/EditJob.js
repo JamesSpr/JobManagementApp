@@ -9,13 +9,13 @@ import axios from 'axios';
 import useAuth from '../auth/useAuth';
 import useApp from '../../context/useApp';
 import { usePrompt } from '../../hooks/promptBlocker';
+import produce from 'immer';
+import { InputField } from '../../components/Components';
 
 import Settings from '@mui/icons-material/Settings';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
-import produce from 'immer';
-import { InputField } from '../../components/Components';
 
 const JobPage = () => { 
     const axiosPrivate = useAxiosPrivate();
@@ -131,7 +131,7 @@ const JobPage = () => {
     else {
         id_other = id;
     }
-    
+
     useEffect(() => {
         const controller = new AbortController();
 
@@ -491,6 +491,7 @@ const JobPage = () => {
             })
             if(res.success) {
                 setEstimateSet(res.job.estimateSet);
+                setTitleChange(true);
                 if(!partialError) {
                     setSnackVariant('success');
                     setSnackMessage(res.message);

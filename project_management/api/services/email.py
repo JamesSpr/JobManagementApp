@@ -159,7 +159,7 @@ class CloseOutEmail(graphene.Mutation):
         Hi {job.location.region.short_name} EMOS,<br><br>
         
         All works have been completed for PO{job.po}. Details Below:<br>
-        <b>Sign In Date</b>: {job.inspection_date.strftime('%d/%m/%y')}<br>
+        <b>Initial Inspection Date</b>: {job.inspection_date.strftime('%d/%m/%y')}<br>
         <b>Works Start Date</b>: {job.commencement_date.strftime('%d/%m/%y')}<br>
         <b>Works Completion Date</b>: {job.completion_date.strftime('%d/%m/%y')}<br> 
         {jobTimes}

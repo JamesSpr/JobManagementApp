@@ -11,6 +11,8 @@ import useAuth from '../auth/useAuth';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import RefreshIcon from '@mui/icons-material/Refresh';
+
 import CloseIcon from '@mui/icons-material/Close';
 import fuzzyFilter from '../../components/FuzzyFilter';
 import { InputField, PaginationControls, Tooltip } from '../../components/Components';
@@ -22,7 +24,7 @@ const openInNewTab = (url) => {
     if(newWindow) newWindow.opener = null
 }
 
-const JobTable = ({tableData, users, jobStages}) => {
+const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
 
     const { auth } = useAuth();
     const axiosPrivate = useAxiosPrivate();
@@ -502,6 +504,10 @@ const JobTable = ({tableData, users, jobStages}) => {
 
                         <IconButton onClick={() => setOpenSettings(true)}>
                             <FilterAltIcon />
+                        </IconButton>
+
+                        <IconButton onClick={() => setRefreshTableData(true)}>
+                            <RefreshIcon />
                         </IconButton>
                     </span>
                 </Grid>

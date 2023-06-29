@@ -4,7 +4,7 @@ import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import axios from 'axios';
 import JobTable from './JobTable';
 import CreateDialog from './CreateDialog';
-import { Button, Grid, Box, AppBar, Toolbar} from '@mui/material';
+import { Button, Grid, Box, AppBar, Toolbar, setRef} from '@mui/material';
 import { fetchData, fetchResources } from './QueryData';
 
 
@@ -21,11 +21,16 @@ const HomePage = () => {
     const [locations, setLocations] = useState([]);
     const [jobStages, setJobStages] = useState([]);
 
+    
+    const [refreshTableData, setRefreshTableData] = useState(false)
+    
     // Dialog States
     const [createJob, setCreateJob] = useState(false);
 
     useEffect(() => {
         const controller = new AbortController();
+
+        setJobs([]);
 
         const fetchJobData = async () => {
             await axiosPrivate({
@@ -129,11 +134,13 @@ const HomePage = () => {
         }
 
         fetchJobData();
+        console.log("Fetched Data");
+        setRefreshTableData(false);
 
         return () => {
             controller.abort();
         }
-    }, []);
+    }, [, refreshTableData]);
 
     const handleDialogClose = (event, reason, created, updated) => {
         if (reason !== 'backdropClick') {
@@ -158,7 +165,7 @@ const HomePage = () => {
     <>
         <Grid>
             <Grid item xs={12} align="center">
-                <JobTable tableData={jobs} users={users.edges} jobStages={jobStages}/>
+                <JobTable setRefreshTableData={setRefreshTableData} tableData={jobs} users={users.edges} jobStages={jobStages}/>
             </Grid>
         </Grid>
 

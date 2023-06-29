@@ -1116,6 +1116,29 @@ class JobInvoiceType(DjangoObjectType):
         model = JobInvoice
         fields = '__all__'
 
+class UpdateJobInvoice(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+        po = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, id, po):
+        if(not JobInvoice.objects.filter(id=id).exists()):
+            return self(success = False)
+        
+        jobInvoice = JobInvoice.objects.get(id=id)
+        existing_job = jobInvoice.job
+        new_job = Job.objects.get(po=po)
+
+        jobInvoice.job = new_job
+        jobInvoice.save()
+        existing_job.save()
+        new_job.save()
+
+        return self(success=True)
+
 class DeleteJobInvoice(graphene.Mutation):
     ok = graphene.Boolean()
 
@@ -1159,11 +1182,9 @@ class CreateInvoice(graphene.Mutation):
         invoice.amount = amount
         invoice.date_created = date_created
         invoice.date_issued = date_issued
-        # invoice.date_paid = date_paid
         invoice.save()
 
         job=Job.objects.get(po=job)
-
         ji = JobInvoice()
         ji.invoice = invoice
         ji.job = job
@@ -1535,6 +1556,9 @@ class Mutation(graphene.ObjectType):
     update_invoices = UpdateInvoices.Field()
     delete_invoice = DeleteInvoice.Field()
     transfer_invoice = TransferInvoice.Field()
+
+
+    update_jobinvoice = UpdateJobInvoice.Field()
     delete_jobinvoice = DeleteJobInvoice.Field()
 
     create_bill = CreateBill.Field()
