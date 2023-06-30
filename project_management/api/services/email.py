@@ -135,15 +135,11 @@ class CloseOutEmail(graphene.Mutation):
 
         scope = "<br>" + job.scope.replace('\n', '<br>') if '\n' in job.scope else job.scope
 
-        jobTimes = ""
-        if(job.location.region.short_name == "LMA"):
-            finishTime = 7 + job.total_hours
-            if finishTime >= 15:
-                finishTime = "15:00"
-            else:
-                finishTime = str( math.ceil(finishTime) ).zfill(2) + ":00"
-            jobTimes = f"<b>Start Time:</b> 07:00<br><b>Finish Time</b>: {finishTime}<br>" 
-        
+        finishTime = 7 + job.total_hours
+        if finishTime >= 15:
+            finishTime = "15:00"
+        else:
+            finishTime = str( math.ceil(finishTime) ).zfill(2) + ":00"
 
         mail = outlook.CreateItem(0)
 
@@ -161,8 +157,9 @@ class CloseOutEmail(graphene.Mutation):
         All works have been completed for PO{job.po}. Details Below:<br>
         <b>Initial Inspection Date</b>: {job.inspection_date.strftime('%d/%m/%y')}<br>
         <b>Works Start Date</b>: {job.commencement_date.strftime('%d/%m/%y')}<br>
+        <b>Start Time:</b> 07:00<br>
         <b>Works Completion Date</b>: {job.completion_date.strftime('%d/%m/%y')}<br> 
-        {jobTimes}
+        <b>Finish Time</b>: {finishTime}<br>
         <b>Total Hours</b>: {job.total_hours}<br>
         <b>Scope of Works</b>: {scope}<br>
         <br>
