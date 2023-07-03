@@ -157,7 +157,16 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
             size: 50,
         },
         {                
-            accessorFn: row => row.client?.name ?? '',
+            accessorFn: row => {
+                if(row.client?.displayName){ 
+                    return row.client?.displayName
+                } 
+                if(row.client?.name){
+                    return row.client?.name
+                }
+
+                return "";
+            },
             id: 'client',
             header: () => 'Client',
             cell: info => info.getValue(),

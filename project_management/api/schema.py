@@ -642,6 +642,12 @@ class ClientType(DjangoObjectType):
         model = Client
         fields = '__all__'
 
+class ClientInputType(graphene.InputObjectType):
+    id = graphene.String()
+    myob_uid = graphene.String()
+    name = graphene.String()
+    display_name = graphene.String()
+
 class CreateClient(graphene.Mutation):
     class Arguments:
         name = graphene.String()
@@ -665,26 +671,22 @@ class CreateClient(graphene.Mutation):
 
 class UpdateClient(graphene.Mutation):
     class Arguments:
-        id = graphene.String()
-        name = graphene.String()
-        myob_uid = graphene.String()
+        details = ClientInputType()
 
     success = graphene.Boolean()
     message = graphene.String()
     client = graphene.Field(ClientType)
 
     @classmethod
-    def mutate(self, root, info, id, name = False, myob_uid = False):
-        if(not Client.objects.filter(id=id).exists()):
+    def mutate(self, root, info, details):
+        if(not Client.objects.filter(id=details.id).exists()):
             return self(success=False, message="Client Not Found")
         
-        client = Client.objects.get(id=id)
-        if name: client.name = name
-        if myob_uid: client.myob_uid = myob_uid
+        client = Client.objects.get(id=details.id)
+        client.display_name = details.display_name
         client.save()
 
         return self(success=True, message="Client Successfully Updated", client=client)
-
 
 class LocationType(DjangoObjectType):
     class Meta:
@@ -807,11 +809,15 @@ class UpdateRegion(graphene.Mutation):
 
     # client_region = graphene.Field(RegionType)
     success = graphene.Boolean()
+    message = graphene.String()
 
     @classmethod
     def mutate(self, root, info, regions, client):
         for region in regions:
-            client_region = Region(id=region.id)
+            if not Region.objects.filter(id=region.id).exists():
+                return self(success=False, message="Error Finding Region")
+            
+            client_region = Region.objects.get(id=region.id)
             client_region.client = Client.objects.get(name=client)
             client_region.short_name = region.shortName.strip()
             client_region.name = region.name.strip()
@@ -919,7 +925,7 @@ class UpdateContact(graphene.Mutation):
             client_contact.position = contact.position.strip()
             client_contact.phone = contact.phone.strip()
             client_contact.email = contact.email.strip()
-            client_contact.region = Region.objects.get(id=contact.region)
+            if contact.region: client_contact.region = Region.objects.get(id=contact.region)
             client_contact.save()
 
         return self(success=True, message="Contacts Updated")    
@@ -1374,7 +1380,7 @@ class Query(graphene.ObjectType):
     estimate_headers = graphene.List(EstimateHeaderType)
     estimate_items = graphene.List(EstimateItemType)
     contractors = graphene.List(ContractorType)
-    clients = graphene.List(ClientType)
+    clients = graphene.List(ClientType, client=graphene.String())
     locations = graphene.List(LocationType, client=graphene.String())
     regions = graphene.List(RegionType, client=graphene.String())
     client_contacts = graphene.List(ClientContactType, client=graphene.String())
@@ -1460,7 +1466,10 @@ class Query(graphene.ObjectType):
         return ContractorContact.objects.all()
     
     @login_required
-    def resolve_clients(root, info, **kwargs):
+    def resolve_clients(root, info, client=None, **kwargs):
+        if client:
+            return Client.objects.filter(name=client)
+
         return Client.objects.all()
 
     @login_required

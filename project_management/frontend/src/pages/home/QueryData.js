@@ -13,6 +13,7 @@ export const fetchData = (number, next="") => (JSON.stringify({
                     otherId
                     client {
                         name
+                        displayName
                     }
                     location {
                         name
@@ -73,6 +74,7 @@ export const fetchArchivedData = () => (JSON.stringify({
                     otherId
                     client {
                         name
+                        displayName
                     }
                     location {
                         name

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback }  from 'react';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel, } from '@tanstack/react-table'
 import { Button, IconButton, Dialog, DialogContent, DialogTitle, 
-         Grid, Box, AppBar, Toolbar, CircularProgress, Tooltip } from '@mui/material';
+         Grid, Box, CircularProgress, Tooltip } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PersonIcon from '@mui/icons-material/Person';
 import { usePrompt } from '../../hooks/promptBlocker';
@@ -10,7 +10,7 @@ import AddIcon from '@mui/icons-material/Add';
 import fuzzyFilter from '../../components/FuzzyFilter';
 import DebouncedInput from '../../components/DebouncedInput';
 import useAuth from '../auth/useAuth';
-import { InputField, PaginationControls } from '../../components/Components';
+import { Footer, InputField, PaginationControls, SnackBar, useSkipper } from '../../components/Components';
 
 const Contractors = () => {
 
@@ -28,6 +28,8 @@ const Contractors = () => {
         'bankAccountName': '',
         'bankAccountNumber': '',
     });
+
+    const [snack, setSnack] = useState({active: false, variant: 'info', message:''})
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
@@ -54,7 +56,6 @@ const Contractors = () => {
         return () => {
             document.addEventListener('keydown', handleKeyPress)
         }
-
     }, [handleKeyPress]);
 
         
@@ -71,8 +72,7 @@ const Contractors = () => {
         handleCreate(value);
         setCreateContractor(false);
     }
-
-
+    
     // Get Data
     useEffect(() => {
         // Set Default Page Size
@@ -215,6 +215,8 @@ const Contractors = () => {
         },
     ], []);
 
+    
+    const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper();
     const [globalFilter, setGlobalFilter] = React.useState('')
     const table = useReactTable({
         data,
@@ -224,12 +226,14 @@ const Contractors = () => {
         getPaginationRowModel: getPaginationRowModel(),     
         globalFilterFn: fuzzyFilter,
         onGlobalFilterChange: setGlobalFilter,
+        autoResetPageIndex,
         state: {
             globalFilter,
         },
         meta: {
             updateData: (rowIndex, columnId, value) => {
                 setUpdateRequired(true);
+                skipAutoResetPageIndex();
                 setData(old => old.map((row, index) => {
                     if(index === rowIndex) {
                         return {
@@ -295,8 +299,8 @@ const Contractors = () => {
                         }).then((response) => {
                             // console.log(response);
                             const res = response?.data?.data?.create;
-                            // TODO: Add Snackbar
                             if(res.success){
+                                setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
                                 // Clear Dialog Content
                                 setNewContractor({
                                     'name': '',
@@ -310,9 +314,11 @@ const Contractors = () => {
                             }
                             else {
                                 console.log("error",res);
+                                setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
                             }
                         }).catch((e) => {
                             console.log("error", e);
+                            setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
                         });
                     }     
                 }
@@ -326,42 +332,43 @@ const Contractors = () => {
     }
 
     const handleSave = async () => {
-        // changedRows
 
-        // Update Changes in MYOB
+        // Gather the rows that have been changed
+        let changedContractors = []
+        for(let x in changedRows) {
+            changedContractors.push(data[x])
+        }
 
-        // Update Changes in API
-
-
-
-        // await axiosPrivate({
-        //     method: 'post',
-        //     data: JSON.stringify({
-        //     query: `
-        //     mutation updateClientContact($contacts: [ClientContactInput]!, $client: String!) { 
-        //         update: updateClientContact(contacts: $contacts, client: $client) {
-        //             success
-        //         }
-        //     }`,
-        //     variables: { 
-        //         contacts: data,
-        //         client: client
-        //     }, 
-        // }),
-        // }).then((response) => {
-        //     console.log(response);
-        //     const res = response?.data?.data.update;
-        //     // TODO: Add Snackbar
-        //     if(res.success){
-        //         // Snackbar
-
-        //     }
-        //     else {
-        //         console.log("error",res)
-        //     }
-        // });
-
-        // setUpdateRequired(false);
+        // Update the changed data
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                mutation myobUpdateContractor($contractors: [myobContractorInput]!, $uid: String!) { 
+                    update: myobUpdateContractor(contractors: $contractors, uid: $uid) {
+                        success
+                        message
+                    }
+                }`,
+                variables: { 
+                    uid: auth?.myob.id,
+                    contractors: changedContractors,
+                },
+            }),
+        }).then((response) => {
+            console.log(response);
+            const res = response?.data?.data?.update;
+            if(res.success){
+                setSnack({active: true, variant: 'success', message: res.message})
+                setUpdateRequired(false);
+            }
+            else {
+                console.log("error",res); 
+                setSnack({active: true, variant: 'error', message: res.message})
+            }
+        }).catch((e) => {
+            console.log("error", e);
+        }); 
     }
 
     // <pre>
@@ -438,26 +445,19 @@ const Contractors = () => {
             </Grid> 
         </Grid>
 
-
-
         {/* Footer AppBar with Controls */}
-        <Box sx={{ flexGrow: 1}}>
-            <AppBar position="fixed" sx={{ top:'auto', bottom: 0, zIndex: (theme) => theme.zIndex.drawer + 1 }}
-            style={{height: '50px', backgroundColor: 'rgb(250,250,250)', boxShadow: 'rgb(0 0 0 / 10%) 0px 1px 1px -1px, rgb(0 0 0 / 10%) 0px 1px 1px 0px, rgb(0 0 0 / 10%) 0px 0 10px 2px'}}>
-                <Toolbar style={{minHeight: '50px'}}>
-                    <Box style={{margin: '0 auto'}}>
-                       <Tooltip title="Save Changes">
-                            <span>
-                                <IconButton disabled={!updateRequired} onClick={handleSave}><SaveIcon /></IconButton>
-                            </span>
-                        </Tooltip>
-                        <Tooltip title="Create New Contractor">
-                            <IconButton onClick={(e) => setCreateContractor(true)}><AddIcon /></IconButton>
-                        </Tooltip>
-                    </Box>
-                </Toolbar>
-            </AppBar>
-        </Box>
+        <Footer>
+            <Tooltip title="Save Changes">
+                <span>
+                    <IconButton disabled={!updateRequired} onClick={handleSave}><SaveIcon /></IconButton>
+                </span>
+            </Tooltip>
+            <Tooltip title="Create New Contractor">
+                <IconButton onClick={(e) => setCreateContractor(true)}><AddIcon /></IconButton>
+            </Tooltip>
+        </Footer>
+
+        <SnackBar {...{snack, setSnack}} />
 
         {/* Create Contractor Dialog Box */}
         <CreateDialog createObject={newContractor} open={createContractor} onCreate={handleDialogCreate} onClose={handleDialogClose}/>

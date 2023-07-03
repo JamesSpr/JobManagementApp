@@ -2,13 +2,15 @@ import React, { FC, ReactNode, useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Box, Tab, Tabs, IconButton } from '@mui/material';
 import { Footer, SnackBar, Tooltip } from "../../components/Components";
-import { ContactType, LocationType, RegionType, SnackType } from "../../types/types";
+import { ClientType, ContactType, LocationType, RegionType, SnackType } from "../../types/types";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { usePrompt } from "../../hooks/promptBlocker";
 
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
+
 import useApp from "../../context/useApp";
+import Home from "./Home";
 import Contacts from "./Contacts";
 import Locations from "./Locations";
 import Regions from "./Regions";
@@ -48,6 +50,7 @@ const Client = () => {
     const navigate = useNavigate();
     const { client } = useParams();
 
+    const [details, setDetails] = useState<ClientType>({id:'', name:'', displayName:''})
     const [contacts, setContacts] = useState<ContactType[]>([]);
     const [locations, setLocations] = useState<LocationType[]>([]);
     const [regions, setRegions] = useState<RegionType[]>([]);
@@ -61,7 +64,7 @@ const Client = () => {
 
     const tabOptions = ["Client", "Contacts", "Locations", "Regions"]
     const tabItems = [
-        <Home client={client} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} setSnack={setSnack}/>, 
+        <Home client={client} details={details} setDetails={setDetails} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} setSnack={setSnack}/>, 
 
         <Contacts contacts={contacts} setContacts={setContacts} regions={regions} client={client} 
             updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} setSnack={setSnack}
@@ -119,6 +122,11 @@ const Client = () => {
                 signal: controller.signal,
                 data: JSON.stringify({
                     query: `query ClientDetails($client: String!) {
+                        clients(client: $client) {
+                            id
+                            name
+                            displayName
+                        }
                         clientContacts(client: $client) {
                             id
                             firstName
@@ -160,6 +168,7 @@ const Client = () => {
                 // Flatten region ojects
                 const contacts = res?.clientContacts.map((obj: any) => ({...obj, region: obj?.region?.id}))
                 const locations = res?.locations.map((obj: any) => ({...obj, region: obj?.region?.id}))
+                setDetails(res?.clients[0]);
                 setContacts(contacts);
                 setLocations(locations);
                 setRegions(res?.regions);
@@ -190,11 +199,16 @@ const Client = () => {
             method: 'post',
             data: JSON.stringify({
             query: `mutation Update(
+                    $details: ClientInputType!, 
                     $locations: [LocationInputType]!, 
                     $contacts: [ClientContactInput]!, 
                     $regions: [RegionInput]!, 
                     $client: String!
                 ) {
+                    update_client: updateClient(details:$details) {
+                        success
+                        message
+                    }
                     update_location: updateLocation(locations: $locations, client: $client) {
                         success
                         message
@@ -204,10 +218,12 @@ const Client = () => {
                     }
                     update_region: updateRegion(regions: $regions, client: $client) {
                         success
+                        message
                     }
                 }
             `,
             variables: { 
+                details: details,
                 locations: locations,
                 contacts: contacts,
                 regions: regions,
@@ -263,20 +279,6 @@ const Client = () => {
         </Footer>
     </>    
 
-    )
-}
-
-const Home = ({client, updateRequired, setUpdateRequired, setSnack }: {
-        client: string | undefined, 
-        updateRequired: boolean, 
-        setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
-        setSnack: React.Dispatch<React.SetStateAction<SnackType>>
-    }) => {
-
-    return (
-    <>
-        <p>Home</p>
-    </>    
     )
 }
 

@@ -207,7 +207,7 @@ export const PaginatedTable = <T extends object>({data, setData, tableMeta, colu
                 if(setData) {
                     if(setUpdateRequired !== undefined) {
                         setUpdateRequired(true);
-                    }
+                    } 
                     skipARPI()
                     setData((old: any) => 
                         old.map((row: any, index: any) => {
@@ -225,7 +225,7 @@ export const PaginatedTable = <T extends object>({data, setData, tableMeta, colu
         },
     })
 
-    useEffect(()=> {table.setPageSize(20)},[])
+    useEffect(()=> {table.setPageSize(15)},[])
 
     return (
         <>

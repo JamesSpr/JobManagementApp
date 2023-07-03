@@ -1,6 +1,10 @@
 import graphene
 from graphene_django import DjangoObjectType
+import win32com.client as win32
+import pythoncom
 from datetime import datetime
+import re
+import os
 import sys
 import environ
 import requests
@@ -11,6 +15,7 @@ sys.path.append("...")
 from myob.models import MyobUser
 from myob.schema import checkTokenAuth
 
+EMAIL_STYLE="""<body style="font-size:11pt; font-family:'Calibri'; color: rgb(0,0,0)">"""
 
 class outlookJob(DjangoObjectType):
     class Meta:
@@ -239,6 +244,139 @@ class ProcessInvoices(graphene.Mutation):
             return self(success=True, message="Orders have been converted")
         return self(success=False, message="MYOB Connection Error")
 
+
+main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
+
+# class SendInvoices(graphene.Mutation):
+
+#     success = graphene.Boolean()
+#     message = graphene.String()
+
+#     @classmethod
+#     def mutate(self, root, info):
+
+#         outlook = win32.Dispatch('Outlook.Application', pythoncom.CoInitialize())
+#         outlookObj = outlook.CreateObject('Outlook.Application')
+#         outlookObj.Run('Project1.RemoteTest')
+
+#         return self(success=True)
+    
+
+# class SendInvoices(graphene.Mutation):
+
+#     success = graphene.Boolean()
+#     message = graphene.String()
+
+#     @classmethod
+#     def mutate(self, root, info):
+#         outlook = win32.Dispatch('Outlook.Application', pythoncom.CoInitialize())
+        
+#         for oAccount in outlook.GetNamespace("MAPI").Accounts:
+#             if oAccount.DisplayName == "james@aurify.com.au":
+#                 outlookInbox = oAccount.DeliveryStore.GetRootFolder.Folders("Inbox")
+    
+#         # Find emails with PO has been approved in inbox
+#         for emailLoop in outlookInbox.Items.Count:
+#             emailItem = outlookInbox.Items(emailLoop)
+#             if "has been Approved" in emailItem.Subject:
+#         #AttemptAgain:
+#                 # Extract PO number
+#                 PONum = re.findall("(\d)+", emailItem.Subject)(0)
+                
+#                 job = Job.objects.get(po=PONum)
+#                 # Get PO Folder and Invoice Details
+#                 POFolder = os.path.join(main_folder_path, str(job))
+                
+#                 invoiceFolder = ""
+#                 if os.path.exists(os.path.join(POFolder,"/Inv/")):
+#                     invoiceFolder = os.path.join(POFolder,"/Inv/")
+#                 elif os.path.exists(os.path.join(POFolder,"/Accounts/Aurify/")):
+#                     invoiceFolder = os.path.join(POFolder,"/Accounts/Aurify/")
+#                 elif os.path.exists(os.path.join(POFolder,"/Accounts/")):
+#                     invoiceFolder = os.path.join(POFolder,"/Accounts/")
+#                 else:
+#                     return self(success=False, message="Job Accounts folder can not be found")
+                
+#                 invoiceNum = ""
+#                 invoiceFile = ""
+#                 for file in os.listdir(invoiceFolder):
+#                     if "- PO".join(PONum) in file:
+#                         invoiceNumber = file.split(" - ")(0)
+#                         invoiceNum = invoiceNumber.replace("INV0000", "")
+#                     if  "Invoice for PO" in file:
+#                         invoiceFile = file
+                
+#                 approvedPOs = []
+#                 approvedInvoices = []
+#                 # Make sure an invoice and its number has been found before taking any significant actions
+#                 if not invoiceNum == "" and not invoiceFile == "":
+#                     # Handle cases where duplicate approval emails are sent.
+#                     if not PONum in approvedPOs :
+#                         approvedPOs.append(PONum)
+#                         approvedInvoices.append(invoiceNumber)
+                        
+#                         emailSubject = POFolder.split("/")(6)
+#                         if "Jobs" in emailSubject:
+#                             emailSubject = POFolder.split("/")(8)
+                        
+#                         # Create email to send invoice
+#                         mailObj = outlook.CreateItem(0)
+#                         mailObj.To = "services.accountspayable@apac.bgis.com"
+#                         mailObj.Subject = emailSubject
+#                         mailObj.Display
+#                         Signature = mailObj.HTMLBody.replace("<p class=MsoNormal><o:p>&nbsp;</o:p></p>", "")
+#                         Signature = mailObj.HTMLBody.replace("<o:p>&nbsp;</o:p>", "")
+#                         mailObj.HTMLBody = f"""{EMAIL_STYLE}
+#                                        Hi BGIS Accounts Payable,<br><br>
+#                                        Please find attached INV# {invoiceNum} for PO# {PONum}<br>
+#                                        All works have been completed and supporting documents uploaded to BSAFE.""" + Signature
+#                         mailObj.Attachments.Add(os.path.join(invoiceFolder, invoiceFile))
+#                         # mailObj.Send
+                        
+#                         emailItem.UnRead = False
+#                         emailItem.Move Main.POFolder
+#                 else
+#                     Dim response As Integer: response = MsgBox("Please check and correct the invoice file for " & PONum & ". Do you wish to retry sending the email?", vbAbortRetryIgnore, "Invoice Not Found")
+#                     if response = 4 : # Retry
+#                         GoTo AttemptAgain
+#                     Elseif response = 2 :
+#                         Exit for
+#                     End if
+#                 End if
+#             End if
+        
+#             # Reset Variables for next email
+#             Set invoiceFolder = Nothing
+#             InvoiceFile = ""
+#             invoiceNumber = ""
+#             invoiceNum = ""
+#             PONum = ""
+#             POFolder = ""
+#             emailSubject = ""
+            
+#         Next emailLoop
+        
+#         # Update new system with dates for each approved PO
+#         if approvedInvoices.Count > 0 :
+        
+#             # Build the data structure
+#             Dim ds As String: ds = "["
+#             Dim inv As Variant
+#             for Each inv In approvedInvoices
+#                 ds = ds + """" + Replace(inv, "INV", "") + ""","
+#             Next inv
+#             ds = Left(ds, Len(ds) - 1) + "]"
+                    
+#             ProcessApprovedInvoices ds, Format(Date, "yyyy-mm-dd")
+            
+#         End if
+        
+#         MsgBox ("Invoices have been emailed for approved purchase orders." & vbCrLf & _
+#         "if there are still approval emails in your inbox, please check that all required files are in the folder for the PO.")
+        
+
+#         return self(success=True)
+
 class Query(graphene.ObjectType):
     pass
 
@@ -247,3 +385,4 @@ class Mutation(graphene.ObjectType):
     get_quotes = GetQuotes.Field()
     process_approval = ProcessApproval.Field()
     process_invoices = ProcessInvoices.Field()
+    # send_invoices = SendInvoices.Field()

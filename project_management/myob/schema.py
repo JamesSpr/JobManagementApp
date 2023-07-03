@@ -318,6 +318,8 @@ class myobContractorInput(graphene.InputObjectType):
     bsb = graphene.String()
     bank_account_name = graphene.String()
     bank_account_number = graphene.String()
+    id = graphene.String()
+    myob_uid = graphene.String()
 
 class myobCreateContractor(graphene.Mutation):
     class Arguments:
@@ -372,6 +374,78 @@ class myobCreateContractor(graphene.Mutation):
             return self(success=True, message=response.text, myob_uid=myob_uid)
         else:
             return self(success=False, message="MYOB Connection Error")
+        
+class myobUpdateContractor(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        contractors = graphene.List(myobContractorInput)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, uid, contractors):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+
+            for contractor in contractors:
+                link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{contractor['myob_uid']}'"
+                headers = {                
+                    'Authorization': f'Bearer {user.access_token}',
+                    'x-myobapi-key': env('CLIENT_ID'),
+                    'x-myobapi-version': 'v2',
+                    'Accept-Encoding': 'gzip,deflate',
+                }
+                response = requests.get(link, headers=headers)
+
+                if not response.status_code == 200:
+                    return self(success=False, message=response.text)
+                    
+                res = json.loads(response.text)
+                res = res['Items'][0]
+                print(res['RowVersion'])
+
+                link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{contractor['myob_uid']}"
+                payload = json.dumps({
+                    'UID': contractor['myob_uid'],
+                    'CompanyName': contractor['name'],
+                    'BuyingDetails': {
+                        'ABN': contractor['abn'],
+                        'IsReportable': True,
+                        'TaxCode': {
+                            'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
+                        },
+                        'FreightTaxCode': {
+                            'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
+                        },
+                    },
+                    'PaymentDetails': {
+                        'BSBNumber': contractor['bsb'],
+                        'BankAccountName': contractor['bank_account_name'],
+                        'BankAccountNumber': contractor['bank_account_number'].strip(),
+                    },
+                    'RowVersion': res['RowVersion']
+                })
+                response = requests.put(link, headers=headers, data=payload)
+
+                if not response.status_code == 200:
+                    return self(success=False, message=response.text)
+                
+                cont = Contractor.objects.get(id = contractor['id'])
+                cont.name = contractor['name']
+                cont.abn = contractor['abn']
+                cont.bsb = contractor['bsb']
+                cont.bank_account_name = contractor['bank_account_name']
+                cont.bank_account_number = contractor['bank_account_number']
+                cont.save()
+
+                return self(success=True, message="Contractor Successfully Updated")
+            else:
+                return self(success=False, message="MYOB Connection Error")
 
 class myobGetInvoices(graphene.Mutation):
     class Arguments:
@@ -2231,6 +2305,7 @@ class Mutation(graphene.ObjectType):
 
     myob_get_contractors = myobGetContractors.Field()
     myob_create_contractor = myobCreateContractor.Field()
+    myob_update_contractor = myobUpdateContractor.Field()
 
     myob_get_invoices = myobGetInvoices.Field()
     myob_get_orders = myobGetOrders.Field()

@@ -57,7 +57,11 @@ export type JobStage = {
 
 }
 
-
+export interface ClientType {
+    id: string
+    name: string
+    displayName: string
+}
 
 export interface ContactType {
     id: string
