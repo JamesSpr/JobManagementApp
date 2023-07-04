@@ -964,7 +964,7 @@ const JobPage = () => {
                 </Grid>
                 <Grid item xs={12} align="center" />
                 <Grid item xs={12} align="center" style={{overflowX: 'auto'}}>
-                    <EstimateModule estimates={initialEstimate} jobId={job.id} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} users={employees} bills={bills} client={job.client}/>
+                    <EstimateModule estimates={initialEstimate} jobId={job.id} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} users={employees} bills={bills} client={job.client} myobSync={job.myobUid}/>
                 </Grid>
                 <Grid item xs={12} align="center">
                     <Typography variant='body1'>On-Site Details</Typography>

@@ -209,7 +209,7 @@ class CreateBGISEstimate(graphene.Mutation):
         ## Save to new folder
         shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
 
-        xlApp = win32.Dispatch("Excel.Application", pythoncom.CoInitialize())
+        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
         xlApp.Visible = False
         wb = xlApp.Workbooks.Open(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
         ws = wb.Sheets("Cost Breakdown")

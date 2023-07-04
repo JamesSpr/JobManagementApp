@@ -10,7 +10,7 @@ import Bill from '../../bill/JobBill';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteDialog from '../../../components/DeleteDialog';
 
-const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, setUpdateRequired, contractors, client}) => {
+const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, setUpdateRequired, contractors, client, myobSync}) => {
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
     const { setSelectedEstimate, estimateSet, setEstimateSet } = useEstimate();
@@ -561,16 +561,18 @@ const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, setUpdate
             }
 
             {lockedEstimate &&
-                <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
-                    <Button 
-                        variant="outlined" 
-                        style={{marginRight: '10px'}} 
-                        disabled={!lockedEstimate} 
-                        onClick={e => setBillsDialog(true)}
-                    >
-                        Open Bills
-                    </Button>
-                </Box>
+                <Tooltip title={myobSync === null || myobSync === "" ? "Please Sync with MYOB" : null}>
+                    <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
+                        <Button 
+                            variant="outlined" 
+                            style={{marginRight: '10px'}} 
+                            disabled={myobSync === null || myobSync === ""}
+                            onClick={e => setBillsDialog(true)}
+                            >
+                            Open Bills
+                        </Button>
+                    </Box>
+                </Tooltip> 
             }
 
             <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate} bills={bills} contractors={contractors}/>

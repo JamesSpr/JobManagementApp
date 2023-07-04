@@ -255,7 +255,7 @@ main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\J
 #     @classmethod
 #     def mutate(self, root, info):
 
-#         outlook = win32.Dispatch('Outlook.Application', pythoncom.CoInitialize())
+#         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
 #         outlookObj = outlook.CreateObject('Outlook.Application')
 #         outlookObj.Run('Project1.RemoteTest')
 
@@ -269,7 +269,7 @@ main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\J
 
 #     @classmethod
 #     def mutate(self, root, info):
-#         outlook = win32.Dispatch('Outlook.Application', pythoncom.CoInitialize())
+#         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         
 #         for oAccount in outlook.GetNamespace("MAPI").Accounts:
 #             if oAccount.DisplayName == "james@aurify.com.au":

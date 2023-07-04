@@ -59,7 +59,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
 
     useEffect(() => {
         // Set Default Page Size
-        table.getState().pagination.pageSize = 30;
+        table.getState().pagination.pageSize = 20;
     }, [])
 
     function defineJobIdentifier(job) {
@@ -644,7 +644,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                     Open Selected Jobs
                 </Button>
                 
-                {auth?.user.role === "DEV" ? 
+                {/* {auth?.user.role === "DEV" ? 
                 <Box>
                     <Button
                         variant='outlined'
@@ -653,7 +653,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                         Filter Test
                     </Button>
                 </Box>
-                : <></>}
+                : <></>} */}
             </Box>
 
             <Portal>

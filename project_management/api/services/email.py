@@ -23,7 +23,7 @@ class AllocateJobEmail(graphene.Mutation):
 
     @classmethod
     def mutate(cls, root, info, jobs, recipient):
-        outlook = win32.Dispatch('Outlook.Application', pythoncom.CoInitialize())
+        outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         count = 0
 
         if jobs:
@@ -109,7 +109,7 @@ class CloseOutEmail(graphene.Mutation):
 
     @classmethod
     def mutate(cls, root, info, jobid):
-        outlook = win32.Dispatch('Outlook.Application', pythoncom.CoInitialize())
+        outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         count = 0
 
         job = Job.objects.get(id = jobid)

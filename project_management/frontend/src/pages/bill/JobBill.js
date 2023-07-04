@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect }  from 'react';
 import { useParams } from 'react-router-dom';
 import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, 
   getExpandedRowModel, } from '@tanstack/react-table'
-import { Dialog, DialogContent, Grid, Typography, IconButton, Portal, Snackbar, Alert } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, Grid, Typography, IconButton, Portal, Snackbar, Alert } from '@mui/material';
 import { FileUploadSection, InputField, ProgressButton } from '../../components/Components';
 
 // Icons
@@ -261,20 +261,20 @@ const CreateBill = ({ open, handleClose, handleBack, id, setBills, contractors, 
 
     return (
     <>
-        <Dialog fullWidth maxWidth='md' open={open} onClose={handleClose}>
-            <DialogContent style={{overflow: 'hidden'}}>
-                <span className="dialogTitle">
-                    <IconButton onClick={handleBack} style={{float: 'left', padding: '0px 0px 4px 0px'}} >
-                        <ArrowBackIcon />
-                    </IconButton>
-                    <h1
-                        style={{display: 'inline-block', position: 'relative', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
-                        Accounts for {id}
-                    </h1>
-                    <IconButton onClick={handleClose} style={{float: 'right', padding: '0px 0px 4px 0px'}} >
-                        <CloseIcon />
-                    </IconButton>
-                </span>
+        <Dialog fullWidth maxWidth='md' scroll={'paper'} open={open} onClose={handleClose}>
+            <span className="dialogTitle">
+                <IconButton onClick={handleBack} style={{float: 'left', padding: '0px 0px 4px 0px'}} >
+                    <ArrowBackIcon />
+                </IconButton>
+                <h1
+                    style={{display: 'inline-block', position: 'relative', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
+                    Accounts for {id}
+                </h1>
+                <IconButton onClick={handleClose} style={{float: 'right', padding: '0px 0px 4px 0px'}} >
+                    <CloseIcon />
+                </IconButton>
+            </span>
+            <DialogContent>
                 <Grid container spacing={1} align="center">
                     <Grid item xs={12}>
                         <h2>Contractor Details</h2>
@@ -658,19 +658,19 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
 
     return (
     <>
-        <Dialog fullWidth maxWidth='md' open={open} onClose={handleClose}>
+        <Dialog fullWidth maxWidth='md' scroll={'paper'} open={open} onClose={handleClose}>
+            <span className="dialogTitle">
+                <h1
+                    style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
+                    Accounts for {id}
+                </h1>
+                <IconButton onClick={handleClose} style={{float: 'right', right: '10px', padding: '0px 0px 4px 0px'}} >
+                    <CloseIcon />
+                </IconButton>
+            </span>
             <DialogContent>
-                <span className="dialogTitle">
-                    <h1
-                        style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
-                        Accounts for {id}
-                    </h1>
-                    <IconButton onClick={handleClose} style={{float: 'right', right: '10px', padding: '0px 0px 4px 0px'}} >
-                        <CloseIcon />
-                    </IconButton>
-                </span>
-                <Grid container spacing={1} align="center">
-                    <Grid item xs={12} style={{margin: '10px 0px', overflow: 'auto hidden'}}>
+                <Grid container spacing={1} align="center" style={{overflow: 'auto hidden'}}>
+                    <Grid item xs={12} style={{margin: '10px 0px'}}>
                         <Typography variant='h6'>Approved Estimate Items</Typography>
                         <table style={{width: estimateTable.getTotalSize()}}>
                             <thead>

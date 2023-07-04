@@ -50,7 +50,7 @@ class CreateBGISEstimate(graphene.Mutation):
         ## Save to new folder
         shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
 
-        xlApp = win32.Dispatch("Excel.Application", pythoncom.CoInitialize())
+        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
         xlApp.Visible = False
         wb = xlApp.Workbooks.Open(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
         ws = wb.Sheets("Cost Breakdown")
@@ -91,7 +91,7 @@ class CreateCompletionDocuments(graphene.Mutation):
         if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation")):
             return self(success=False, message="File System Folders are not correct. Please check Documentation Folder Exists")
 
-        word = win32.Dispatch("Word.Application", pythoncom.CoInitialize())
+        word = win32.DispatchEx("Word.Application", pythoncom.CoInitialize())
         word.Visible = True
 
         document = None

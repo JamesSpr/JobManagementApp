@@ -686,11 +686,10 @@ const EstimateTable = ({estimateData, accessorId}) => {
     // }
 
     return (
-        // <div tabIndex="-1" onBlur={(e) => handleBlur(e)}>
         <>
             <InputField multiline width={1000} name="scope" label="Detailed Scope of Works" value={scope} onChange={e => setScope(e.target.value)}/>
             <TableContainer sx={{paddingBottom: "20px"}}>
-                <Table {...{sx: { width: table.getTotalSize()},}}>
+                <Table {...{sx: { width: table.getTotalSize(), maxWidth: '100%'},}}>
                     <TableHead>
                         {table.getHeaderGroups().map(headerGroup => (
                             <TableRow key={"header_" + headerGroup.id}>

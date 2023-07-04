@@ -74,6 +74,7 @@ table {
   font-size: 14px;
   border-collapse: separate;
   border-spacing: 0px;
+  max-width: 100%;
 }
 
 td,
@@ -147,6 +148,7 @@ tr.EmptyTableData:hover {
   font-family: "Roboto", "Helvetica", "Arial", sans-serif;
   font-size: 16px;
   width: 250px;
+  max-width: 100%;
   padding: 6px 2px 6px 2px;
   border: none;
   border-bottom: 1px solid #767676;
@@ -348,6 +350,13 @@ select.estimateTableInput {
 .tooltip:hover .tooltiptext {
   visibility: visible;
 }
+@media only screen and (max-width: 1050px) {
+  .inputBox {
+    max-width: 95%;
+  }
+
+
+}
 
 @media only screen and (max-width: 768px) {
   .inputField[type="date"] {
@@ -379,10 +388,6 @@ select.estimateTableInput {
     -moz-appearance: auto;
     border-radius: 0;
   }
-
-  .wideInput {
-    width: 250px;
-  }
 }
 
 .progressButton {
@@ -394,7 +399,7 @@ select.estimateTableInput {
 }
 
 .dialogTitle {
-  width: 100%;
+  width: 95%;
   padding: 10px 0px 0px;
   margin: 0 auto;
 }

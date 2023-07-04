@@ -196,7 +196,7 @@ const Bills = () => {
                     </Box>
                     :
                     data && data.length > 0 ? <>
-                        <table className="table" style={{width: table.getTotalSize()}}>
+                        <table className="table" style={{width: table.getTotalSize(), maxWidth: '100%'}}>
                             <thead>
                                 {table.getHeaderGroups().map(headerGroup => (
                                     <tr key={headerGroup.id}>

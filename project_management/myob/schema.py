@@ -1565,7 +1565,7 @@ class myobCreateInvoice(graphene.Mutation):
                                 paths["estimate"] = os.path.join(estimate_folder, files)
                             else:
                                 # Convert excel sheet to pdf
-                                xlApp = win32.Dispatch("Excel.Application", pythoncom.CoInitialize())
+                                xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
                                 books = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
                                 ws = books.Worksheets[0]
                                 ws.Visible = 1
@@ -1621,7 +1621,7 @@ class myobCreateInvoice(graphene.Mutation):
                         "Job": {"UID": job.myob_uid},
                     }
                 ],
-                "JournalMemo": "BGIS: Sale",
+                "JournalMemo": f"Sale: {job.client.name}",
             }, default=str)
 
             headers = {                
@@ -1813,7 +1813,7 @@ class myobCreateBill(graphene.Mutation):
                     }
                 ],
                 "FreightTaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
-                "JournalMemo": f"Purchase:{supplier.name}",
+                "JournalMemo": f"Purchase: {supplier.name}",
             }, default=str)
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -2182,7 +2182,7 @@ class generateInvoice(graphene.Mutation):
                                 paths["estimate"] = os.path.join(estimate_folder, files)
                             else:
                                 # Convert excel sheet to pdf
-                                xlApp = win32.Dispatch("Excel.Application", pythoncom.CoInitialize())
+                                xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
                                 books = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
                                 ws = books.Worksheets[0]
                                 ws.Visible = 1
