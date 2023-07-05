@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios from 'axios';
 import { InputField, ProgressButton } from "../../components/Components";
 import JobAllocator from "../home/JobAllocator";
+import { defineJobIdentifier } from "../../components/Functions";
 
 const emptyJobState = {
     'po': '',
@@ -55,25 +56,6 @@ const CreateJob = () => {
 
     const { input } = useParams();
 
-
-    function defineJobIdentifier(job) {
-        let identifier = "PO" + job?.po; // Default Value is PO
-        
-        if (job?.po == '') {
-            if (job.otherId && job.otherId.includes("VP")) {
-                identifier = job.otherId;
-            }
-            else if(job?.sr != '') {
-                identifier = "SR" + job?.sr;
-            }
-            else if (job?.otherId != ''){
-                identifier = job?.otherId;
-            }
-        }
-    
-        return identifier;
-    };
-    
     useEffect(() => {
         const abortController = new AbortController()
 

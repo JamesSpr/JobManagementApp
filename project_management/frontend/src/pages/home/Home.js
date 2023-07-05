@@ -170,7 +170,7 @@ const HomePage = () => {
         </Grid>
 
         {/* Create new Dialog */}
-        <CreateDialog open={createJob} onClose={handleDialogClose} clients={clients} clientContacts={clientContacts} locations={locations}/>
+        <CreateDialog open={createJob} onClose={handleDialogClose} jobs={jobs} clients={clients} clientContacts={clientContacts} locations={locations}/>
 
         {/* Footer AppBar with Controls */}
         <Box sx={{ flexGrow: 1}}>

@@ -8,6 +8,7 @@ import useAuth from "../pages/auth/useAuth";
 import useApp from '../context/useApp';
 import axios from '../hooks/axios';
 import SideBar from './SideBar';
+import { openInNewTab } from '../components/Functions';
 
 const Navbar = () => {
     const { auth, setAuth } = useAuth();
@@ -88,11 +89,6 @@ const Navbar = () => {
         </>
     );
 
-    const openInNewTab = (url) => {
-        const newWindow = window.open(url, '_blank', 'noopener, noreferrer')
-        if(newWindow) newWindow.opener = null
-    }
-
     return (
         <Box sx={{ flexGrow: 1}}>
             <AppBar position="fixed" sx={{ zIndex: 999 }}
@@ -164,21 +160,6 @@ const Navbar = () => {
             </AppBar>
             {toggleSidebar && auth?.user ? <SideBar /> : <></>}
         </Box>
-
-        // <Grid item xs={12} style={{paddingBottom: 15}}>
-        //     <IconButton color="primary" aria-label="aurify logo" component="span" onMouseDown={(e) => {
-        //             if(e.button === 0) {
-        //                 navigate('/'); 
-        //             }
-        //             if(e.button === 1) {
-        //                 openInNewTab('/');
-        //             } 
-        //         }}>
-        //         <img alt="Aurify logo" src={"/static/images/aurify_logo.png"} width='250px'/>
-        //     </IconButton>
-
-        //     {auth?.user ? authLinks() : <></>}
-        // </Grid> 
     );
 }
 

@@ -49,6 +49,15 @@ h4 {
   text-align: center;
 }
 
+.centreSpan {
+  margin: 0 auto;
+}
+
+.linkText {
+  color: rgb(0, 100, 255);
+  margin: 0;
+}
+
 .tab-list {
   border-bottom: 1px solid #ccc;
   padding-left: 0;

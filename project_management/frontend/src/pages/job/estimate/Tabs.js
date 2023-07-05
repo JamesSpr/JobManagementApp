@@ -120,7 +120,7 @@ const EstimateModule = ({ estimates, jobId, updateRequired, setUpdateRequired, u
                 <>
                     <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                         <Tabs value={value} onChange={ (event, newValue) => {setValue(newValue); setCreating(false);}} indicatorColor="primary" centered>
-                            <Tab label={'Quote Options'} {...a11yProps(0, selected)}/>
+                            <Tab label={'Quotes'} {...a11yProps(0, selected)}/>
                             {estimateData.map((item, index) => {
                                 return (
                                     <Tab label={estimateData[index]?.name} {...a11yProps(index+1, selected)}/>

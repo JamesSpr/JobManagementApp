@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Grid, Typography, Button, CircularProgress, Divider } from '@mui/material';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
-import { useNavigate } from 'react-router-dom';
 import Imports from './Imports';
 import Transfers from './Transfers';
 import { FileUploadSection, InputField } from '../../components/Components';
@@ -11,12 +10,6 @@ export default function Setting() {
     const axiosPrivate = useAxiosPrivate();
     const [waiting, setWaiting] = useState({});
     
-    const navigate = useNavigate();
-    const openInNewTab = (url) => {
-        const newWindow = window.open(url, '_blank', 'noopener, noreferrer')
-        if(newWindow) newWindow.opener = null
-    }
-
     const handleExportJobData = async () => {    
         setWaiting(prev => ({...prev, "exportJob": true}));
         try {

@@ -18,11 +18,7 @@ import fuzzyFilter from '../../components/FuzzyFilter';
 import { InputField, PaginationControls, Tooltip } from '../../components/Components';
 import { fetchArchivedData } from './QueryData';
 import JobAllocator from './JobAllocator';
-
-const openInNewTab = (url) => {
-    const newWindow = window.open(url, '_blank', 'noopener, noreferrer')
-    if(newWindow) newWindow.opener = null
-}
+import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
 
 const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
 
@@ -61,25 +57,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
         // Set Default Page Size
         table.getState().pagination.pageSize = 20;
     }, [])
-
-    function defineJobIdentifier(job) {
-    
-        let identifier = "PO" + job.po; // Default Value is PO
-        
-        if (job.po == '') {
-            if (job.otherId && job.otherId.includes("VP")) {
-                identifier = job.otherId;
-            }
-            else if(job.sr != '') {
-                identifier = "SR" + job.sr;
-            }
-            else if (job.otherId != ''){
-                identifier = job.otherId;
-            }
-        }
-    
-        return identifier;
-    };
 
     const getAllData = async () => {
         if(allData === false) {

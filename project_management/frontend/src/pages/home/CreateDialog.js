@@ -4,8 +4,9 @@ import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { Button, Grid, Box, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Portal, Snackbar, Alert} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {InputField} from '../../components/Components';
+import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
 
-const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => {
+const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations }) => {
 
     const axiosPrivate = useAxiosPrivate();
     const navigate = useNavigate();
@@ -15,7 +16,9 @@ const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => 
     const [snackMessage, setSnackMessage] = useState('');
     const [snackVariant, setSnackVariant] = useState('info');
     const [createdJob, setCreatedJob] = useState({});
+    const [duplicate, setDuplicate] = useState(null);
     const [updated, setUpdated] = useState(false);
+    const [checkJob, setCheckJob] = useState(false);
     const [newJob, setNewJob] = useState({
         'po': '',
         'sr': '',
@@ -45,23 +48,25 @@ const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => 
         setCreatedJob({})
     }, [open])
 
-    const defineJobIdentifier = (job) => {
-        let identifier = "PO" + job.po; // Default Value is PO
-        
-        if (job.po == '') {
-            if (job.otherId && job.otherId.includes("VP")) {
-                identifier = job.otherId;
-            }
-            else if (job.sr != '') {
-                identifier = "SR" + job.sr;
-            }
-            else if (job.otherId != ''){
-                identifier = job.otherId;
-            }
+    useEffect(() => {
+
+        const foundPO = jobs.find(job  => newJob.po && job.po === newJob.po);
+        const foundSR = jobs.find(job  => newJob.sr && job.sr === newJob.sr);
+        const foundOther = jobs.find(job  => newJob.otherId && job.otherId === newJob.otherId);
+
+        setDuplicate(null);
+
+        if(foundPO) {
+            setDuplicate(foundPO);
+        } else if(foundSR) {
+            setDuplicate(foundSR);
+        } else if (foundOther) {
+            setDuplicate(foundOther);
         }
-    
-        return identifier;
-    };
+
+        setCheckJob(false);
+
+    }, [checkJob])
 
     const handleCreate = async () => {
         setWaiting(true);
@@ -186,6 +191,10 @@ const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => 
     return (
         <Dialog open={open} onClose={handleClose} fullwidth="true" maxWidth={'md'}>
             <DialogTitle sx={{margin: '0 auto'}}>Create New Job</DialogTitle>
+            { duplicate && <span className='centreSpan' onClick={() => openInNewTab('/job/edit/' + defineJobIdentifier(duplicate))}>
+                <p className="linkText">Job Already Exists in System, Click to Open</p>
+            </span>
+            }
             <DialogContent sx={{paddingTop: '10px'}}>
                 <Grid>
                     {/* Request Details */}
@@ -201,9 +210,9 @@ const CreateDialog = ({ open, onClose, clients, clientContacts, locations }) => 
                     </Grid>
                     {/* newJob Details */}
                     <Grid item xs={12} align="center"> 
-                        <InputField name="po" label="Purchase Order #" value={newJob.po} onChange={handleInput} />
-                        <InputField name="sr" label="Service Request #" value={newJob.sr} onChange={handleInput} />
-                        <InputField name="otherId" label="Other Id" value={newJob.otherId} onChange={handleInput} />
+                        <InputField name="po" label="Purchase Order #" value={newJob.po} onChange={handleInput} onBlur={() => setCheckJob(true)} />
+                        <InputField name="sr" label="Service Request #" value={newJob.sr} onChange={handleInput} onBlur={() => setCheckJob(true)} />
+                        <InputField name="otherId" label="Other Id" value={newJob.otherId} onChange={handleInput} onBlur={() => setCheckJob(true)} />
                     </Grid>
                     {/* Location & Title */}
                     <Grid item xs={12} align="center"> 

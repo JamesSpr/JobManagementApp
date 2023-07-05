@@ -1,17 +1,13 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Drawer, Toolbar, List, Divider, ListItem, ListItemButton, ListItemIcon, ListItemText, } from '@mui/material';
+import { openInNewTab } from "../components/Functions";
 
 const drawerWidth = 230;
 
 const SideBar = () => {
     
     let navigate = useNavigate();
-    
-    const openInNewTab = (url) => {
-        const newWindow = window.open(url, '_blank', 'noopener, noreferrer')
-        if(newWindow) newWindow.opener = null
-    }
 
     const sideBarUpperOptions = ['Clients', 'Contractors', 'Invoices', 'Bills']
     const sideBarLowerOptions = ['Admin', 'Analytics', 'Settings', 'MYOB'] // 'Financials', 

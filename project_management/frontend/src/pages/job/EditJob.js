@@ -16,6 +16,7 @@ import Settings from '@mui/icons-material/Settings';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
+import { openInNewTab } from '../../components/Functions';
 
 const JobPage = () => { 
     const axiosPrivate = useAxiosPrivate();
@@ -854,11 +855,6 @@ const JobPage = () => {
 
     const handleInput = (e) => {
         setJob(prev => ({...prev, [e.target.name]: e.target.value}))
-    }
-
-    const openInNewTab = (url) => {
-        const newWindow = window.open(url, '_blank', 'noopener, noreferrer')
-        if(newWindow) newWindow.opener = null
     }
 
     const handleCloseSettings = (e, reason) => {
