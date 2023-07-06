@@ -393,6 +393,7 @@ class myobUpdateContractor(graphene.Mutation):
             user = MyobUser.objects.get(id=uid)
 
             for contractor in contractors:
+                print("Updating Contractor:", contractor)
                 link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{contractor['myob_uid']}'"
                 headers = {                
                     'Authorization': f'Bearer {user.access_token}',

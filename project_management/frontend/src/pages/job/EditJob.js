@@ -359,12 +359,8 @@ const JobPage = () => {
     }, []);
 
     useEffect(() => {
-        jobStages.map((values) => {
-            if(job.stage === values['name']){
-                setApp(prev => ({...prev, title: getJobName(), subTitle: values['description']}));
-            }
-        })
-
+        console.log("Changing App Title", getJobName(), stage)
+        setApp(prev => ({...prev, title: getJobName(), subTitle: stage}));
         setTitleChange(false);
     }, [titleChange])
 
@@ -485,14 +481,16 @@ const JobPage = () => {
             const res = response?.data?.data?.create_estimate_from_set;
             setWaiting(prev => ({...prev, 'save': false}));
             setSnack(true);
-            // Update Job Stage
-            jobStages.map((values) => {
-                res?.job?.stage === values['name'] ? 
-                    setStage(values['description']) : null;
-            })
             if(res.success) {
                 setEstimateSet(res.job.estimateSet);
+                
+                // Update Job Stage
+                jobStages.map((values) => {
+                    res?.job?.stage === values['name'] ? 
+                        setStage(values['description']) : null;
+                })
                 setTitleChange(true);
+
                 if(!partialError) {
                     setSnackVariant('success');
                     setSnackMessage(res.message);
@@ -531,6 +529,8 @@ const JobPage = () => {
             
             setWaiting(prev => ({...prev, 'closeout': false}));
             setSnack(true);
+            setStage("Invoicing");
+            setTitleChange(true);
             
             if(res.success) {
                 setJob(prev => ({...prev, 'closeOutDate': new Date().toISOString().slice(0, 10)}));
@@ -1240,24 +1240,24 @@ const JobPage = () => {
                         </Tooltip>
                         <Tooltip title={updateRequired ? "Please save before creating documents" : "Create New Completion Documents"}>
                             <Box sx={{display: 'inline-block'}}>
-                                    <IconButton disabled={updateRequired} onClick={handleCreateCompletionDocuments}>
-                                        <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
-                                            <NoteAddIcon />
-                                            {waiting.compDocs && (
-                                                <CircularProgress size={24} 
-                                                    sx={{
-                                                        colour: 'primary', 
-                                                        position: 'absolute',
-                                                        top: '50%',
-                                                        left: '50%',
-                                                        marginTop: '-12px',
-                                                        marginLeft: '-12px',
-                                                    }}
-                                                />
-                                            )}
-                                        </Box>
-                                    </IconButton>
-                                </Box>
+                                <IconButton disabled={updateRequired} onClick={handleCreateCompletionDocuments}>
+                                    <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
+                                        <NoteAddIcon />
+                                        {waiting.compDocs && (
+                                            <CircularProgress size={24} 
+                                                sx={{
+                                                    colour: 'primary', 
+                                                    position: 'absolute',
+                                                    top: '50%',
+                                                    left: '50%',
+                                                    marginTop: '-12px',
+                                                    marginLeft: '-12px',
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                </IconButton>
+                            </Box>
                         </Tooltip>
                     </Box>
                 </Toolbar>

@@ -29,6 +29,8 @@ const Contractors = () => {
         'bankAccountNumber': '',
     });
 
+    const [waiting, setWaiting] = useState(false);
+
     const [snack, setSnack] = useState({active: false, variant: 'info', message:''})
 
     // Navigation Blocker
@@ -333,11 +335,14 @@ const Contractors = () => {
 
     const handleSave = async () => {
 
+        setWaiting(true);
         // Gather the rows that have been changed
         let changedContractors = []
         for(let x in changedRows) {
             changedContractors.push(data[x])
         }
+
+        console.log(changedContractors)
 
         // Update the changed data
         await axiosPrivate({
@@ -368,6 +373,8 @@ const Contractors = () => {
             }
         }).catch((e) => {
             console.log("error", e);
+        }).finally(() => {
+            setWaiting(false);
         }); 
     }
 
@@ -449,7 +456,23 @@ const Contractors = () => {
         <Footer>
             <Tooltip title="Save Changes">
                 <span>
-                    <IconButton disabled={!updateRequired} onClick={handleSave}><SaveIcon /></IconButton>
+                    <IconButton disabled={!updateRequired} onClick={handleSave}>
+                        <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
+                            <SaveIcon />
+                            {waiting && (
+                                <CircularProgress size={24} 
+                                    sx={{
+                                        colour: 'primary', 
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        marginTop: '-12px',
+                                        marginLeft: '-12px',
+                                    }}
+                                />
+                            )}
+                        </Box>
+                    </IconButton>
                 </span>
             </Tooltip>
             <Tooltip title="Create New Contractor">
