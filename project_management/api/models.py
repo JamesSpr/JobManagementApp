@@ -72,6 +72,7 @@ class ClientContact(models.Model):
     email = models.EmailField(max_length=80)
     region = models.ForeignKey(Region, on_delete=PROTECT, null=True)
     client = models.ForeignKey(Client, on_delete=PROTECT)
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.first_name + " " + self.last_name
@@ -267,6 +268,7 @@ class ContractorContact(models.Model):
     fax = models.CharField(max_length=12)
     email = models.EmailField(max_length=80)
     website = models.EmailField(max_length=80)
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.contact

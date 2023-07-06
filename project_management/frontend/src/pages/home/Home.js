@@ -134,7 +134,7 @@ const HomePage = () => {
         }
 
         fetchJobData();
-        console.log("Fetched Data");
+        // console.log("Fetched Data");
         setRefreshTableData(false);
 
         return () => {

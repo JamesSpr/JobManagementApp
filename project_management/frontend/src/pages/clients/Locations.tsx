@@ -9,12 +9,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { InputField, PaginatedTable, useSkipper } from '../../components/Components';
 import { ClientCreateDialogType } from './Client';
 
-const Locations = ({locations, setLocations, regions, client, updateRequired, setUpdateRequired, setSnack, createDialog, setCreateDialog }:{
+const Locations = ({locations, setLocations, regions, client, setUpdateRequired, setSnack, createDialog, setCreateDialog }:{
     locations: LocationType[], 
     setLocations: React.Dispatch<React.SetStateAction<LocationType[]>>, 
     regions: RegionType[], 
-    client: string | undefined, 
-    updateRequired: boolean, 
+    client: string | undefined,
     setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
     createDialog: ClientCreateDialogType
@@ -41,7 +40,10 @@ const Locations = ({locations, setLocations, regions, client, updateRequired, se
 
         // When the input is blurred, we'll call our table meta's updateData function
         const onBlur = () => {
-            table.options.meta?.updateData(index, id, value)
+            if(initialValue !== value) {
+                setUpdateRequired(true);
+                table.options.meta?.updateData(index, id, value)
+            }
         }
 
         // If the initialValue is changed external, sync it up with our state
@@ -62,8 +64,10 @@ const Locations = ({locations, setLocations, regions, client, updateRequired, se
         const [regions, setRegions] = useState<RegionType[]>([])
         
         // When the input is blurred, we'll call our table meta's updateData function
-        const onBlur = () => {
+        const onSelection = (e: { target: { value: any; }; }) => {
+            setValue(e.target.value)
             if(initialValue !== value) {
+                setUpdateRequired(true);
                 table.options.meta?.updateData(index, id, value);
             }
         }
@@ -78,7 +82,7 @@ const Locations = ({locations, setLocations, regions, client, updateRequired, se
         }, [])
 
         return (
-            <select value={value} onChange={e => setValue(e.target.value)} onBlur={onBlur} 
+            <select value={value} onChange={onSelection}
                 style={{display:'block', margin:'0 auto', width: 'calc(100% - 3px)', padding: '5px', fontSize: '0.875rem'}}
             >
                 <option key={'blank'} value=''>{''}</option>
@@ -291,18 +295,6 @@ const Locations = ({locations, setLocations, regions, client, updateRequired, se
     return (
     <>
         <PaginatedTable columns={columns} data={locations} tableMeta={tableMeta} autoResetPageIndex={autoResetPageIndex} skipAutoResetPageIndex={skipAutoResetPageIndex}/>
-
-        {/* Footer AppBar with Controls */}
-        {/* <Footer>
-            <Tooltip title="Save Changes">
-                <span>
-                    <IconButton disabled={!updateRequired} onClick={handleSave}><SaveIcon /></IconButton>
-                </span>
-            </Tooltip>
-            <Tooltip title="Create New Contact">
-                <IconButton onClick={() => setCreateLocation(true)}><AddIcon /></IconButton>
-            </Tooltip>
-        </Footer> */}
 
         {/* Create Client Contact Dialog Box */}
         <Dialog open={createDialog['Locations']} onClose={handleClose} fullWidth={true} maxWidth={'md'}>

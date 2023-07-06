@@ -4,7 +4,7 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import useAuth from "../auth/useAuth";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Footer, InputField, ProgressButton, SnackBar } from "../../components/Components";
-import { useReactTable, getCoreRowModel, flexRender, } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, flexRender, SortingState, getSortedRowModel, VisibilityState, } from '@tanstack/react-table'
 import { SnackType } from "../../types/types";
 import { Box, CircularProgress, Grid, Typography, Button, Dialog, DialogContent, IconButton } from "@mui/material";
 
@@ -65,17 +65,33 @@ const ClientList = () => {
 
     // Table Columns
     const columns = useMemo(() => [
-        {                
-            accessorKey: 'name',
-            header: () => 'Client List',
-            size: 500,
-        },
+    {                
+        accessorKey: 'id',
+        header: () => 'ID',
+        size: 0,
+    },
+    {                
+        accessorKey: 'name',
+        header: () => 'Client List',
+        size: 500,
+        enableSorting: false
+    },
     ], []);
 
+    const [sorting, setSorting] = useState<SortingState>([{id: 'id', desc: false}])
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({id: false})
     const table = useReactTable({
         data,
         columns,
+        state: {
+            sorting,
+            columnVisibility
+        },
         getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        onColumnVisibilityChange: setColumnVisibility,
+        onSortingChange: setSorting,
+        enableSorting: true,
     });   
     
     const handleCreate = async () => {
@@ -133,50 +149,57 @@ const ClientList = () => {
                 <Grid item xs={1}/>
                 <Grid item xs={10}>
                 {data.length > 0 ? 
-                        <table style={{tableLayout: 'fixed', maxWidth: '800px', borderCollapse: 'separate'}}>
-                            <thead>
-                                {table.getHeaderGroups().map(headerGroup => (
-                                    <tr key={headerGroup.id}>
-                                    {headerGroup.headers.map(header => {
-                                        return (
-                                            <th key={header.id} colSpan={header.colSpan} style={{fontWeight: 'bold', padding: '10px 5px 10px 5px',  width: header.getSize()}} >
+                    <table style={{tableLayout: 'fixed', maxWidth: '800px', borderCollapse: 'separate'}}>
+                        <thead>
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <tr key={headerGroup.id}>
+                                {headerGroup.headers.map(header => {
+                                    return (
+                                        <th key={header.id} colSpan={header.colSpan} style={{fontWeight: 'bold', padding: '10px 5px 10px 5px',  width: header.getSize()}} >
                                                 {header.isPlaceholder ? null : (
                                                 <>
-                                                    {flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                    )}
+                                                    <div {...{onClick: header.column.getToggleSortingHandler(),
+                                                    }}>
+                                                        {flexRender(
+                                                            header.column.columnDef.header,
+                                                            header.getContext()
+                                                        )}
+                                                        {{
+                                                            asc: ' ▲',
+                                                            desc: ' ▼',
+                                                        }[header.column.getIsSorted() as string] ?? null}
+                                                    </div>
                                                 </>
                                                 )}
-                                            </th>
-                                        );
-                                    })}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody>
-                                {table.getRowModel().rows.map(row => {
-                                    return (
-                                        <tr key={row.id} 
-                                            onDoubleClick={(e) => {navigate(`/client/${row.original.name}`)}}
-                                        >
-                                            {row.getVisibleCells().map(cell => {
-                                                return (
-                                                    <td key={cell.id} style={{padding: '10px 5px 10px 10px'}}>
-                                                    {
-                                                        flexRender(
-                                                            cell.column.columnDef.cell,
-                                                            cell.getContext()
-                                                        )
-                                                    }
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
+                                        </th>
                                     );
                                 })}
-                            </tbody>
-                        </table>
+                                </tr>
+                            ))}
+                        </thead>
+                        <tbody>
+                            {table.getRowModel().rows.map(row => {
+                                return (
+                                    <tr key={row.id} 
+                                        onDoubleClick={(e) => {navigate(`/client/${row.original.name}`)}}
+                                    >
+                                        {row.getVisibleCells().map(cell => {
+                                            return (
+                                                <td key={cell.id} style={{padding: '10px 5px 10px 10px'}}>
+                                                {
+                                                    flexRender(
+                                                        cell.column.columnDef.cell,
+                                                        cell.getContext()
+                                                    )
+                                                }
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 : 
                     <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingTop: '10px'}}>
                         <CircularProgress />

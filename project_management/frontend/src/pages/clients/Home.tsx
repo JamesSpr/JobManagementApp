@@ -7,11 +7,10 @@ import { usePrompt } from "../../hooks/promptBlocker";
 import { Grid } from "@mui/material";
 
 
-const Home = ({client, details, setDetails, updateRequired, setUpdateRequired, setSnack }: {
+const Home = ({client, details, setDetails, setUpdateRequired, setSnack }: {
     client: string | undefined,
     details: ClientType,
     setDetails: React.Dispatch<React.SetStateAction<ClientType>>,
-    updateRequired: boolean, 
     setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {

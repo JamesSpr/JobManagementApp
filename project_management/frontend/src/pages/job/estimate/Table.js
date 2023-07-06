@@ -687,7 +687,7 @@ const EstimateTable = ({estimateData, accessorId}) => {
 
     return (
         <>
-            <InputField multiline width={1000} name="scope" label="Detailed Scope of Works" value={scope} onChange={e => setScope(e.target.value)}/>
+            <InputField multiline contenteditable={true} width={1000} name="scope" label="Detailed Scope of Works" value={scope} onChange={e => setScope(e.target.value)}/>
             <TableContainer sx={{paddingBottom: "20px"}}>
                 <Table {...{sx: { width: table.getTotalSize(), maxWidth: '100%'},}}>
                     <TableHead>

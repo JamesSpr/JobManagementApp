@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Grid, Button, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, } from '@mui/material';
-import { InputField, PaginatedTable, useSkipper } from "../../components/Components";
+import { BasicDialog, InputField, PaginatedTable, useSkipper } from "../../components/Components";
 import { ContactType, RegionType, SnackType } from "../../types/types";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ClientCreateDialogType } from "./Client";
+import { SortingState } from "@tanstack/react-table";
 
-const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUpdateRequired, setSnack, createDialog, setCreateDialog }:{
+const Contacts = ({contacts, setContacts, regions, client, setUpdateRequired, setSnack, createDialog, setCreateDialog }:{
     contacts: ContactType[], 
     setContacts: React.Dispatch<React.SetStateAction<ContactType[]>>, 
     regions: RegionType[], 
     client: string | undefined,
-    updateRequired: boolean, 
     setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>,
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
     createDialog: ClientCreateDialogType
@@ -29,14 +29,15 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
         email:'',
         region: '',
     })
-    const [openAlert, setOpenAlert] = useState(false);
-    const [deleteRow, setDeleteRow] = useState('');
+    // const [openAlert, setOpenAlert] = useState(false);
+    // const [deleteRow, setDeleteRow] = useState('');
 
-    // Dialog Controls
-    const openDialog = (row: any) => {
-        setDeleteRow(row);
-        setOpenAlert(true);
-    }    
+    // // Dialog Controls
+    // const openDialog = (row: any) => {
+    //     console.log(row.row)
+    //     setDeleteRow(row.row);
+    //     setOpenAlert(true);
+    // }    
 
     const handleClose = (event?: any, reason?: any) => {
         if (reason !== 'backdropClick') {
@@ -52,7 +53,10 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
 
         // When the input is blurred, we'll call our table meta's updateData function
         const onBlur = () => {
-            table.options.meta?.updateData(index, id, value)
+            if(initialValue !== value) {
+                setUpdateRequired(true);
+                table.options.meta?.updateData(index, id, value)
+            }
         }
 
         // If the initialValue is changed external, sync it up with our state
@@ -76,6 +80,7 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
         const onSelection = (e: { target: { value: any; }; }) => {
             setValue(e.target.value)
             if(initialValue !== value) {
+                setUpdateRequired(true);
                 table.options.meta?.updateData(index, id, value);
             }
         }
@@ -100,6 +105,28 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
             </select>
         )
     }
+
+    const CheckboxCell = ({ getValue, row: {index}, column: { id }, table }:
+    { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
+        const initialValue = getValue()
+        // We need to keep and update the state of the cell normally
+        const [value, setValue] = useState<boolean>(initialValue)
+
+        // When the input is blurred, we'll call our table meta's updateData function
+        const checkHandler = () => {
+            setValue(!value)
+            table.options.meta?.updateData(index, id, !value);
+        }
+        
+        // If the initialValue is changed external, sync it up with our state
+        useEffect(() => {
+            setValue(initialValue)
+        }, [initialValue])
+
+        return (
+            <input type="checkbox" id={index} checked={value} onChange={checkHandler}/>
+        )
+    }
     
     // Table Columns
     const columns = useMemo(() => [
@@ -108,86 +135,99 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
             header: () => 'First Name',
             cell: EditableCell,
             size: 150,
-            },
+            enableSorting: false,
+        },
         {                
             accessorKey: 'lastName',
             header: () => 'Last Name',
             cell: EditableCell,
             size: 150,
-            },
+            enableSorting: false,
+        },
         {
             accessorKey: 'position',
             header: () => 'Position',
             cell: EditableCell,
             size: 250,
-            },
+            enableSorting: false,
+        },
         {
             accessorKey: 'email',
             header: () => 'Email',
             cell: EditableCell,
             size: 350,
-            },
+            enableSorting: false,
+        },
         {
             accessorKey: 'phone',
             header: () => 'Phone Number',
             cell: EditableCell,
             size: 150,
-            },
+            enableSorting: false,
+        },
         {
             accessorKey: 'region',
             header: () => 'Region',
             cell: RegionSelectionCell,
             size: 80,
+            enableMultiSort: true,
         },
         {
-            id: 'controls',
-            header: '',
-            size: 40,
-            cell: (row: any) => (
-                <IconButton onClick={() => {openDialog(row)}} sx={{display: 'table', margin: '0 auto', padding:'0px'}}>
-                    <DeleteIcon />
-                </IconButton>
-            ),
+            accessorKey: 'active',
+            header: () => 'Active',
+            cell: CheckboxCell,
+            size: 80,
+            enableMultiSort: true,
         }
+        // {
+        //     id: 'controls',
+        //     header: '',
+        //     size: 40,
+        //     cell: (row: any) => (
+        //         <IconButton onClick={() => {openDialog(row)}} sx={{display: 'table', margin: '0 auto', padding:'0px'}}>
+        //             <DeleteIcon />
+        //         </IconButton>
+        //     ),
+        // }
     ], []);
 
-    const handleDelete = async (row: any) => {
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `
-                mutation deleteContact($id: String!) { 
-                    delete: deleteContact(id:$id) {
-                    success
-                }
-            }`,
-            variables: { 
-                id: row.original.id,
-            }, 
-        }),
-        }).then((response) => {
-            // console.log(response)
-            const res = response?.data?.data?.delete;
-            if(res.success){
-                // Clear Dialog Content
-                setContacts(old => {
-                    let newData = [];
-                    for(let i = 0; i < old.length; i++) {
-                        if(i !== parseInt(row.id)) {
-                            newData.push(old[i]);
-                        }
-                    }
-                    return newData;
-                })
-            }
-            else {
-                console.log("error", res)
-            }
-        });
+    // const handleDelete = async (row: any) => {
+    //     await axiosPrivate({
+    //         method: 'post',
+    //         data: JSON.stringify({
+    //             query: `
+    //             mutation deleteContact($id: String!) { 
+    //                 delete: deleteContact(id:$id) {
+    //                 success
+    //             }
+    //         }`,
+    //         variables: { 
+    //             id: row.original.id,
+    //         }, 
+    //     }),
+    //     }).then((response) => {
+    //         // console.log(response)
+    //         const res = response?.data?.data?.delete;
+    //         if(res.success){
+    //             // Clear Dialog Content
+    //             setContacts(old => {
+    //                 let newData = [];
+    //                 for(let i = 0; i < old.length; i++) {
+    //                     if(i !== parseInt(row.id)) {
+    //                         newData.push(old[i]);
+    //                     }
+    //                 }
+    //                 return newData;
+    //             })
+    //         }
+    //         else {
+    //             console.log("error", res)
+    //         }
+    //     });
 
-        setDeleteRow('');
-        setOpenAlert(false);
-    }
+    //     setDeleteRow('');
+    //     setOpenAlert(false);
+    // }
 
     const handleCreate = async () => {
         await axiosPrivate({
@@ -239,9 +279,10 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
     }
 
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
+    const [sorting, setSorting] = useState<SortingState>([{"id": "active", "desc": true}]);
     const tableMeta = {
         updateData: (rowIndex: number, columnId: any, value: any) => {
-            setUpdateRequired(true);
+            // setUpdateRequired(true);
             skipAutoResetPageIndex()
             setContacts(old => old.map((row, index) => {
                 if(index === rowIndex) {
@@ -260,7 +301,9 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
 
     return (
     <>
-        <PaginatedTable columns={columns} data={contacts} tableMeta={tableMeta} autoResetPageIndex={autoResetPageIndex} skipAutoResetPageIndex={skipAutoResetPageIndex}/>
+        <PaginatedTable columns={columns} data={contacts} tableMeta={tableMeta} 
+            sorting={sorting} setSorting={setSorting}
+            autoResetPageIndex={autoResetPageIndex} skipAutoResetPageIndex={skipAutoResetPageIndex}/>
 
         {/* Create Client Contact Dialog Box */}
         <Dialog open={createDialog['Contacts']} onClose={handleClose}>
@@ -301,7 +344,11 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
         </Dialog>
 
         {/* Delete Alert Dialog */}
-        <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
+        {/* <BasicDialog title="Delete Contact" open={openAlert} close={() => setOpenAlert(false))} action={() => {handleDelete(deleteRow)}}>
+            <p>Are you sure you want to delete this contact? This action will be permanent.</p>            
+        </BasicDialog> */}
+
+        {/* <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
             <DialogTitle>Delete Contact</DialogTitle>
             <DialogContent>
                 <DialogContentText>Are you sure you want to delete this contact? This action will be permanent.</DialogContentText>
@@ -310,7 +357,7 @@ const Contacts = ({contacts, setContacts, regions, client, updateRequired, setUp
                 <Button onClick={() => {handleDelete(deleteRow)}}>Yes</Button>
                 <Button onClick={() => {setDeleteRow(''); setOpenAlert(false)}}>No</Button>
             </DialogActions>
-        </Dialog>
+        </Dialog> */}
     </>    
     )
 }

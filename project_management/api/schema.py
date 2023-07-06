@@ -344,6 +344,15 @@ class UpdateJob(graphene.Mutation):
         if [char for char in illegal_characters if char in input['other_id']]:
             return self(success=False, message=["Other ID can not contain the characters:"] + illegal_characters)
 
+        # if Job.objects.filter(po = input['po']).exists():
+        #     return self(success=False)
+ 
+        # if Job.objects.filter(sr = input['sr']).exists():
+        #     return self(success=False)
+ 
+        # if Job.objects.filter(other_id = input['other_id']).exists():
+        #     return self(success=False)
+    
         job = Job.objects.get(id=input['id'])
         old_folder_name = str(job)
         job.client = None if input['client'] == "" else Client.objects.get(id=input['client'])
@@ -875,6 +884,7 @@ class ClientContactInput(graphene.InputObjectType):
     email = graphene.String()
     region = graphene.String()
     client = graphene.String()
+    active = graphene.Boolean()
 
 class CreateContact(graphene.Mutation):
     class Arguments:
@@ -926,6 +936,7 @@ class UpdateContact(graphene.Mutation):
             client_contact.phone = contact.phone.strip()
             client_contact.email = contact.email.strip()
             if contact.region: client_contact.region = Region.objects.get(id=contact.region)
+            client_contact.active = contact.active
             client_contact.save()
 
         return self(success=True, message="Contacts Updated")    
@@ -938,12 +949,12 @@ class DeleteContact(graphene.Mutation):
 
     @classmethod
     def mutate(self, root, info, id):
-        try:
-            client_contact = ClientContact.objects.get(id=id)
-            client_contact.delete()
-            return self(success=True)
-        except:
+        if not ClientContact.objects.filter(id=id).exists():
             return self(success=False)
+
+        client_contact = ClientContact.objects.get(id=id)
+        client_contact.delete()
+        return self(success=True)
 
 class ContractorInput(graphene.InputObjectType):
     id = graphene.String(required=False)
@@ -1470,14 +1481,14 @@ class Query(graphene.ObjectType):
         if client:
             return Client.objects.filter(name=client)
 
-        return Client.objects.all()
+        return Client.objects.all().order_by('id')
 
     @login_required
     def resolve_client_contacts(root, info, client=None, **kwargs):
         if client:
             return ClientContact.objects.filter(client=Client.objects.get(name=client))
 
-        return ClientContact.objects.all()
+        return ClientContact.objects.all().order_by('-active', 'first_name')
     
     @login_required
     def resolve_regions(root, info, client=None, **kwargs):

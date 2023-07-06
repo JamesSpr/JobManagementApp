@@ -230,7 +230,7 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
                         <InputField type="select" key="requesterSelect" label="Requester" name="requester" value={newJob.requester} onChange={handleInput}>
                             <option key={"blank_requester"} value={""}></option>
                             {clientContacts?.map((contact) => (
-                                contact.client.id === newJob.client ? <option key={contact.id} value={contact.id}>{contact.firstName + " " + contact.lastName}</option> : /*&& contact.region.shortName === locations[location-1].region.shortName*/ <></>
+                                contact.active && contact.client.id === newJob.client ? <option key={contact.id} value={contact.id}>{contact.firstName + " " + contact.lastName}</option> : /*&& contact.region.shortName === locations[location-1].region.shortName*/ <></>
                             ))}
                         </InputField>
                         <InputField name="priority" label="Priority" value={newJob.priority} onChange={handleInput}/>

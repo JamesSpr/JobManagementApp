@@ -148,6 +148,7 @@ export const fetchResources = () => (JSON.stringify({
             client {
                 id
             }
+            active
         }
         users (isStaff: true) {
             edges {

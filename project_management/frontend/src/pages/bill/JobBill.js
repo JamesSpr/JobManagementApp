@@ -25,7 +25,7 @@ const emptyBillState = {
     'imgPath': ''
 }
 
-const Bill = ({ open, onClose, estimate, bills, contractors }) => {
+const Bill = ({ open, onClose, estimate, bills, setBills, contractors }) => {
 
     const { id } = useParams();
     const [newBill, setNewBill] = useState(emptyBillState);
@@ -33,11 +33,11 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
     const [createBill, setCreateBill] = useState(false);
     const [data, setData] = useState([]);
 
-    const [billData, setBillData] = useState([]);
+    // const [billData, setBillData] = useState([]);
     
-    useEffect(() => {
-        setBillData(bills);
-    }, [])
+    // useEffect(() => {
+    //     setBillData(bills);
+    // }, [])
 
     useEffect(() => {
         setData([])
@@ -66,7 +66,7 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
 
     if(createBill) {
         return <CreateBill open={open} handleClose={handleClose} handleBack={handleBack} 
-            setBills={setBillData} 
+            setBills={setBills} 
             id={id} contractors={contractors} 
             billAttachment={billAttchment}
             newBill={newBill} setNewBill={setNewBill} />
@@ -100,9 +100,9 @@ const Bill = ({ open, onClose, estimate, bills, contractors }) => {
         }, []);
         
         let summarisedBill = []
-        if(billData.length > 0) {
+        if(bills.length > 0) {
             counter = 0;
-            summarisedBill = billData.reduce((items, item) => {
+            summarisedBill = bills.reduce((items, item) => {
                 // console.log("items", items)
                 // console.log("item", item)
                 const {supplier, amount, ...other} = item;

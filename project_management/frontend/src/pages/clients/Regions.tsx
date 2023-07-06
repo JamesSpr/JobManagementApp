@@ -10,11 +10,10 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ClientCreateDialogType } from './Client';
 
-const Regions = ({regions, setRegions, client, updateRequired, setUpdateRequired, setSnack, createDialog, setCreateDialog }:{
+const Regions = ({regions, setRegions, client, setUpdateRequired, setSnack, createDialog, setCreateDialog }:{
         regions: RegionType[], 
         setRegions: React.Dispatch<React.SetStateAction<RegionType[]>>
         client: string | undefined, 
-        updateRequired: boolean, 
         setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
         setSnack: React.Dispatch<React.SetStateAction<SnackType>>
         createDialog: ClientCreateDialogType
@@ -46,7 +45,10 @@ const Regions = ({regions, setRegions, client, updateRequired, setUpdateRequired
 
         // When the input is blurred, we'll call our table meta's updateData function
         const onBlur = () => {
-            table.options.meta?.updateData(index, id, value)
+            if(initialValue !== value) {
+                setUpdateRequired(true);
+                table.options.meta?.updateData(index, id, value)
+            }
         }
 
         // If the initialValue is changed external, sync it up with our state
@@ -67,7 +69,10 @@ const Regions = ({regions, setRegions, client, updateRequired, setUpdateRequired
 
         // When the input is blurred, we'll call our table meta's updateData function
         const onBlur = () => {
-            table.options.meta?.updateData(index, id, value)
+            if(initialValue !== value) {
+                setUpdateRequired(true);
+                table.options.meta?.updateData(index, id, value)
+            }
         }
 
         // If the initialValue is changed external, sync it up with our state

@@ -1,8 +1,8 @@
 
 import React, { FC, ReactNode, useEffect, useRef } from "react"; 
-import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar } from "@mui/material";
+import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table, RowData, ColumnDef,
-    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta } from '@tanstack/react-table'
+    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType, RegionType, SnackBarType } from "../types/types";
 import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
 
@@ -141,13 +141,13 @@ interface PaginatedTableType <T extends object> {
     tableMeta?: TableMeta<any>
     columns: ColumnDef<T>[]
     rowSelection?: {}
-    setRowSelection?: () => {}
+    setRowSelection?: React.Dispatch<React.SetStateAction<any>>
     columnFilters?: []
-    setColumnFilters?: () => []
+    setColumnFilters?: React.Dispatch<React.SetStateAction<any>>
     globalFilter?: ''
-    setGlobalFilter?: () => ''
-    sorting?: []
-    setSorting?: () => []
+    setGlobalFilter?: React.Dispatch<React.SetStateAction<any>>
+    sorting?: SortingState
+    setSorting?: React.Dispatch<React.SetStateAction<any>>
     rowStyles?: {}
     autoResetPageIndex?: boolean
     skipAutoResetPageIndex?: () => void
@@ -198,8 +198,8 @@ export const PaginatedTable = <T extends object>({data, setData, tableMeta, colu
         getFacetedUniqueValues: getFacetedUniqueValues(),
         getFacetedMinMaxValues: getFacetedMinMaxValues(),
         globalFilterFn: fuzzyFilter,
-        enableMultiSort: true,
         autoResetPageIndex: aRPI,
+        enableMultiSort: true,
         // Provide our updateData function to our table meta
         meta: tableMeta ?? {
             updateData: (rowIndex: any, columnId: any, value: any) => {
@@ -371,6 +371,8 @@ export const ProgressButton = ({name, waiting, onClick, centerButton=false, butt
     )
 }
 
+
+
 export const Tooltip = ({children, title}: {children?: ReactNode, title?: string}) => {
     if(title !== "") {
         return(
@@ -380,4 +382,36 @@ export const Tooltip = ({children, title}: {children?: ReactNode, title?: string
         </div>
     )}
     return (<>{children}</>)
+}
+
+interface BasicDialogType {
+    open: boolean
+    close: () => void
+    action: () => void
+    title: string
+    children?: ReactNode
+    okay?: boolean
+}
+
+export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, children, okay}) => {
+
+    return(<>
+        <Dialog open={open} onClose={close} scroll={'paper'}>
+                <DialogTitle>{title}</DialogTitle>
+                <DialogContent dividers={true}>
+                    {children}
+                </DialogContent>
+                <DialogActions>
+                        {okay ? 
+                        <Button onClick={action}>Okay</Button>
+                        :
+                        <>
+                            <Button onClick={action}>Yes</Button>
+                            <Button onClick={close}>No</Button>
+                        </>
+                    }
+                </DialogActions>
+            </Dialog>
+    </>)
+
 }

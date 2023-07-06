@@ -32,7 +32,7 @@ def getAllData(url, headers):
             res = json.loads(response.text)
             data['Items'].extend(res['Items'])
             counter += 1
-            print(f"Fetched: {skip} records")
+            # print(f"Fetched: {skip} records")
 
     return data
 

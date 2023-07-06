@@ -10,7 +10,7 @@ import Bill from '../../bill/JobBill';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteDialog from '../../../components/DeleteDialog';
 
-const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, setUpdateRequired, contractors, client, myobSync}) => {
+const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired, setUpdateRequired, contractors, client, myobSync}) => {
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
     const { setSelectedEstimate, estimateSet, setEstimateSet } = useEstimate();
@@ -575,7 +575,8 @@ const EstimateOptionsOverview = ({bills, users, jobId, updateRequired, setUpdate
                 </Tooltip> 
             }
 
-            <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate} bills={bills} contractors={contractors}/>
+            <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate} 
+                bills={bills} setBills={setBills} contractors={contractors}/>
 
             {/* { auth.user.role === "DEV" ? 
                 <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>

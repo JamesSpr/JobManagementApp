@@ -64,17 +64,17 @@ const Client = () => {
 
     const tabOptions = ["Client", "Contacts", "Locations", "Regions"]
     const tabItems = [
-        <Home client={client} details={details} setDetails={setDetails} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} setSnack={setSnack}/>, 
+        <Home client={client} details={details} setDetails={setDetails} setUpdateRequired={setUpdateRequired} setSnack={setSnack}/>, 
 
         <Contacts contacts={contacts} setContacts={setContacts} regions={regions} client={client} 
-            updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} setSnack={setSnack}
+            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
             createDialog={createDialog} setCreateDialog={setCreateDialog} />,
 
         <Locations locations={locations} setLocations={setLocations} regions={regions} client={client}
-            updateRequired={updateRequired} setUpdateRequired={setUpdateRequired} setSnack={setSnack}
+            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
             createDialog={createDialog} setCreateDialog={setCreateDialog} />, 
 
-        <Regions regions={regions} setRegions={setRegions} client={client} updateRequired={updateRequired} 
+        <Regions regions={regions} setRegions={setRegions} client={client}
             setUpdateRequired={setUpdateRequired} setSnack={setSnack} 
             createDialog={createDialog} setCreateDialog={setCreateDialog}/>
     ]
@@ -137,6 +137,7 @@ const Client = () => {
                             region {
                                 id
                             }
+                            active
                         }
                         locations(client: $client){
                             id

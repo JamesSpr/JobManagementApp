@@ -15,8 +15,8 @@ const DeleteDialog:FC<DeleteDialogType> = ({open, close, title, message, okay, a
 
     return (
         <>
-        {/* Alert Dialog */}
-        <Dialog open={open} onClose={close}>
+            {/* Alert Dialog */}
+            <Dialog open={open} onClose={close}>
                 <DialogTitle>{title}</DialogTitle>
                 <DialogContent>
                     <DialogContentText>{message}</DialogContentText>
