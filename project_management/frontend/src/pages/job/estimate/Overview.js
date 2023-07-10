@@ -136,7 +136,7 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         return (
             <select className="estimateTableInput" value={value} onChange={e => onChange(e.target.value)}>
                 {users?.map((user) => (
-                    <option key={user.node.id} value={user.node.id}>{user.node.firstName + " " + user.node.lastName}</option>
+                    <option key={user.id} value={user.id}>{user.firstName + " " + user.lastName}</option>
                 ))}
             </select>
         )
