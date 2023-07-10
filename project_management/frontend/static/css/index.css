@@ -434,7 +434,7 @@ a {
   text-align: center;
 }
 
-/* Stepper */
+/* || Stepper */
 .stepper {
   display: flex;
   flex-wrap: wrap;
@@ -533,6 +533,8 @@ a {
     flex-direction: column;
 }
 
+/* || Wizard */
+
 .wizard-content {
   height: 100%;
 }
@@ -557,10 +559,13 @@ a {
     /* box-shadow: #292626; */
 }
 
+
 .accounts-table > * > * > *{
   padding: 5px 10px;
   font-size: 16px;
 }
+
+/* || PDF Preview */
 
 .pdf-preview {
   overflow-x: hidden;
@@ -574,4 +579,41 @@ a {
   overflow-y: auto;
   max-height: 1000px;
   border: 1px solid black;
+}
+
+/* || Accordion */
+.accordion {
+  background-color: #eee;
+  color: #444;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  outline: none;
+  transition: 0.4s;
+  text-align: center;
+  font-size: 20px;
+}
+
+.accordion-panel {
+  padding: 0 18px;
+  width: 100%;
+  background-color: white;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.15s ease-in-out;
+}
+
+.accordion-active, .accordion:hover {
+  background-color: #ccc;
+}
+
+.editableSection {
+  border: 1px solid #292626;
+  border-radius: 2px;
+  width: 100%;
+  text-align: left;
+
+  margin: 2px;
 }

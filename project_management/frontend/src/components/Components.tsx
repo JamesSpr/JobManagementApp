@@ -1,5 +1,5 @@
 
-import React, { FC, ReactNode, useEffect, useRef } from "react"; 
+import React, { FC, ReactNode, useState, useEffect, useRef } from "react"; 
 import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table, RowData, ColumnDef,
     getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState } from '@tanstack/react-table'
@@ -412,6 +412,28 @@ export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, chi
                     }
                 </DialogActions>
             </Dialog>
+    </>)
+
+}
+
+interface AccordionType {
+    title: string
+    children?: ReactNode
+}
+
+export const Accordion:FC<AccordionType> = ({title, children}) => {
+
+    const [active, setActive] = useState(false);
+
+    const handleClick = () => {
+        setActive(!active)
+    }
+
+    return (<>
+        <button className={active ? "accordion accordion-active" : "accordion"} onClick={handleClick}>{title}</button>
+        <div className={"accordion-panel"} style={{maxHeight: active ? "100%" : "0"}}>
+            {children}
+        </div>
     </>)
 
 }

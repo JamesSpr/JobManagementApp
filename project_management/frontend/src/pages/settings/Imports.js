@@ -1,6 +1,7 @@
 import { Box, Button, CircularProgress, Grid, Typography } from "@mui/material";
 import React, { useState } from "react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import { Accordion } from "../../components/Components";
 
 const Imports = () => {
     const axiosPrivate = useAxiosPrivate();
@@ -196,15 +197,60 @@ const Imports = () => {
             console.log("error:", err);
         }
     
-    }  
+    } 
+    
+    const handleRemittanceAdvice = async () => {
+        setWaiting(prev => ({...prev, remittance: true}));
+        const [file] = remittance_input.files;
+
+        if (!file) {
+            console.log("No File Uploaded")
+            setWaiting(prev => ({...prev, remittance: false}));
+            return
+        }
+
+        let fileReader = new FileReader();
+        fileReader.readAsDataURL(file)
+        fileReader.onload = async () => {
+            let data = fileReader.result
+
+            try {
+                await axiosPrivate({
+                    method: 'post',
+                    data: JSON.stringify({
+                    query: `
+                    mutation extractRemittanceAdvice($file: String!) {
+                        remittance_advice: extractRemittanceAdvice(file: $file) {
+                            success
+                            message
+                            adviceDate
+                            data {
+                                invoice
+                                price
+                            }
+                        }
+                    }`,
+                    variables: { 
+                        file: data,
+                    },
+                }),
+                }).then((response) => {
+                    const res = response?.data?.data?.remittance_advice;
+                    setWaiting(prev => ({...prev, remittance: false}));
+                    console.log(res);
+                });
+            } catch (err) {
+                console.log("error:", err);
+            }
+        }      
+    
+    }
     
 
     return (
     <>
-        <Grid item xs={12} align="center">
-            <Typography variant='h6'>Imports</Typography>
-        </Grid>
-        <Grid item xs={12} align="center">
+    <Grid item xs={12} align="center">
+        <Accordion title={"Imports"}>
             <Typography>Clients</Typography>
             <input type="file" id="client_input" accept='.csv' />
             <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
@@ -222,8 +268,6 @@ const Imports = () => {
                     />
                 )}
             </Box>
-        </Grid>
-        <Grid item xs={12} align="center">
             <Typography>Client Regions</Typography>
             <input type="file" id="client_region_input" accept='.csv' />
             <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
@@ -241,8 +285,7 @@ const Imports = () => {
                     />
                 )}
             </Box>
-        </Grid>
-        <Grid item xs={12} align="center">
+            
             <Typography>Client Contacts</Typography>
             <input type="file" id="client_contact_input" accept='.csv' />
             <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
@@ -260,8 +303,6 @@ const Imports = () => {
                     />
                 )}
             </Box>
-        </Grid>
-        <Grid item xs={12} align="center">
             <Typography>Locations</Typography>
             <input type="file" id="locations_input" accept='.csv' />
             <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
@@ -279,9 +320,6 @@ const Imports = () => {
                     />
                 )}
             </Box>
-        </Grid>
-        <Grid />
-        <Grid item xs={12} align="center">
             <Typography>Jobs</Typography>
             <input type="file" id="jobs_input" accept='.csv' />
             <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
@@ -299,8 +337,6 @@ const Imports = () => {
                     />
                 )}
             </Box>
-        </Grid>
-        <Grid item xs={12} align="center">
             <Typography>Invoice Details</Typography>
             <input type="file" id="invoice_details_input" accept='.csv' />
             <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
@@ -318,7 +354,25 @@ const Imports = () => {
                     />
                 )}
             </Box>
-        </Grid>
+            <Typography>Import Remittance Advice</Typography>
+            <input type="file" id="remittance_input" accept='.csv' />
+            <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
+                <Button variant="outlined" onClick={handleRemittanceAdvice}>Upload</Button>
+                {waiting.remittance && (
+                    <CircularProgress size={24} 
+                        sx={{
+                            colour: 'primary', 
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            marginTop: '-12px',
+                            marginLeft: '-12px',
+                        }}
+                    />
+                )}
+            </Box>
+        </Accordion>
+    </Grid>
     </>
     )
 
