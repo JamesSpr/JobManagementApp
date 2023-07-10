@@ -1399,10 +1399,10 @@ class Query(graphene.ObjectType):
     invoices = graphene.List(InvoiceType)
     job_invoices = graphene.List(JobInvoiceType)
     bills = graphene.List(BillType)
-    insurance = graphene.List(InsuranceType)
+    insurances = graphene.List(InsuranceType)
 
     @login_required
-    def resolve_insurance(roof, info, **kwargs):
+    def resolve_insurances(roof, info, **kwargs):
         return Insurance.objects.all()
 
     @login_required

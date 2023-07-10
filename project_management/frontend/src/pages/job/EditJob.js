@@ -300,12 +300,29 @@ const JobPage = () => {
                 const location_data = response?.data?.data?.locations;
                 const clients = response?.data?.data?.clients;
                 const clientContacts = response?.data?.data?.clientContacts;
-                const users = response?.data?.data?.users?.edges;
                 const jobStages = response?.data?.data.__type?.enumValues;
                 
                 location_data ? setLocations(location_data) : [];
                 clients ? setClients(clients) : [];
                 clientContacts ? setClientContacts(clientContacts) : [];
+
+                const users = response?.data?.data?.users.edges.map((user) => {return user.node})
+                // Sort users
+                users.sort((a, b) => {
+                    // ignore case
+                    const nameA = a.firstName.toUpperCase(); 
+                    const nameB = b.firstName.toUpperCase();
+                    if (nameA > nameB) {
+                    return 1;
+                    }
+                    if (nameA < nameB) {
+                    return -1;
+                    }
+                
+                    // names must be equal
+                    return 0;
+                });
+
                 users ? setEmployees(users) : [];
                 jobStages ? setJobStages(jobStages) : [];
 
@@ -945,7 +962,7 @@ const JobPage = () => {
                     <InputField type="select" name="inspectionBy" label="Inspector" value={job.inspectionBy} onChange={handleInput}>
                         <option key={"blank_inspector"} value={""}></option>
                         {employees?.map((emp) => (
-                            <option key={emp.node.id} value={emp.node.id}>{emp.node.firstName + " " + emp.node.lastName}</option>
+                            <option key={emp.id} value={emp.id}>{emp.firstName + " " + emp.lastName}</option>
                         ))}
                     </InputField>
                 </Grid>
@@ -972,7 +989,7 @@ const JobPage = () => {
                     <InputField type="select" style={{width: '200px'}} name="siteManager" label="Site Manager" value={job.siteManager} onChange={handleInput}>
                         <option key={"blank_sitemanager"} value={""}></option>
                         {employees?.map((emp) => (
-                            <option key={emp.node.id} value={emp.node.id}>{emp.node.firstName + " " + emp.node.lastName}</option>
+                            <option key={emp.id} value={emp.id}>{emp.firstName + " " + emp.lastName}</option>
                         ))}
                     </InputField>
                     <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="commencementDate" label="Commencement Date" value={job.commencementDate} onChange={handleInput}/>

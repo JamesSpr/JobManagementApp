@@ -2287,6 +2287,36 @@ class generateInvoice(graphene.Mutation):
         else:
             return self(success=False, message="MYOB Connection Error")
 
+class myobGetTimesheets(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        timesheet = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, uid, timesheet):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+
+            timesheet_filter = "" if timesheet == "" else "?$filter=" + timesheet
+            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Payroll/Timesheet{timesheet_filter}"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.get(link, headers=headers)
+
+            return self(success=True, message=response.text)
+
+
 class Query(graphene.ObjectType):
     myob_users = graphene.List(MyobUserType)
 
@@ -2296,6 +2326,8 @@ class Query(graphene.ObjectType):
 
 
 class Mutation(graphene.ObjectType):
+    myob_get_timesheets = myobGetTimesheets.Field()
+
     myob_initial_connection = myobInitialConnection.Field()
     myob_get_access_token = myobGetAccessToken.Field()
     update_or_create_myob_account = updateOrCreateMyobAccount.Field()

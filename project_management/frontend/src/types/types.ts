@@ -1,12 +1,10 @@
 import React, { ReactNode } from 'react';
 
 export type User = {
-    node: {
-        id: Number,
-        email: string,
-        firstName: string,
-        lastName: string
-    }
+    id: Number,
+    email: string,
+    firstName: string,
+    lastName: string
 }
 
 export interface Job {
@@ -171,3 +169,36 @@ export interface SnackBarType {
 }
 
 export const AusStates = ['NSW','QLD','VIC','TAS','WA','SA','ACT','NT']
+
+
+export interface InsuranceType {
+    id?: string
+    description: string
+    issueDate: string
+    startDate: string
+    expiryDate: string
+    active: boolean
+    thumbnail: string
+    filename?: string
+}
+
+export interface EmployeeType {
+    id?: string
+    firstName: string
+    lastName: string
+    email: string
+    position: string
+    myobUser: {
+        id: string
+        username: string
+    }
+    myobAccess: boolean
+    role: string
+    isActive: boolean
+
+}
+
+export interface MYOBUserType {
+    id?: string
+    username: string
+}

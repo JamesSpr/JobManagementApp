@@ -14,7 +14,7 @@ import Unauthorized from "./pages/auth/Unauthorized";
 import Settings from "./pages/settings/Settings";
 import Missing from "./pages/Missing";
 import MyAccount from "./pages/auth/MyAccount";
-import MyobActivate from "./pages/auth/Myob";
+import MyobActivate from "./pages/myob/Myob";
 import Contractors from "./pages/contractors/Contractors";
 import Invoices from "./pages/invoice/Invoices";
 import UpdateInvoices from "./pages/invoice/UpdateInvoices";

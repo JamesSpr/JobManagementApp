@@ -43,7 +43,23 @@ const HomePage = () => {
                 setLocations(res?.locations);
                 setClients(res?.clients)
                 setClientContacts(res?.clientContacts)
-                setUsers(res?.users)
+                const users = res?.users.edges.map((user) => {return user.node})
+                // Sort users
+                users.sort((a, b) => {
+                    // ignore case
+                    const nameA = a.firstName.toUpperCase(); 
+                    const nameB = b.firstName.toUpperCase();
+                    if (nameA > nameB) {
+                    return 1;
+                    }
+                    if (nameA < nameB) {
+                    return -1;
+                    }
+                
+                    // names must be equal
+                    return 0;
+                });
+                setUsers(users)
                 setJobStages(res?.__type.enumValues)
             }).catch((err) => {
                 // TODO: handle error
@@ -165,7 +181,7 @@ const HomePage = () => {
     <>
         <Grid>
             <Grid item xs={12} align="center">
-                <JobTable setRefreshTableData={setRefreshTableData} tableData={jobs} users={users.edges} jobStages={jobStages}/>
+                <JobTable setRefreshTableData={setRefreshTableData} tableData={jobs} users={users} jobStages={jobStages}/>
             </Grid>
         </Grid>
 

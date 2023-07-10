@@ -111,13 +111,13 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                         <Grid container spacing={1}>
                             {
                                 users?.map((user: User) => {
-                                    if(user.node.firstName) {
+                                    if(user.firstName) {
                                         return (
                                             <Grid item xs={12} >
                                                 <FormControlLabel 
-                                                    control={<Checkbox checked={emailRecipients[user.node.email]} 
-                                                    onChange={() => setEmailRecipients((prev: any) => ({...prev, [user.node.email]: !emailRecipients[user.node.email]}))}/>} 
-                                                    label={user.node.firstName + " "  + user.node.lastName}
+                                                    control={<Checkbox checked={emailRecipients[user.email]} 
+                                                    onChange={() => setEmailRecipients((prev: any) => ({...prev, [user.email]: !emailRecipients[user.email]}))}/>} 
+                                                    label={user.firstName + " "  + user.lastName}
                                                 />
                                             </Grid>
                                         )

@@ -108,7 +108,25 @@ const CreateJob = () => {
             const res = response?.data?.data;
             // console.log("res", res);
             setJobs(res?.jobs)
-            setUsers(res?.users);
+
+            const users = res?.users.edges.map((user) => {return user.node})
+            // Sort users
+            users.sort((a, b) => {
+                // ignore case
+                const nameA = a.firstName.toUpperCase(); 
+                const nameB = b.firstName.toUpperCase();
+                if (nameA > nameB) {
+                return 1;
+                }
+                if (nameA < nameB) {
+                return -1;
+                }
+            
+                // names must be equal
+                return 0;
+            });
+
+            setUsers(users);
             setLocations(res?.locations);
             setClients(res?.clients);
             setClientContacts(res?.clientContacts);

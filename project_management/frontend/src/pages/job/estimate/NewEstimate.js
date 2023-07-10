@@ -71,7 +71,7 @@ const NewEstimate = ({users, estimateData}) => {
                         <option key={0} value={""}></option>
                         {
                             users?.map((usr, index) => (
-                                <option key={index} value={usr.node.id}>{usr.node.firstName + ' ' + usr.node.lastName}</option>
+                                <option key={index} value={usr.id}>{usr.firstName + ' ' + usr.lastName}</option>
                             ))
                         }
                     </InputField>

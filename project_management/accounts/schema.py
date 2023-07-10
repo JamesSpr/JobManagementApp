@@ -98,20 +98,22 @@ class UserRefreshTokenMutation(graphene.Mutation):
 class UpdateUser(graphene.Mutation):
     class Arguments:
         id = graphene.ID()
-        email = graphene.String(required=False)
-        first_name = graphene.String(required=False)
-        last_name = graphene.String(required=False)
-        phone = graphene.String(required=False)
-        position = graphene.String(required=False)
-        default_pagination_amount = graphene.Int(required=False)
-        role = graphene.String(required=False)
-        staff = graphene.Boolean(required=False)
-    
+        email = graphene.String()
+        first_name = graphene.String()
+        last_name = graphene.String()
+        phone = graphene.String()
+        position = graphene.String()
+        default_pagination_amount = graphene.Int()
+        role = graphene.String()
+        staff = graphene.Boolean()
+        myobAccess = graphene.Boolean()
+
+
     user = graphene.Field(CustomUserType)
     success = graphene.Boolean()
 
     @classmethod
-    def mutate (cls, root, info, id, first_name=None, last_name=None, email=None, phone=None, position=None, default_pagination_amount=None, role=None, staff=None):
+    def mutate (self, root, info, id, first_name=None, last_name=None, email=None, phone=None, position=None, default_pagination_amount=None, role=None, staff=None, myobAccess=None):
         if CustomUser.objects.filter(pk=id).exists():
             user = CustomUser.objects.get(pk=id)
             if first_name: user.first_name = first_name
@@ -125,9 +127,11 @@ class UpdateUser(graphene.Mutation):
                 user.email = email
                 user.username = email
             if role: user.role = role
+            if myobAccess: user.myob_access = myobAccess
             user.save()
-            return cls(success=True, user=user)
-        return cls(success=False, user=user)
+
+            return self(success=True, user=user)
+        return self(success=False, user=user)
 
 class DeleteUser(graphene.Mutation):
     class Arguments:
