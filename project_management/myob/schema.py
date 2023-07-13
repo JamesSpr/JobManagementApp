@@ -2315,7 +2315,34 @@ class myobGetTimesheets(graphene.Mutation):
             response = requests.get(link, headers=headers)
 
             return self(success=True, message=response.text)
+        
+class myobCustomQuery(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        query = graphene.String()
 
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, uid, query):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+
+            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{query}"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.get(link, headers=headers)
+
+            return self(success=True, message=response.text)
 
 class Query(graphene.ObjectType):
     myob_users = graphene.List(MyobUserType)
@@ -2327,6 +2354,7 @@ class Query(graphene.ObjectType):
 
 class Mutation(graphene.ObjectType):
     myob_get_timesheets = myobGetTimesheets.Field()
+    myob_custom_query = myobCustomQuery.Field()
 
     myob_initial_connection = myobInitialConnection.Field()
     myob_get_access_token = myobGetAccessToken.Field()

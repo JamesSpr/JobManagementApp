@@ -338,7 +338,7 @@ const CreateJob = () => {
                 </Grid>
             </Grid>
             
-            <JobAllocator open={openJobAllocator} onClose={() => setOpenJobAllocator(false)} job={createdJob.id} users={users.edges} snack={{setSnack, setSnackMessage, setSnackVariant}}/>
+            <JobAllocator open={openJobAllocator} onClose={() => setOpenJobAllocator(false)} job={createdJob.id} users={users} snack={{setSnack, setSnackMessage, setSnackVariant}}/>
 
             <Portal>
                 {/* Notification Snackbar */}

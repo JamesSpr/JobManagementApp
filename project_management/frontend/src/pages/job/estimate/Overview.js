@@ -46,7 +46,6 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         setData(estimateSet);
     }, [estimateSet])
 
-
     const editableCell = ({ getValue, row: { index }, column: { id }, table }) => {
         const initialValue = getValue()
         // We need to keep and update the state of the cell normally

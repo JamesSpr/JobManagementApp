@@ -15,7 +15,7 @@ const MyobActivate = () => {
 
     const [queries, setQueries] = useState({client: "CompanyName eq 'BGIS'", contractor: "CompanyName eq 'Buildlogic Pty Ltd'", 
                                             bill: "Number eq '00006510'", order: "Number eq '00001570'", invoice: "Number eq '00001481'",
-                                             job: "Number eq 'PO8172189'", timesheet: "Employee/Name eq 'James Sprague'",
+                                             job: "Number eq 'PO8172189'", timesheet: "Employee/Name eq 'James Sprague'", custom: "Payroll/PayrollCategory/Wage",
                                              contractorName: "", contractorABN: "", clientName: "",});
     const [fields, setFields] = useState({invoice: ""})
 
@@ -372,6 +372,33 @@ const MyobActivate = () => {
             if(res.success) {
                 const bill = JSON.parse(res.message);
                 console.log("Timesheets:", bill)
+            }
+            else {
+                console.log("error!", res.message );
+            }
+        })
+    }
+   
+    const customQuery = async () => {
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation myobCustomQuery($uid:String!, $query:String!) {
+                    response: myobCustomQuery(uid:$uid, query:$query) {
+                        success
+                        message
+                    } 
+                }`,
+                variables: {
+                    uid: auth?.myob.id,
+                    query: queries.custom,
+                },
+            })
+        }).then((response) => {
+            const res = response.data?.data?.response;
+            if(res.success) {
+                const query = JSON.parse(res.message);
+                console.log("Query:", query)
             }
             else {
                 console.log("error!", res.message );
@@ -834,6 +861,10 @@ const MyobActivate = () => {
                     <Grid item xs={12}>
                         <InputField width={500} label="Timesheet Filter" value={queries.timesheet} onChange={(e) => setQueries(prev => ({...prev, timesheet: e.target.value}))}/>
                         <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getTimesheet}>Get Timesheets</Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <InputField width={500} label="Custom Query" value={queries.custom} onChange={(e) => setQueries(prev => ({...prev, custom: e.target.value}))}/>
+                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={customQuery}>Query</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Sync</Typography>
