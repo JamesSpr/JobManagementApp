@@ -53,7 +53,6 @@ class myobGetAccessToken(graphene.Mutation):
 
     @classmethod
     def mutate(self, root, info, code):
-
         env = environ.Env()
         environ.Env.read_env()
 
