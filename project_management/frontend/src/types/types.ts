@@ -134,6 +134,7 @@ export interface InputFieldType {
     type: string
     name?: string
     label?: string
+    min?: string
     max?: string
     children?: ReactNode
     multiline?: boolean

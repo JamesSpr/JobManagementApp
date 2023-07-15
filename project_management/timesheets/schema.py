@@ -116,16 +116,49 @@ class ImportTimesheets(graphene.Mutation):
 
         return self(success=True)
 
-
 def parse_date(dateString):
     dateString = dateString.strip().title()
-    for fmt in ('%d/%m/%Y', '%e/%m/%Y'):
+    for fmt in ('%d/%m/%Y', '%e/%m/%Y', "%Y-%m-%d"):
         try:
             return datetime.strptime(dateString, fmt).strftime("%Y-%m-%d")
         except ValueError:
             pass
 
     return ""
+
+class GetPayrollDetails(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    details = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info, uid):
+        env = environ.Env()
+        env.read_env(env.str('ENV_PATH', '../myob/.env'))
+
+        if not MyobUser.objects.filter(id=uid).exists():
+            return self(success=False, message="MYOB Connection Error - Not User Assigned")
+        
+        checkTokenAuth(uid)
+        user = MyobUser.objects.get(id=uid)
+
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/EmployeePayrollDetails"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers)
+
+        res = json.loads(response.text)
+        res = res['Items']
+
+        return self(success=True, message="Successfully Retrieved Payroll Details", 
+                    details=json.dumps(res))    
 
 class ClearAllTimesheetExamples(graphene.Mutation):
     success = graphene.Boolean()
@@ -141,9 +174,12 @@ class ClearAllTimesheetExamples(graphene.Mutation):
         return self(success=True)
 
 class Query(graphene.ObjectType):
-    timesheets = graphene.List(TimesheetType)
+    timesheets = graphene.List(TimesheetType, end_date=graphene.String())
     @login_required
-    def resolve_timesheets(root, info, **kwargs):
+    def resolve_timesheets(root, info, end_date=None, **kwargs):
+        if end_date:
+            return Timesheet.objects.filter(end_date=end_date)
+
         return Timesheet.objects.all()
     
     employees = graphene.List(EmployeeType)
@@ -160,6 +196,7 @@ class Mutation(graphene.ObjectType):
     get_myob_employees = GetEmployeesFromMyob.Field()
     import_timesheets = ImportTimesheets.Field()
     delete_all_timesheets = ClearAllTimesheetExamples.Field()
+    get_payroll_details = GetPayrollDetails.Field()
 
 
    

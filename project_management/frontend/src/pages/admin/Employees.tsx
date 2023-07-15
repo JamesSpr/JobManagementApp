@@ -1,7 +1,7 @@
 import React, { FC, ReactNode, useState, useEffect, useMemo } from "react";
 import { Box, Tab, Tabs, Grid, Dialog, DialogContent, Typography, IconButton } from '@mui/material';
 import { ColumnDef } from "@tanstack/table-core";
-import { FileUploadSection, InputField, PaginatedTable, ProgressButton, useSkipper } from "../../components/Components";
+import { FileUploadSection, InputField, Table, ProgressButton, useSkipper } from "../../components/Components";
 import { EmployeeType, HTMLElementChange, MYOBUserType } from "../../types/types";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
@@ -159,7 +159,7 @@ const Employees = ({employees, setEmployees, setUpdateRequired, myobUsers}:{
 
                 </Grid>
                 <Grid item xs={12}>
-                    <PaginatedTable data={employees} setData={setEmployees} columns={columns} tableMeta={tableMeta} autoResetPageIndex={autoResetPageIndex} />
+                    <Table data={employees} setData={setEmployees} columns={columns} tableMeta={tableMeta} autoResetPageIndex={autoResetPageIndex} pagination={true} />
                 </Grid>
             </Grid>
         </>

@@ -4,7 +4,7 @@ import { Button, IconButton, Grid,
     Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, } from '@mui/material';
 
 import { RegionType, SnackType } from '../../types/types';
-import { InputField, PaginatedTable } from '../../components/Components';
+import { InputField, Table } from '../../components/Components';
 
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -211,7 +211,7 @@ const Regions = ({regions, setRegions, client, setUpdateRequired, setSnack, crea
 
     return (
     <>
-        <PaginatedTable columns={columns} data={regions} setData={setRegions} setUpdateRequired={setUpdateRequired}/>
+        <Table columns={columns} data={regions} setData={setRegions} setUpdateRequired={setUpdateRequired} pagination={true}/>
 
         {/* Create Client Contact Dialog Box */}
         <Dialog open={createDialog['Regions']} onClose={handleClose} fullWidth={true} maxWidth={'sm'}>

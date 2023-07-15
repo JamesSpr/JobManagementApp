@@ -29,6 +29,8 @@ urlpatterns = [
     path('admin', index, name="admin"),
     path('myaccount', index, name="my-account"),
     path('myob', index, name="myob-integration"),
+    path('timesheets', index, name="timesheets"),
+    path('timesheets/<str:endDate>', index, name="timesheets"),
 
     path('wizard', index, name="wizard"),
     path('wizard/quote', index, name="wizard-quote"),

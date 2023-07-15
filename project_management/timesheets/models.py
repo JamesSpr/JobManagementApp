@@ -11,6 +11,7 @@ class Timesheet(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.PROTECT)
     start_date = models.DateField()
     end_date = models.DateField()
+    sent_to_myob = models.BooleanField(default=False)
 
 class WorkDay(models.Model):
     id = models.AutoField(primary_key=True, unique=True)

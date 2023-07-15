@@ -1,7 +1,7 @@
 
 import React, { FC, ReactNode, useState, useEffect, useRef } from "react"; 
 import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions } from "@mui/material";
-import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table, RowData, ColumnDef,
+import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table as ReactTable, RowData, ColumnDef,
     getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType, RegionType, SnackBarType } from "../types/types";
 import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
@@ -71,7 +71,7 @@ export const InputField:FC<InputFieldType> = ({type="text", label, children, mul
     )
 };
 
-export const PaginationControls = <Type extends RowData>({table}: {table: Table<Type>}) => (
+export const PaginationControls = <Type extends RowData>({table}: {table: ReactTable<Type>}) => (
     table ? 
         <div className="pagination-controls" style={{paddingBottom: '5px'}}>
             <button
@@ -135,7 +135,7 @@ export const PaginationControls = <Type extends RowData>({table}: {table: Table<
     : <></>
 )
 
-interface PaginatedTableType <T extends object> {
+interface TableType <T extends object> {
     data: T[]
     setData?: React.Dispatch<React.SetStateAction<any>>
     tableMeta?: TableMeta<any>
@@ -152,6 +152,7 @@ interface PaginatedTableType <T extends object> {
     autoResetPageIndex?: boolean
     skipAutoResetPageIndex?: () => void
     setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>>
+    pagination?: boolean
 }
 
 export const useSkipper = () => {
@@ -170,10 +171,9 @@ export const useSkipper = () => {
     return [shouldSkip, skip] as const
 }
 
-export const PaginatedTable = <T extends object>({data, setData, tableMeta, columns, columnFilters, 
+export const Table = <T extends object>({data, setData, tableMeta, columns, columnFilters, 
     setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles, 
-    setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex}: PaginatedTableType<T>) => {
-
+    setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex, pagination}: TableType<T>) => {
 
     const [aRPI, skipARPI] = autoResetPageIndex === undefined || skipAutoResetPageIndex === undefined ? useSkipper() : [autoResetPageIndex, skipAutoResetPageIndex]
     
@@ -194,7 +194,7 @@ export const PaginatedTable = <T extends object>({data, setData, tableMeta, colu
         getSortedRowModel: getSortedRowModel(),
         getFacetedRowModel: getFacetedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
+        getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
         getFacetedUniqueValues: getFacetedUniqueValues(),
         getFacetedMinMaxValues: getFacetedMinMaxValues(),
         globalFilterFn: fuzzyFilter,
@@ -225,7 +225,7 @@ export const PaginatedTable = <T extends object>({data, setData, tableMeta, colu
         },
     })
 
-    useEffect(()=> {table.setPageSize(15)},[])
+    useEffect(()=> {if(pagination){table.setPageSize(15)}},[])
 
     return (
         <>
@@ -290,7 +290,7 @@ export const PaginatedTable = <T extends object>({data, setData, tableMeta, colu
                 </tbody>
             </table>
             
-            <PaginationControls table={table} />
+            { pagination && <PaginationControls table={table} /> }
         </>
     )
 }
@@ -391,17 +391,20 @@ interface BasicDialogType {
     title: string
     children?: ReactNode
     okay?: boolean
+    fullWidth?: boolean
+    maxWidth?: "xs" | "sm" | "md" | "lg" | "xl"
+    center?: boolean
 }
 
-export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, children, okay}) => {
+export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, center, children, okay, fullWidth, maxWidth}) => {
 
     return(<>
-        <Dialog open={open} onClose={close} scroll={'paper'}>
-                <DialogTitle>{title}</DialogTitle>
+        <Dialog open={open} onClose={close} scroll={'paper'} fullWidth={fullWidth} maxWidth={maxWidth}>
+                <DialogTitle textAlign={center ? 'center' : 'left'}>{title}</DialogTitle>
                 <DialogContent dividers={true}>
                     {children}
                 </DialogContent>
-                <DialogActions>
+                <DialogActions style={{alignSelf: center ? "center" : "" }}>
                         {okay ? 
                         <Button onClick={action}>Okay</Button>
                         :

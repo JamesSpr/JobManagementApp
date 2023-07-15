@@ -10,7 +10,7 @@ const SideBar = () => {
     let navigate = useNavigate();
 
     const sideBarUpperOptions = ['Clients', 'Contractors', 'Invoices', 'Bills']
-    const sideBarLowerOptions = ['Admin', 'Analytics', 'Settings', 'MYOB'] // 'Financials', 
+    const sideBarLowerOptions = ['Admin', 'Analytics', 'Settings', 'MYOB', 'Timesheets'] // 'Financials', 
 
     return(
         <Drawer

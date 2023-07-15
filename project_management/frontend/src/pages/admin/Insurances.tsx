@@ -1,7 +1,7 @@
 import React, { FC, ReactNode, useState, useEffect, useMemo } from "react";
 import { Box, Tab, Tabs, Grid, Dialog, DialogContent, Typography, IconButton } from '@mui/material';
 import { ColumnDef } from "@tanstack/table-core";
-import { FileUploadSection, InputField, PaginatedTable, ProgressButton } from "../../components/Components";
+import { FileUploadSection, InputField, Table, ProgressButton } from "../../components/Components";
 import { HTMLElementChange, InsuranceType } from "../../types/types";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
@@ -177,7 +177,7 @@ const Insurances = ({insurances, setInsurances, setUpdateRequired}: {
             >
                 <Grid item xs={12}>
                     <p>Insurances Information/Details</p>
-                    <PaginatedTable columns={columns} data={insurances} setData={setInsurances}/>
+                    <Table columns={columns} data={insurances} setData={setInsurances} pagination={true}/>
                     <p>Upload Insurances</p>
                     <FileUploadSection onSubmit={handleNewInsurance} waiting={waiting.update} id="upload_insurances" type=".pdf" button="Upload Insurances"/>
                 </Grid>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Grid, Button, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, } from '@mui/material';
-import { BasicDialog, InputField, PaginatedTable, useSkipper } from "../../components/Components";
+import { BasicDialog, InputField, Table, useSkipper } from "../../components/Components";
 import { ContactType, RegionType, SnackType } from "../../types/types";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
@@ -301,8 +301,8 @@ const Contacts = ({contacts, setContacts, regions, client, setUpdateRequired, se
 
     return (
     <>
-        <PaginatedTable columns={columns} data={contacts} tableMeta={tableMeta} 
-            sorting={sorting} setSorting={setSorting}
+        <Table columns={columns} data={contacts} tableMeta={tableMeta} 
+            sorting={sorting} setSorting={setSorting} pagination={true}
             autoResetPageIndex={autoResetPageIndex} skipAutoResetPageIndex={skipAutoResetPageIndex}/>
 
         {/* Create Client Contact Dialog Box */}
