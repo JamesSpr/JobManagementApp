@@ -78,11 +78,14 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                         res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU') : ""
                         res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU') : ""
                         res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU') : ""
-                        // res.edges[i].node['jobinvoiceSet']['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet']['invoice']['dateCreated'] ? new Date(res.edges[i].node['jobinvoiceSet']['invoice']['dateCreated']).toLocaleDateString('en-AU') : ""
-                        // res.edges[i].node['jobinvoiceSet']['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet']['invoice']['dateIssued'] ? new Date(res.edges[i].node['jobinvoiceSet']['invoice']['dateIssued']).toLocaleDateString('en-AU') : ""
-                        // res.edges[i].node['jobinvoiceSet']['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet']['invoice']['datePaid'] ? new Date(res.edges[i].node['jobinvoiceSet']['invoice']['datePaid']).toLocaleDateString('en-AU') : ""
                         res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU') : ""
                         res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU') : ""
+                       
+                        if(res.edges[i].node['jobinvoiceSet'].length > 0) {
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU') : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU') : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU') : ""
+                        }
                     }
 
                     setAllData(true);
@@ -105,10 +108,20 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
     }
 
     const dateSort = (rowA, rowB, columnId) => {
-        var dateAParts = rowA.getValue(columnId).split("/");
-        var dateBParts = rowB.getValue(columnId).split("/");
-        const valA = new Date(+dateAParts[2], dateAParts[1] - 1, +dateAParts[0]); 
-        const valB = new Date(+dateBParts[2], dateBParts[1] - 1, +dateBParts[0]);
+        
+        let valA = new Date(0)
+        let valB = new Date(0)
+
+        if(rowA.getValue(columnId) !== "") {
+            var dateAParts = rowA.getValue(columnId).split("/");
+            valA = new Date(+dateAParts[2], dateAParts[1] - 1, +dateAParts[0]); 
+        }
+
+        if(rowB.getValue(columnId) !== "") {
+            var dateBParts = rowB.getValue(columnId).split("/");
+            valB = new Date(+dateBParts[2], dateBParts[1] - 1, +dateBParts[0]);
+        }
+
         return valA < valB ? 1 : -1;
     }
 
