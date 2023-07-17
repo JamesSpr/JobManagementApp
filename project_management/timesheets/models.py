@@ -5,6 +5,7 @@ class Employee(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     myob_uid = models.CharField(max_length=38, unique=True)
     name = models.CharField(max_length=32)
+    isActive = models.BooleanField(default=True)
 
 class Timesheet(models.Model):
     id = models.AutoField(primary_key=True, unique=True)

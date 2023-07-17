@@ -229,7 +229,7 @@ input:focus ~ .floating-label {
 .inputField[type="date"] ~ .floating-label,
 .inputField:focus ~ .floating-label,
 .inputField:not(:focus):disabled ~ .floating-label,
-.inputField:not(:focus):valid ~ .floating-label {
+.inputField:not(:focus):not(:placeholder-shown) ~ .floating-label {
   top: -16px;
   bottom: 0px;
   left: 2px;
@@ -248,9 +248,6 @@ input:focus ~ .floating-label {
   left: 2px;
   font-size: 16px;
   opacity: 1;
-}
-
-.floating-label {
   position: absolute;
   pointer-events: none;
   left: 5px;

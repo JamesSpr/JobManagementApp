@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import useAxiosPrivate from '../../hooks/useAxiosPrivate'
 import { useParams } from 'react-router-dom'
-import { CircularProgress, Grid, IconButton } from '@mui/material'
-import { BasicDialog, ProgressButton, Table, Tooltip, } from '../../components/Components'
+import { Button, CircularProgress, Grid, IconButton } from '@mui/material'
+import { BasicDialog, Footer, ProgressButton, Table, Tooltip, } from '../../components/Components'
 import { ColumnDef, RowSelection } from '@tanstack/react-table'
 import useAuth from '../auth/useAuth'
 
@@ -77,8 +77,9 @@ const Timesheet = () => {
     const [employeeEntitlements, setEmployeeEntitlements] = useState<any>({});
     const [dateFilter, setDateFilter] = useState<Date[]>([]);
 
-    const [openEC, setOpenEC] = useState(false);
+    const [openEditor, setOpenEditor] = useState(false);
 
+    const [validTimesheets, setValidTimesheets] = useState(true);
     const [updateRequired, setUpdateRequired] = useState(false);
     
     const { endDate } = useParams();
@@ -99,17 +100,16 @@ const Timesheet = () => {
                         }
                         timesheets (endDate: $endDate){
                             id
-                            startDate
-                            endDate
                             employee {
-                              name
+                                name
                             }
                             workdaySet {
-                              date
-                              hours
-                              workType
-                              job
-                              notes
+                                id
+                                date
+                                hours
+                                workType
+                                job
+                                notes
                             }
                             sentToMyob
                         }
@@ -182,12 +182,18 @@ const Timesheet = () => {
         }   
     }, [filterPayrollEmployees])
 
+    useEffect(() => {
+        setValidTimesheets(true);
+    }, [timesheets])
+
     const PayrollChecks = ({ getValue, row, column: { id }, table }:
         { getValue: any, row:  any, column: { id: any }, table: any }) => {
         
         if(row.original.sentToMyob) {
             return (
-                <DoneAllIcon />
+                <Tooltip title="Processed in MYOB">
+                    <DoneAllIcon />
+                </Tooltip>
             )
         }
 
@@ -221,11 +227,12 @@ const Timesheet = () => {
             if((employeeEntitlement['Total'] - (currentEntitlements as any)[entitlement]) < 0) {
                 warning = true
                 warningMessage = entitlement + " Limit Exceeded";
+                setValidTimesheets(false);
             }
         }
 
-        const openEntitlementResolver = () => {
-            setOpenEC(true);
+        const openTimesheetEditor = () => {
+            setOpenEditor(true);
             setEmployeeEntitlements({
                 id: row.id,
                 employee: employee,
@@ -243,7 +250,7 @@ const Timesheet = () => {
                         <WarningAmberIcon />
                     </Tooltip>
                 </div>
-                <IconButton onClick={openEntitlementResolver}>
+                <IconButton onClick={openTimesheetEditor}>
                     <EditIcon />
                 </IconButton>
             </>
@@ -257,7 +264,7 @@ const Timesheet = () => {
                     <CheckIcon />
                 </Tooltip>
             </div>
-            <IconButton onClick={openEntitlementResolver}>
+            <IconButton onClick={openTimesheetEditor}>
                 <EditIcon />
             </IconButton>
         </>
@@ -319,7 +326,7 @@ const Timesheet = () => {
     ]
 
     return( <>
-        <Grid container alignContent={'center'} direction={'column'} spacing={2} style={{textAlign: 'center'}}>
+        <Grid container direction={'column'} spacing={2} style={{textAlign: 'center', overflow: "auto", margin: 'auto'}}>
             {!loading ?
                 <>
                 <Grid item xs={12}>
@@ -356,9 +363,15 @@ const Timesheet = () => {
             }
         </Grid>
 
-        <TimesheetEditDialog open={openEC} setOpen={setOpenEC}
+        <TimesheetEditDialog open={openEditor} setOpen={setOpenEditor}
             timesheets={timesheets} setTimesheets={setTimesheets} 
             employeeEntitlements={employeeEntitlements} setEmployeeEntitlements={setEmployeeEntitlements}/>
+
+        <Footer>
+            <Tooltip title={validTimesheets ? "" : "Please fix conflicts before submitting"}>
+                <Button variant='outlined' disabled={!validTimesheets || loading}>Submit Timesheets</Button>
+            </Tooltip>
+        </Footer>
 
     </> )
 }

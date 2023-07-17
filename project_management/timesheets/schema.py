@@ -54,30 +54,34 @@ class GetEmployeesFromMyob(graphene.Mutation):
             res = res['Items']
 
             for employee in res:
-                if employee['IsActive'] and not Employee.objects.filter(myob_uid=employee['UID']).exists():
-                    emp = Employee()
-                    emp.myob_uid = employee['UID']
-                    emp.name = employee['FirstName'].strip() + " " + employee['LastName'].strip()
-                    emp.save()
+                emp = Employee()
+                if Employee.objects.filter(myob_uid=employee['UID']).exists():
+                    emp = Employee.objects.get(myob_uid=employee['UID'])
+
+                emp.myob_uid = employee['UID']
+                emp.name = employee['FirstName'].strip() + " " + employee['LastName'].strip()
+                emp.isActive = employee['IsActive']
+                emp.save()
         else:
             return self(success=False, message="MYOB Connection Error")
 
         return self(success=True)
 
 class WorkDayInputType(graphene.InputObjectType):
+    id = graphene.String()
     date = graphene.String()
     hours = graphene.Float()
     work_type = graphene.String()
     job = graphene.String()
     notes = graphene.String()
 
-class TimesheetInputType(graphene.InputObjectType):
+class TimesheetImportType(graphene.InputObjectType):
     name = graphene.String()
     work_days = graphene.List(WorkDayInputType)
 
 class ImportTimesheets(graphene.Mutation):
     class Arguments:
-        summary = graphene.List(TimesheetInputType)
+        summary = graphene.List(TimesheetImportType)
         start_date = graphene.String()
         end_date = graphene.String()
 
@@ -126,6 +130,33 @@ def parse_date(dateString):
 
     return ""
 
+class TimesheetInputType(graphene.InputObjectType):
+    id = graphene.String()
+    employee = graphene.Field(graphene.String)
+    workday_set = graphene.List(WorkDayInputType)
+    sent_to_myob = graphene.Boolean()
+
+class UpdateTimesheet(graphene.Mutation):
+    class Arguments:
+        timesheet = TimesheetInputType()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, timesheet):
+
+        sheet = Timesheet.objects.get(id = timesheet.id)
+        
+        for workday in timesheet.workday_set:
+            day = WorkDay.objects.get(id=workday.id)
+            day.hours = workday.hours
+            day.work_type = workday.work_type
+            day.save()
+
+        sheet.save()
+
+        return self(success=True)
+
 class GetPayrollDetails(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -173,6 +204,31 @@ class ClearAllTimesheetExamples(graphene.Mutation):
 
         return self(success=True)
 
+class SubmitTimesheets(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        timesheets = graphene.List(TimesheetInputType)
+
+    success = graphene.Boolean()
+    timesheets = graphene.List(TimesheetType)
+
+    @classmethod
+    def mutate(self, root, info, uid, timesheets):
+        
+        processed = []
+        for timesheet in timesheets:
+
+            sheet = Timesheet.objects.get(id = timesheet.id)
+
+            
+
+
+            # sheet.sent_to_myob = True
+            # sheet.save()
+            processed.append(sheet)
+
+        return self(success=True, timesheets=timesheets)
+
 class Query(graphene.ObjectType):
     timesheets = graphene.List(TimesheetType, end_date=graphene.String())
     @login_required
@@ -185,7 +241,7 @@ class Query(graphene.ObjectType):
     employees = graphene.List(EmployeeType)
     @login_required
     def resolve_employees(root, info, **kwargs):
-        return Employee.objects.all()
+        return Employee.objects.filter(isActive=True)
     
     work_days = graphene.List(WorkDayType)
     @login_required
@@ -194,9 +250,12 @@ class Query(graphene.ObjectType):
 
 class Mutation(graphene.ObjectType):
     get_myob_employees = GetEmployeesFromMyob.Field()
-    import_timesheets = ImportTimesheets.Field()
     delete_all_timesheets = ClearAllTimesheetExamples.Field()
     get_payroll_details = GetPayrollDetails.Field()
+    # get_employee_count = GetEmployeeCount.Field()
+    import_timesheets = ImportTimesheets.Field()
+    submit_timesheets = SubmitTimesheets.Field()
+    update_timesheet = UpdateTimesheet.Field()
 
 
    

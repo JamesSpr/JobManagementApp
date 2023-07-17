@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { BasicDialog, InputField } from "../../components/Components"
+import { BasicDialog, InputField, SnackBar } from "../../components/Components"
 import { TimesheetType, workDayOptions } from "./Timesheet"
-import { Divider, Grid } from '@mui/material'
+import { Divider, Grid, Portal } from '@mui/material'
+import useAxiosPrivate from '../../hooks/useAxiosPrivate'
+import { SnackType } from '../../types/types'
 
 
-const TimesheetEditor = ({open, setOpen, setTimesheets, employeeEntitlements, setEmployeeEntitlements} : {
+const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEntitlements, setEmployeeEntitlements} : {
     open: boolean
     setOpen: React.Dispatch<React.SetStateAction<boolean>>
     timesheets: TimesheetType[]
@@ -13,19 +15,46 @@ const TimesheetEditor = ({open, setOpen, setTimesheets, employeeEntitlements, se
     setEmployeeEntitlements: React.Dispatch<React.SetStateAction<any>>
 }) => {
 
+    const axiosPrivate = useAxiosPrivate();
     const [dataChanged, setDataChanged] = useState(false);
-    const [entitlementLimitExceeded, setEntitlementLimitExeeded] = useState({"AL": false, "SICK":false})
+    const [snack, setSnack] = useState<SnackType>({active: false, message: '', variant: 'info'});
+    const [entitlementLimitExceeded, setEntitlementLimitExeeded] = useState<string[]>([])
 
-    const updateTimesheets = () => {
+    const updateTimesheets = async () => {
+        let newTimesheet = timesheets[parseInt(employeeEntitlements.id)]
         setTimesheets(old => old.map((row, index) => {
             if(index === parseInt(employeeEntitlements.id)) {
-                return {...old[employeeEntitlements.id], workdaySet: employeeEntitlements.work}
+                newTimesheet = {...old[employeeEntitlements.id], workdaySet: employeeEntitlements.work}
+                return newTimesheet
             }
             return row;
         }));
+        
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation updateTimesheet($timesheet: TimesheetInputType!) {
+                    update: updateTimesheet(timesheet:$timesheet) {
+                        success
+                    }
+                }`,
+                variables: {
+                    timesheet: newTimesheet
+                }
+            }),
+        }).then((response) => {
+            const res = response?.data?.data?.update;
 
-        handleClose();
+            if(res.success) {
+                handleClose();
+            }
+            else {
+                setSnack({active: true, message:"Error Updating Timesheet. Contact Admin.", variant:'error'})
+                console.log(res)
+            }
+        });
     }
+
 
     const handleClose = (event?: {}, reason?: string) => {
         if (reason !== 'backdropClick') {
@@ -46,23 +75,63 @@ const TimesheetEditor = ({open, setOpen, setTimesheets, employeeEntitlements, se
             }
         })
         setEmployeeEntitlements((prev: any) => ({...prev, requested: newRequested}))
-
     }, [employeeEntitlements.work])
 
-    return (
+
+    // Check if any of the entitlements are being exceeded
+    useEffect(() => {
+        setEntitlementLimitExeeded([])
+        employeeEntitlements?.accrued?.map((ent: any) => {
+            const entitlementCalc = parseFloat(ent['Total']) - parseFloat(employeeEntitlements.requested[ent['EntitlementCategory']['Name']])
+            if(entitlementCalc < 0) {
+                if(ent['EntitlementCategory']['Name'] == "Annual Leave Accrual") {
+                    setEntitlementLimitExeeded(prev => [...prev, 'AL'])
+                }
+
+                if(ent['EntitlementCategory']['Name'] == "Personal Leave Accrual") {
+                    setEntitlementLimitExeeded(prev => [...prev, 'SICK'])
+                }
+            }
+        })
+    }, [employeeEntitlements])
+
+    const handleChange = (e: { target: { value: React.SetStateAction<string> } }, i: number) => {
+        let newVal = e.target.value
+        if (newVal === '') { newVal = '0' }
+        setEmployeeEntitlements((prev: any) => ({...prev, work: prev.work.map((row: any, index: number) => {
+            if(index == i) {
+                return {...row, hours: newVal}
+            }
+            return row;
+        })}))
+        setDataChanged(true);
+
+    }
+
+    const handleSelection = (e: { target: { value: React.SetStateAction<string> } }, i: number) => {
+        let newVal = e.target.value
+        if (newVal === '') { newVal = '0' }
+        setEmployeeEntitlements((prev: any) => ({...prev, work: prev.work.map((row: any, index: number) => {
+            if(index == i) {
+                return {...row, workType: newVal}
+            }
+            return row;
+        })}))
+        setDataChanged(true);
+    }
+
+    return ( <>
         <BasicDialog fullWidth maxWidth={'xl'} open={open} close={handleClose} center={true} 
             title={"Edit Timesheet - " + employeeEntitlements.employee?.name} 
             action={updateTimesheets} okay={true}
         >
         {open &&
             <Grid container spacing={1} textAlign={'center'} justifyContent={'center'}>
-                {/* <Grid item xs={3}>
-                </Grid> */}
-                {employeeEntitlements.accrued.map((ent: any) => {
+                {employeeEntitlements?.accrued?.map((ent: any) => {
                     const entitlementCalc = parseFloat(ent['Total']) - parseFloat(employeeEntitlements.requested[ent['EntitlementCategory']['Name']])
 
                     return(
-                        <Grid item xs={2.5} style={{textAlign: 'center'}}>
+                        <Grid item xs={6} sm={2.5}>
                             <h2>{ent['EntitlementCategory']['Name']}</h2>
                             <p><b>Remaining:</b> {ent['Total']}</p>
                             <p><b>Requested:</b> {employeeEntitlements.requested[ent['EntitlementCategory']['Name']]}</p>
@@ -70,43 +139,18 @@ const TimesheetEditor = ({open, setOpen, setTimesheets, employeeEntitlements, se
                         </Grid>
                     )
                 })}
-                {/* <Grid item xs={3}>
-                </Grid> */}
                 <Grid item xs={12}>
                     <Divider variant='middle'/>
                 </Grid>
-                {employeeEntitlements.work.map((work: any, i: number) => {
-                    const handleChange = (e: { target: { value: React.SetStateAction<string> } }) => {
-                        let newVal = e.target.value
-                        if (newVal === '') { newVal = '0' }
-                        setEmployeeEntitlements((prev: any) => ({...prev, work: prev.work.map((row: any, index: number) => {
-                            if(index == i) {
-                                return {...row, hours: newVal}
-                            }
-                            return row;
-                        })}))
-                        setDataChanged(true);
-                    }
-
-                    const handleSelection = (e: { target: { value: React.SetStateAction<string> } }) => {
-                        let newVal = e.target.value
-                        if (newVal === '') { newVal = '0' }
-                        setEmployeeEntitlements((prev: any) => ({...prev, work: prev.work.map((row: any, index: number) => {
-                            if(index == i) {
-                                return {...row, workType: newVal}
-                            }
-                            return row;
-                        })}))
-                        setDataChanged(true);
-                    }
-
+                {employeeEntitlements?.work?.map((work: any, i: number) => {
                     return (
-                        <Grid item xs={12/7}>
+                        <Grid item xs={12/2} sm={12/7}>
                             <p><b>{new Date(work.date).toLocaleDateString('en-AU', { weekday: 'long', day: '2-digit', month: '2-digit', year:'numeric' })}</b></p>
-                            <InputField type='number' label='Hours' width={175} step={0.01} min={'0'} value={work.hours} onChange={handleChange} />
-                            <InputField type="select" label='Type' width={175} onChange={handleSelection} value={work.workType}>
+                            <InputField type='number' label='Hours' width={175} step={0.01} min={'0'} value={work.hours} onChange={e => handleChange(e, i)} />
+                            <InputField type="select" label='Type' width={175} onChange={e => handleSelection(e, i)} value={work.workType}
+                                style={{backgroundColor: entitlementLimitExceeded.includes(work.workType) ? "red" : "white"}}>
                                 {Object.keys(workDayOptions).map((key, i) => (
-                                    <option key={i} value={key} style={{backgroundColor: "red"}}>{(workDayOptions as any)[key].name}</option>
+                                    <option key={i} value={key} style={{backgroundColor: entitlementLimitExceeded.includes(key) ? "red" : "white"}}>{(workDayOptions as any)[key].name}</option>
                                 ))}
                             </InputField>
                         </Grid>
@@ -116,6 +160,11 @@ const TimesheetEditor = ({open, setOpen, setTimesheets, employeeEntitlements, se
             </Grid>
         }
         </BasicDialog>
+
+        <Portal>
+            <SnackBar snack={snack} setSnack={setSnack} />
+        </Portal>
+    </>
     )
 }
 

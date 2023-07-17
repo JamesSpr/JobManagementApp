@@ -56,14 +56,14 @@ export const InputField:FC<InputFieldType> = ({type="text", label, children, mul
         <>
             <div className={boxStyle} >
                 {type === "select" ? 
-                    <select className={styleClass} {...props} required>{children}</select> :
+                    <select className={styleClass} {...props} placeholder=" " required>{children}</select> :
                     multiline ?
                         rows == 0 ?
-                            <textarea ref={textareaRef} className={styleClass} {...props} required/> 
+                            <textarea ref={textareaRef} className={styleClass} {...props} placeholder=" " required/> 
                             :
-                            <textarea rows={rows} className={styleClass} {...props} required/> 
+                            <textarea rows={rows} className={styleClass} {...props} placeholder=" " required/> 
                         :
-                        <input className={styleClass} title="" type={type} {...props} required/> 
+                        <input className={styleClass} title="" type={type} {...props} placeholder=" " required/> 
                     }
                 <span className={error ? "floating-label inputFieldError" : "floating-label"}>{label}</span>
             </div>
