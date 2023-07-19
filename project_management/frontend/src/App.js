@@ -24,7 +24,7 @@ import Wizard from "./pages/wizard/Wizard";
 import WizQuote from "./pages/wizard/WizQuote";
 import CompanyDashboard from "./pages/analytics/CompanyDashboard";
 import CompanyAdmin from "./pages/admin/Company";
-import Timesheet from "./pages/timesheets/Timesheet";
+import Timesheets from "./pages/timesheets/Timesheet";
 
 import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
@@ -64,8 +64,10 @@ const App = () => {
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >
-                            <Route path="timesheets" element={<Timesheet />} />                            <Route path="analytics" element={<Dashboard />} />
-                            <Route path="timesheets/:endDate" element={<Timesheet />} />                            <Route path="analytics" element={<Dashboard />} />
+                            <Route path="timesheets" element={<Timesheets />} />                            
+                            <Route path="analytics" element={<Dashboard />} />
+                            <Route path="timesheets/:endDate" element={<Timesheets />} />                            
+                            <Route path="analytics" element={<Dashboard />} />
                             {/* <Route path="financials" element={<CompanyDashboard />} /> */}
                             <Route path="admin" element={<CompanyAdmin />} />
                         </Route>

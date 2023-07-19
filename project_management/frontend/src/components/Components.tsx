@@ -373,12 +373,12 @@ export const ProgressButton = ({name, waiting, onClick, centerButton=false, butt
 
 
 
-export const Tooltip = ({children, title}: {children?: ReactNode, title?: string}) => {
+export const Tooltip = ({children, title, arrow}: {children?: ReactNode, title?: string, arrow?: string}) => {
     if(title !== "") {
         return(
-        <div className="tooltip">
+        <div className={`tooltip`}>
             {children}
-            <span className="tooltiptext">{title}</span>
+            <span className={`tooltiptext ${arrow}`}>{title}</span>
         </div>
     )}
     return (<>{children}</>)

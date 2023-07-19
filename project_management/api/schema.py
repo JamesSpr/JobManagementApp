@@ -1247,7 +1247,7 @@ class UpdateInvoices(graphene.Mutation):
         for inv in invoices:
             invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
             if invoice:
-                if not invoice.date_issued: invoice.date_issued = inv.date_issued
+                # if invoice.date_issued == "" or invoice.date_issued == None: invoice.date_issued = inv.date_issued
                 if date_paid: invoice.date_paid = date_paid
                 invoice.save()
 
@@ -1576,7 +1576,6 @@ class Mutation(graphene.ObjectType):
     update_invoices = UpdateInvoices.Field()
     delete_invoice = DeleteInvoice.Field()
     transfer_invoice = TransferInvoice.Field()
-
 
     update_jobinvoice = UpdateJobInvoice.Field()
     delete_jobinvoice = DeleteJobInvoice.Field()

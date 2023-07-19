@@ -134,18 +134,27 @@ def checkTokenAuth(uid):
             }
             # print(payload)
             response = requests.post(link, data=payload, headers=headers)
+
+            if not response.status_code == 200:
+                print("MYOB Authentication error for", user.username)
+                print(response)
+                return False
+
             res = json.loads(response.text)
 
             user.access_token = res['access_token']
             user.refresh_token = res['refresh_token']
             user.access_expires_at = timezone.now() + timedelta(seconds=int(res['expires_in']))
             user.save()
+            
             print('MYOB Auth Refreshed By', user.username)
-
+            return True
         else:
             print('MYOB Auth Active')
+            return True
     else:
         print('Error with User Auth')
+        return False
 
 
 class myobRefreshToken(graphene.Mutation):
