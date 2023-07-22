@@ -241,6 +241,8 @@ def parse_date_to_string(dateString):
 
 class TimesheetInputType(graphene.InputObjectType):
     id = graphene.String()
+    start_date = graphene.String()
+    end_date = graphene.String()
     employee = graphene.Field(graphene.String)
     workday_set = graphene.List(WorkDayInputType)
     sent_to_myob = graphene.Boolean()

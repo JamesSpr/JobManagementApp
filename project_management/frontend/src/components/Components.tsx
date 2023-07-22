@@ -149,6 +149,7 @@ interface TableType <T extends object> {
     sorting?: SortingState
     setSorting?: React.Dispatch<React.SetStateAction<any>>
     rowStyles?: {}
+    rowOnDoubleClick?: (row: any) => void
     autoResetPageIndex?: boolean
     skipAutoResetPageIndex?: () => void
     setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>>
@@ -172,7 +173,7 @@ export const useSkipper = () => {
 }
 
 export const Table = <T extends object>({data, setData, tableMeta, columns, columnFilters, 
-    setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles, 
+    setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles, rowOnDoubleClick,
     setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex, pagination}: TableType<T>) => {
 
     const [aRPI, skipARPI] = autoResetPageIndex === undefined || skipAutoResetPageIndex === undefined ? useSkipper() : [autoResetPageIndex, skipAutoResetPageIndex]
@@ -271,6 +272,7 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
                         return (
                             <tr key={row.id} 
                                 style={{height: '20px'}}
+                                onDoubleClick={rowOnDoubleClick ? () => rowOnDoubleClick(row) : () => null}
                             >
                                 {row.getVisibleCells().map(cell => {
                                     return (

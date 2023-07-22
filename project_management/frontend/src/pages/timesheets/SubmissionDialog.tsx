@@ -4,7 +4,7 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { IAuth, SnackType } from "../../types/types";
 import { TimesheetType, WorkdayType } from "./Timesheets";
 
-import { Grid } from '@mui/material'
+import { Box, CircularProgress, Grid, LinearProgress } from '@mui/material'
 import { intlFormat } from 'date-fns';
 
 const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack, payrollDetails, dateFilter, auth}: {
@@ -20,6 +20,7 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
 
     const axiosPrivate = useAxiosPrivate();
     const [timesheetSummary, setTimesheetSummary] = useState<any>({})
+    const [waiting, setWaiting] = useState(false);
 
     useEffect(() => {
         // Calculate the total cost of timesheet
@@ -98,6 +99,7 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
     }, [open])
 
     const handleSubmitTimesheets = async () => {
+        setWaiting(true);
         // console.log(timesheets)
         await axiosPrivate({
             method: 'post',
@@ -162,6 +164,8 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
                 setSnack({active: true, message:"Error Updating Timesheet. Contact Developer." + res.message, variant:'error'})
                 console.log(res)
             }
+        }).finally(() => {
+            setWaiting(false);
         });
     }
 
@@ -172,7 +176,7 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
     return (
         <BasicDialog fullWidth maxWidth={'xl'} open={open} close={handleClose} center={true} 
         title={"Submit Timesheets"} 
-        action={handleSubmitTimesheets} okay={true}
+        action={handleSubmitTimesheets}
         >
         {open &&
             <Grid container spacing={1} textAlign={'center'} justifyContent={'center'}>
@@ -183,6 +187,12 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
                     <p></p>
                     <p><b>Expected Cost:</b> {new Intl.NumberFormat('en-AU', { style:'currency', currency: 'AUD' }).format(timesheetSummary?.cost)}</p>
                 </Grid>
+                {waiting ?
+                <Box style={{width:'100%', position: 'relative', top:'16px'}}>
+                    <LinearProgress />
+                </Box>
+                : <></>
+                }
             </Grid>
         }
         </BasicDialog>

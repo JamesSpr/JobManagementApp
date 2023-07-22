@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import useAxiosPrivate from '../../hooks/useAxiosPrivate'
-import { useParams } from 'react-router-dom'
-import { CircularProgress, Grid, Portal } from '@mui/material'
+import { NavigateFunction, useNavigate, useParams } from 'react-router-dom'
+import { CircularProgress, Grid, Portal, Typography } from '@mui/material'
 import { SnackBar, Table, Tooltip } from '../../components/Components'
 import useAuth from '../auth/useAuth'
 
@@ -78,6 +78,8 @@ const Timesheets = () => {
 
     useEffect(() => {
         const controller = new AbortController();
+        setLoading(true);
+        setTimesheets([]);
 
         const fetchData = async () => {
             await axiosPrivate({
@@ -120,8 +122,6 @@ const Timesheets = () => {
 
                 setEmployees(res.employees);
                 
-                console.log(res.timesheets)
-
                 if(endDate){
                     let startDate = new Date(endDate)
                     startDate.setDate(startDate.getDate() - 13);
@@ -137,11 +137,9 @@ const Timesheets = () => {
                 else {
                     // Reduce timesheets down to group by startDate
                     res.timesheets = res.timesheets.reduce((items: any[], item: any) => {
-                        console.log(items, item)
                         const {id, startDate, endDate, employee, workdaySet, sentToMyob} = item
                         const itemIndex = items.findIndex((it: any) => it.startDate === item.startDate)
 
-                        console.log(itemIndex)
                         if(itemIndex === -1) {
                             items.push({id, startDate, endDate, count: 1, sentToMyob})
                         } else {
@@ -154,7 +152,6 @@ const Timesheets = () => {
                 }
                 
                 setTimesheets(res.timesheets);
-                console.log(res.timesheets)
             });
         }
 
@@ -197,7 +194,7 @@ const Timesheets = () => {
             controller.abort();
         }
 
-    }, [])
+    }, [, endDate])
 
     useEffect(() => {
         if(payrollDetails.length > 0 && employees.length > 0) {
@@ -223,8 +220,8 @@ const Timesheets = () => {
                 </>
                 :  
                 <>              
-                    <p>Timesheets</p>
-                    <TimesheetTable timesheets={timesheets} />
+                    <Typography variant="h5" style={{textAlign: 'center', padding: '15px'}}>Timesheets</Typography>
+                    <TimesheetTable timesheets={timesheets} setTimesheets={setTimesheets} />
                 </>
             :
             <Grid container direction={'column'} spacing={2} alignContent={'center'}>
@@ -245,8 +242,9 @@ import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
-const TimesheetTable = ({timesheets}: {
+const TimesheetTable = ({timesheets, setTimesheets}: {
     timesheets: TimesheetType[]
+    setTimesheets: React.Dispatch<React.SetStateAction<TimesheetType[]>>
 }) => {
 
     const columnHelper = createColumnHelper<any>()
@@ -302,8 +300,15 @@ const TimesheetTable = ({timesheets}: {
         }),
     ]
 
+    const navigate = useNavigate();
+
+    const handleRowClick = (row: any) => {
+        setTimesheets([]);
+        navigate(`${row.original.endDate}`)
+    }
+
     return (
-        <Table data={timesheets} columns={columns} pagination={true} />
+        <Table data={timesheets} columns={columns} pagination={true} rowOnDoubleClick={handleRowClick}/>
     )
 }
 
