@@ -79,7 +79,7 @@ const Bill = ({ open, onClose, estimate, bills, setBills, contractors }) => {
             const {id, description, quantity, itemType, rate, extension, gross, header} = item;
 
             // Check if the items descriptions are the same
-            const itemIndex = items.findIndex(item => item.description.trim() === description.trim())
+            const itemIndex = items.findIndex(it => it.description.trim() === description.trim())
 
             if(itemIndex === -1) {
                 // Create a new header row

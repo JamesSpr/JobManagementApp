@@ -36,6 +36,7 @@ class GetEmployees(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
+    employees = graphene.List(EmployeeType)
 
     @classmethod
     def mutate(self, root, info, uid):
@@ -58,6 +59,8 @@ class GetEmployees(graphene.Mutation):
             res = json.loads(response.text)
             res = res['Items']
 
+            not_included = ["David Phillips", "Leo Sprague", "Colin Baggott", "Robert Stapleton"]
+            active_employees = []
             for employee in res:
                 emp = Employee()
                 if Employee.objects.filter(myob_uid=employee['UID']).exists():
@@ -67,10 +70,14 @@ class GetEmployees(graphene.Mutation):
                 emp.name = employee['FirstName'].strip() + " " + employee['LastName'].strip()
                 emp.isActive = employee['IsActive']
                 emp.save()
+
+                if emp.isActive and not emp.name in not_included:
+                    active_employees.append(emp)
+
         else:
             return self(success=False, message="MYOB Connection Error")
 
-        return self(success=True)
+        return self(success=True, employees=active_employees)
     
 class GetPayrollCategories(graphene.Mutation):
     class Arguments:
@@ -373,8 +380,12 @@ class SubmitTimesheets(graphene.Mutation):
             for workday in timesheet.workday_set:
                 worktype = workday.work_type
                 
-                if worktype == "":
+                if worktype in ["", "Normal"] and workday.hours == 0:
                     continue
+
+                # Default to normal pay if there is no worktype selected
+                if worktype == "":
+                    worktype == "Normal" 
 
                 # [TODO] Get the job
 
@@ -405,13 +416,29 @@ class SubmitTimesheets(graphene.Mutation):
                     workday_timehalf = {}
                     workday_doubletime = {}
 
-                    if worktype == "PH":
-                        lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
-                        timesheet_lines = add_to_timesheets(lines_idx, timesheet_lines, workday, prc_uid)
+                    if worktype == "PH" or datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 6: # Sunday:
                         # Add 2x Overtime for working on public holiday
                         prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][2]).myob_uid
-                        lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
-                        timesheet_lines = add_to_timesheets(lines_idx, timesheet_lines, workday, prc_uid)
+                        timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
+
+                    elif datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 5: # Saturday
+                        if workday.hours > 2:
+                            timehalf = 2
+                            doubletime = workday.hours - 2
+                        else:
+                            timehalf = workday.hours
+
+                        if timehalf > 0:
+                            prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][2]).myob_uid
+                            workday_timehalf = workday.copy()
+                            workday_timehalf['hours'] = timehalf
+                            timesheet_lines = add_to_timesheets(timesheet_lines, workday_timehalf, prc_uid)
+
+                        if doubletime > 0:
+                            prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][3]).myob_uid
+                            workday_doubletime = workday.copy()
+                            workday_doubletime['hours'] = doubletime
+                            timesheet_lines = add_to_timesheets(timesheet_lines, workday_doubletime, prc_uid)
 
                     elif workday.hours > 8:
                         normal = 8
@@ -427,37 +454,28 @@ class SubmitTimesheets(graphene.Mutation):
                         workday_normal['hours'] = normal
                         
                         prc_uid = PayrollCategory.objects.get(name=prc).myob_uid
-                        lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
-                        timesheet_lines = add_to_timesheets(lines_idx, timesheet_lines, workday_normal, prc_uid)
+                        timesheet_lines = add_to_timesheets(timesheet_lines, workday_normal, prc_uid)
 
                         # Add timehalf timesheet lines
                         if timehalf > 0:
                             prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][2]).myob_uid
-
                             workday_timehalf = workday.copy()
                             workday_timehalf['hours'] = timehalf
-                            
-                            lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
-                            timesheet_lines = add_to_timesheets(lines_idx, timesheet_lines, workday_timehalf, prc_uid)
+                            timesheet_lines = add_to_timesheets(timesheet_lines, workday_timehalf, prc_uid)
 
                         # Add doubletime timesheet lines
                         if doubletime > 0:
                             prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][3]).myob_uid
-
                             workday_doubletime = workday.copy()
                             workday_doubletime['hours'] = doubletime
-
-                            lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
-                            timesheet_lines = add_to_timesheets(lines_idx, timesheet_lines, workday_doubletime, prc_uid)
+                            timesheet_lines = add_to_timesheets(timesheet_lines, workday_doubletime, prc_uid)
                     
                     else: # Add Normal Day
-                        lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
-                        timesheet_lines = add_to_timesheets(lines_idx, timesheet_lines, workday, prc_uid)
+                        timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
     
                 else:
                     # Add Normal Day
-                    lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
-                    timesheet_lines = add_to_timesheets(lines_idx, timesheet_lines, workday, prc_uid)
+                    timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
 
             if len(timesheet_lines) <= 0:
                 return self(success=True, message="No timesheets to process")
@@ -492,7 +510,9 @@ class SubmitTimesheets(graphene.Mutation):
 
         return self(success=True, message="Timesheets successfully submitted to MYOB", timesheets=processed, debug=timesheet_data)
 
-def add_to_timesheets(lines_idx, timesheet_lines, workday, prc_uid):
+def add_to_timesheets(timesheet_lines, workday, prc_uid):   
+    lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
+
     # Add data to myob timesheet lines
     if lines_idx == -1:
         # Create a new line
@@ -536,10 +556,10 @@ class Query(graphene.ObjectType):
         return Timesheet.objects.all().order_by('id')
     
     employees = graphene.List(EmployeeType)
-    @login_required
+    # @login_required
     def resolve_employees(root, info, **kwargs):
-        return Employee.objects.filter(isActive=True).order_by('id')
-    
+        return Employee.objects.filter(isActive=True).order_by('name')  
+
     work_days = graphene.List(WorkDayType)
     @login_required
     def resolve_work_days(root, info, **kwargs):

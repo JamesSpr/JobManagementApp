@@ -12,216 +12,11 @@ import CheckIcon from '@mui/icons-material/Check';
 import EditIcon from '@mui/icons-material/Edit';
 
 import { createColumnHelper } from '@tanstack/react-table'
-import TimesheetEditDialog from './TimesheetEditDialog'
+import TimesheetEditDialog from './EditDialog'
 import { IAuth, SnackType } from '../../types/types'
-
-interface EmployeeType {
-    id: string
-    name: string
-    myobUid: string
-    payBasis: string
-}
-
-interface WorkdayType {
-    date: Date
-    hours: string
-    workType: string
-    job: string
-    notes: string
-    allowOvertime: boolean
-}
-
-export interface TimesheetType {
-    id: string
-    startDate: Date
-    endDate: Date
-    employee: EmployeeType
-    workdaySet: WorkdayType[]
-    sentToMyob: boolean
-}
-
-export const workDayOptions = {
-    "Normal": {
-        name: "Normal Hours",
-        colour: 'None'
-    },
-    "AL": {
-        name: "Annual Leave",
-        colour: '#caa5d4'
-    },
-    "SICK": {
-        name: "Sick Leave",
-        colour: '#44d62c'
-    },
-    "PH": {
-        name: "Public Holiday",
-        colour: '#8484d7'
-    },
-    "LWP": {
-        name: "Leave Without Pay",
-        colour: '#767875'
-    },
-    "": {
-        name: "No Hours",
-        colour: '#b1b3b1'
-    },
-}
-
-const Timesheet = () => {
-    const axiosPrivate = useAxiosPrivate()
-    const { auth } = useAuth();
-
-    const [loading, setLoading] = useState(true);
-    const [employees, setEmployees] = useState<EmployeeType[]>([]);
-    const [timesheets, setTimesheets] = useState<TimesheetType[]>([]);
-    const [payrollDetails, setPayrollDetails] = useState<any[]>([])
-    const [dateFilter, setDateFilter] = useState<Date[]>([]);
-    const [filterPayrollEmployees, setFilterPayrollEmployees] = useState(false);
-    
-    const [snack, setSnack] = useState<SnackType>({active: false, message: '', variant: 'info'});
-    
-    const { endDate } = useParams();
-
-    useEffect(() => {
-        const controller = new AbortController();
-
-        const fetchData = async () => {
-            await axiosPrivate({
-                method: 'post',
-                signal: controller.signal,
-                data: JSON.stringify({
-                    query: `query TimesheetDetails($endDate: String) {
-                        employees {
-                            myobUid
-                            id
-                            name
-                            payBasis
-                        }
-                        timesheets (endDate: $endDate){
-                            id
-                            employee {
-                                name
-                                payBasis
-                            }
-                            workdaySet {
-                                id
-                                date
-                                hours
-                                workType
-                                job
-                                notes
-                                allowOvertime
-                            }
-                            sentToMyob
-                        }
-                    }`,
-                    variables: {
-                        endDate: endDate
-                    }
-                }),
-            }).then((response) => {
-                const res = response?.data?.data;
-
-                setEmployees(res.employees);
-
-                // Ensure all timesheet workdays are sorted by date for the columns
-                for(let i = 0; i < res.timesheets.length; i ++) {
-                    res.timesheets[i].workdaySet.sort((a: WorkdayType, b: WorkdayType) => {
-                        return a.date > b.date ? 1 : -1;
-                    })
-                }
-                setTimesheets(res.timesheets);
-
-                if(endDate){
-                    let startDate = new Date(endDate)
-                    startDate.setDate(startDate.getDate() - 13);
-                    setDateFilter([startDate, new Date(endDate)]);
-                }
-            });
-        }
-
-        fetchData();
-
-        const getPayrollDetails = async () => {
-            await axiosPrivate({
-                method: 'post',
-                signal: controller.signal,
-                data: JSON.stringify({
-                    query: ` mutation getPayrollDetails ($uid: String!) {
-                        details: getPayrollDetails(uid:$uid) {
-                            success
-                            message
-                            details
-                        }
-                    }`,
-                    variables: {
-                        uid: auth?.myob.id
-                    }
-                }),
-            }).then((response) => {
-                const res = response?.data?.data.details;
-
-                if(res?.success) {
-                    const details = JSON.parse(res.details);
-                    setPayrollDetails(details);
-                    setFilterPayrollEmployees(true);
-                }
-                else {
-                    setSnack({variant: "error", message: res.message + " - Error getting Payroll Details. Please contact Developer", active: true});
-                    console.log(response)
-                }
-            })
-
-        }
-        getPayrollDetails();
-
-        return () => {
-            controller.abort();
-        }
-
-    }, [])
-
-    useEffect(() => {
-        if(payrollDetails.length > 0 && employees.length > 0) {
-            setPayrollDetails(payrollDetails.filter((item: any) => {
-                return employees.some((e) => {
-                    return e.myobUid === item['Employee']['UID'];
-                })
-            }))
-            
-            setLoading(false);
-            setFilterPayrollEmployees(false);
-        }   
-    }, [filterPayrollEmployees])
-
-    return ( <> 
-        { 
-            !loading ?
-            endDate ? <>
-                    <TimesheetView 
-                        timesheets={timesheets} setTimesheets={setTimesheets} 
-                        payrollDetails={payrollDetails} employees={employees} 
-                        auth={auth} dateFilter={dateFilter} setSnack={setSnack}/> 
-                </>
-                :  
-                <>              
-                    <p>Timesheets</p>
-                </>
-            :
-            <Grid container direction={'column'} spacing={2} alignContent={'center'}>
-                <Grid item xs={12}>
-                    <CircularProgress />
-                </Grid>
-            </Grid>
-        }
-
-        <Portal>
-            <SnackBar snack={snack} setSnack={setSnack} />
-        </Portal>
-
-    </>
-    )
-}
+import { TimesheetType, EmployeeType, workDayOptions } from './Timesheets'
+import SubmissionDialog from './SubmissionDialog'
+import TimesheetSubmission from './SubmissionDialog'
 
 const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, auth, dateFilter, setSnack }: {
     timesheets: TimesheetType[]
@@ -236,6 +31,7 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
     const axiosPrivate = useAxiosPrivate()
     const [employeeEntitlements, setEmployeeEntitlements] = useState<any>({});
     const [openEditor, setOpenEditor] = useState(false);
+    const [openSubmission, setOpenSubmission] = useState(false);
     const [validTimesheets, setValidTimesheets] = useState(true);
 
     useEffect(() => {
@@ -364,73 +160,6 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
         }),
     ]
 
-    const handleSubmitTimesheets = async () => {
-        // console.log(timesheets)
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation submitTimesheets($uid:String!, $timesheets: [TimesheetInputType]!, $startDate: String!, $endDate: String!) {
-                    submit: submitTimesheets(uid:$uid, timesheets:$timesheets, startDate: $startDate, endDate: $endDate) {
-                        success
-                        message
-                        debug
-                        timesheets {
-                            id
-                            employee {
-                                name
-                            }
-                            workdaySet {
-                                id
-                                date
-                                hours
-                                workType
-                                job
-                                notes
-                                allowOvertime
-                            }
-                            sentToMyob
-                        }
-                    }
-                }`,
-                variables: {
-                    uid: auth?.myob?.id,
-                    timesheets: timesheets,
-                    startDate: dateFilter[0],
-                    endDate: dateFilter[1],
-                }
-            }),
-        }).then((response) => {
-            const res = response?.data?.data?.submit;
-
-            if(res.success) {
-                // Ensure all timesheet workdays are sorted by date for the columns
-                for(let i = 0; i < res.timesheets.length; i ++) {
-                    res.timesheets[i].workdaySet.sort((a: WorkdayType, b: WorkdayType) => {
-                        return a.date > b.date ? 1 : -1;
-                    })
-                }
-                setTimesheets(res.timesheets)
-                if(res.debug) {console.log(JSON.parse(res.debug))}
-                setSnack({active: true, message:res.message, variant:'success'})
-            }
-            else {
-                // Update if partial submission
-                if(res.timesheets) {
-                    // Ensure all timesheet workdays are sorted by date for the columns
-                    for(let i = 0; i < res.timesheets.length; i ++) {
-                        res.timesheets[i].workdaySet.sort((a: WorkdayType, b: WorkdayType) => {
-                            return a.date > b.date ? 1 : -1;
-                        })
-                    }
-                    setTimesheets(res.timesheets)
-                }
-
-                setSnack({active: true, message:"Error Updating Timesheet. Contact Developer." + res.message, variant:'error'})
-                console.log(res)
-            }
-        });
-    }
-
     const syncPayrollCategories = async () => {
         await axiosPrivate({
             method: 'post',
@@ -502,14 +231,18 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
         </Grid>
 
         <TimesheetEditDialog open={openEditor} setOpen={setOpenEditor}
-            timesheets={timesheets} setTimesheets={setTimesheets} 
+            timesheets={timesheets} setTimesheets={setTimesheets} setSnack={setSnack}
             employeeEntitlements={employeeEntitlements} setEmployeeEntitlements={setEmployeeEntitlements}/>
+
+        <TimesheetSubmission open={openSubmission} setOpen={setOpenSubmission} 
+            timesheets={timesheets} setTimesheets={setTimesheets} setSnack={setSnack}
+            payrollDetails={payrollDetails} dateFilter={dateFilter} auth={auth} /> 
 
         <Footer>
             <Tooltip title={validTimesheets ? "" : "Please fix conflicts before submitting"}>
                 <Button variant='outlined'
                     disabled={!validTimesheets}
-                    onClick={handleSubmitTimesheets}    
+                    onClick={() => setOpenSubmission(true)}    
                 >Submit Timesheets</Button>
             </Tooltip>
         </Footer>
@@ -517,4 +250,4 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
     </> )
 }
 
-export default Timesheet;
+export default TimesheetView;

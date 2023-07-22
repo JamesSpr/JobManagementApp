@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from 'react'
-import { BasicDialog, InputField, SnackBar, Tooltip } from "../../components/Components"
-import { TimesheetType, workDayOptions } from "./Timesheet"
-import { Divider, Grid, Portal } from '@mui/material'
+import { BasicDialog, InputField, Tooltip } from "../../components/Components"
+import { TimesheetType, workDayOptions } from "./Timesheets"
+import { Divider, Grid } from '@mui/material'
 import useAxiosPrivate from '../../hooks/useAxiosPrivate'
 import { SnackType } from '../../types/types'
 
 
-const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEntitlements, setEmployeeEntitlements} : {
+const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEntitlements, setEmployeeEntitlements, setSnack} : {
     open: boolean
     setOpen: React.Dispatch<React.SetStateAction<boolean>>
     timesheets: TimesheetType[]
     setTimesheets: React.Dispatch<React.SetStateAction<TimesheetType[]>>
     employeeEntitlements: any
     setEmployeeEntitlements: React.Dispatch<React.SetStateAction<any>>
+    setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
 
     const axiosPrivate = useAxiosPrivate();
     const [dataChanged, setDataChanged] = useState(false);
-    const [snack, setSnack] = useState<SnackType>({active: false, message: '', variant: 'info'});
     const [entitlementLimitExceeded, setEntitlementLimitExeeded] = useState<string[]>([])
 
     const updateTimesheets = async () => {
@@ -170,10 +170,6 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
             </Grid>
         }
         </BasicDialog>
-
-        <Portal>
-            <SnackBar snack={snack} setSnack={setSnack} />
-        </Portal>
     </>
     )
 }

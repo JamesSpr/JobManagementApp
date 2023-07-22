@@ -24,7 +24,7 @@ import Wizard from "./pages/wizard/Wizard";
 import WizQuote from "./pages/wizard/WizQuote";
 import CompanyDashboard from "./pages/analytics/CompanyDashboard";
 import CompanyAdmin from "./pages/admin/Company";
-import Timesheets from "./pages/timesheets/Timesheet";
+import Timesheets from "./pages/timesheets/Timesheets";
 
 import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
