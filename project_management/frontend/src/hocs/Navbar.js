@@ -12,7 +12,7 @@ import { openInNewTab } from '../components/Functions';
 
 const Navbar = () => {
     const { auth, setAuth } = useAuth();
-    const { app } = useApp();
+    const { app, setApp } = useApp();
     
     const [anchorEl, setAnchorEl] = useState(null);
 
@@ -89,6 +89,31 @@ const Navbar = () => {
         </>
     );
 
+    // Set the tile whenever something changes it
+    const [title, setTitle] = useState("");
+    useEffect(() => {
+        setTitle(width < 1000 ? app?.title.split(" ")[0] ?? "" : app?.title ?? "");
+    }, [app?.title])
+    
+    // Add listener to capture the width of the window
+    const [width, setWidth] = useState(window.innerWidth);
+    useEffect(() => {
+      const updateWindowDimensions = () => {
+        const newWidth = window.innerWidth;
+        setWidth(newWidth);
+      };
+  
+      window.addEventListener("resize", updateWindowDimensions);
+  
+      return () => window.removeEventListener("resize", updateWindowDimensions) 
+  
+    }, []);
+
+    // Shorten the title if the width goes under 1000px
+    useEffect(() => {
+        setTitle(width < 1000 ? app?.title.split(" ")[0] ?? "" : app?.title ?? "");
+    }, [width])
+
     return (
         <Box sx={{ flexGrow: 1}}>
             <AppBar position="fixed" sx={{ zIndex: 999 }}
@@ -113,8 +138,8 @@ const Navbar = () => {
 
                     <Box sx={{flexGrow:1, textAlign: 'center'}}>
                         {app ? <>
-                        <Typography variant='h6'>{app.title ?? ''}</Typography>
-                        <Typography variant='h6'>{app.subTitle ?? ''}</Typography>
+                            <Typography variant='h6'>{title ?? ""}</Typography>
+                            <Typography variant='h6'>{app?.subTitle ?? ''}</Typography>
                         </> : <></>}
                     </Box>
                     
