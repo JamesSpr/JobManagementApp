@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useCallback }  from 'react';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
-import { Button, Grid, Typography, Box, AppBar, Toolbar, Tooltip, Checkbox, CircularProgress, Portal, Snackbar, Alert, IconButton, 
-    DialogActions, DialogContent, DialogTitle, Dialog} from '@mui/material';
+import { Button, Grid, Typography, Box, Tooltip, CircularProgress, Portal, IconButton, } from '@mui/material';
 import { useParams, useNavigate } from "react-router-dom";
 import EstimateModule from './estimate/Tabs';
 import useEstimate from './estimate/useEstimate';
-import axios from 'axios';
 import useAuth from '../auth/useAuth';
 import useApp from '../../context/useApp';
 import { usePrompt } from '../../hooks/promptBlocker';
 import produce from 'immer';
-import { InputField } from '../../components/Components';
+import { Footer, InputField, SnackBar } from '../../components/Components';
 
 import Settings from '@mui/icons-material/Settings';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { openInNewTab } from '../../components/Functions';
+import { jobAllQuery } from './Queries';
+import SettingsDialog from './SettingsDialog';
 
 const JobPage = () => { 
     const axiosPrivate = useAxiosPrivate();
@@ -25,12 +25,14 @@ const JobPage = () => {
 
     if(!id) {
         navigate('/missing', { replace: true, state: {missing: "job"} });
+        return;
     }
     
     const { auth } = useAuth();
     const { setApp } = useApp();
     const { estimateSet, setEstimateSet } = useEstimate();
 
+    const [snack, setSnack] = useState({active: false, message:"", variant:'info'})
     const [job, setJob] = useState({
         'myobUid': '',
         'id': '',
@@ -83,12 +85,13 @@ const JobPage = () => {
 
     const [loading, setLoading] = useState(true);
     const [waiting, setWaiting] = useState({'save': false, 'invoice': false, 'invoiceSubmit': false, 'closeout': false, 'myobLink': false, 'compDocs': false, 'generateInvoice': false});
-    const [snack, setSnack] = useState(false);
-    const [snackMessage, setSnackMessage] = useState('');
-    const [snackVariant, setSnackVariant] = useState('info');
     const [updateRequired, setUpdateRequired] = useState(false);
     const [titleChange, setTitleChange] = useState(false);
     const [settingsDialog, setSettingsDialog] = useState(false);
+
+
+    // Navigation Blocker
+    usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
 
     // let saveCommand = false;
     const handleKeyPress = useCallback((e) => {
@@ -141,161 +144,14 @@ const JobPage = () => {
                 method: 'post',
                 signal: controller.signal,
                 data: JSON.stringify({
-                query: `query jobAll($po:String!, $sr:String!, $otherId:String!){
-                    job_all: jobAll(po: $po, sr: $sr, otherId: $otherId){
-                        edges {
-                            node {
-                                myobUid
-                                id
-                                po
-                                sr
-                                otherId
-                                client {
-                                    id
-                                }
-                                requester {
-                                    id
-                                }
-                                location {
-                                    id
-                                }
-                                building
-                                detailedLocation
-                                title
-                                priority
-                                description
-                                specialInstructions
-                                scope
-                                pocName
-                                pocPhone
-                                pocEmail
-                                altPocName
-                                altPocPhone
-                                altPocEmail
-                                dateIssued
-                                inspectionBy {
-                                    id
-                                }
-                                inspectionDate
-                                inspectionNotes
-                                siteManager {
-                                    id
-                                }
-                                commencementDate
-                                completionDate
-                                totalHours
-                                workNotes
-                                closeOutDate
-                                overdueDate
-                                bsafeLink 
-                                cancelled
-                                cancelReason
-                                overdueDate
-                                stage
-                                opportunityType
-                                workType
-                                estimateSet {
-                                    id
-                                    name
-                                    description
-                                    price
-                                    issueDate
-                                    approvalDate
-                                    scope
-                                    quoteBy {
-                                        id
-                                    }
-                                    estimateheaderSet{
-                                        id
-                                        description
-                                        markup
-                                        gross
-                                        subRows: estimateitemSet {
-                                            id
-                                            description
-                                            quantity
-                                            itemType
-                                            rate
-                                            extension
-                                            markup
-                                            gross
-                                        }
-                                    }	
-                                }
-                                billSet {
-                                    myobUid
-                                    supplier {
-                                        name
-                                    }
-                                    invoiceNumber
-                                    invoiceDate
-                                    amount
-                                    processDate
-                                    imgPath
-                                }
-                                jobinvoiceSet {
-                                    id
-                                    invoice {
-                                        number
-                                        dateCreated
-                                        dateIssued
-                                        datePaid
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    __type(name:"JobStage"){
-                        name
-                        enumValues {
-                            name
-                            description
-                        }
-                    }
-                    locations {
-                        id
-                        name
-                        region {
-                            shortName
-                            email
-                        }
-                        client {
-                            id
-                        }
-                    }
-                    clients {
-                        id
-                        name
-                    }
-                    clientContacts {
-                        id
-                        firstName
-                        lastName
-                        region {
-                            shortName
-                        }
-                        client {
-                            id
-                        }
-                    }
-                    users (isStaff: true) {
-                        edges {
-                            node {
-                                id: pk
-                                firstName
-                                lastName
-                            }
-                        }
-                    }
-                }`,
-                variables: {
-                    po: id_po,
-                    sr: id_sr,
-                    otherId: id_other
-                },
+                    query: jobAllQuery(),
+                    variables: {
+                        po: id_po,
+                        sr: id_sr,
+                        otherId: id_other
+                    },
             }),
             }).then((response) => {
-                // console.log(response);
                 const job_data = response?.data?.data?.job_all?.edges[0]?.node;
                 const location_data = response?.data?.data?.locations;
                 const clients = response?.data?.data?.clients;
@@ -330,14 +186,14 @@ const JobPage = () => {
                     navigate('/missing', { replace: true, state: {missing: "job"} });
                 }
 
-                //Flatten objects for field values
+                // Flatten objects for field values
                 job_data['location'] = job_data?.location?.id ?? "";
                 job_data['client'] = job_data?.client?.id ?? "";
                 job_data['requester'] = job_data?.requester?.id ?? "";
                 job_data['inspectionBy'] = job_data?.inspectionBy?.id ?? "";
                 job_data['siteManager'] = job_data?.siteManager?.id ?? "";
 
-                //Correct null date values
+                // Correct null date values
                 job_data['inspectionDate'] = job_data?.inspectionDate ?? "";
                 job_data['commencementDate'] = job_data?.commencementDate ?? "";
                 job_data['completionDate'] = job_data?.completionDate ?? "";
@@ -348,7 +204,7 @@ const JobPage = () => {
                 setBills(job_data.billSet);
                 setInitialEstimate(job_data.estimateSet);
                 setEstimateSet(job_data.estimateSet);
-                // setInvoiceRef(job_data?.jobinvoiceSet[0]?.id ?? false);
+                
                 setInvoice(job_data?.jobinvoiceSet[0]?.invoice ?? false);
                 jobStages.map((values) => {
                     if(job_data.stage === values['name']){
@@ -376,7 +232,7 @@ const JobPage = () => {
     }, []);
 
     useEffect(() => {
-        console.log("Changing App Title", getJobName(), stage)
+        // console.log("Changing App Title", getJobName(), stage)
         setApp(prev => ({...prev, title: getJobName(), subTitle: stage}));
         setTitleChange(false);
     }, [titleChange])
@@ -397,46 +253,34 @@ const JobPage = () => {
         job['closeOutDate'] === "" ? jobInput['closeOutDate'] = new Date(0).toISOString().split('T')[0] : null;
         job['totalHours'] === "" ? jobInput['totalHours'] = 0 : null;
 
-        try {
-            await axiosPrivate({
-                method: 'post',
-                data: JSON.stringify({
-                query: `mutation updateJob ($input: JobInput!) { 
-                    update: updateJob(input: $input)
-                    {
-                        success
-                        message
-                    }
-                }`,
-                variables: {
-                    input: jobInput,
-                },
-            }),
-            }).then((response) => {
-                console.log("upload_job", response);
-                // console.log("Job Upload Complete");
-                setWaiting(prev => ({...prev, 'save': false}));
-                if(response?.data?.errors) {
-                    partialError = true;
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Job Upload Error: " + response.data.errors[0].message);
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+            query: `mutation updateJob ($input: JobInput!) { 
+                update: updateJob(input: $input)
+                {
+                    success
+                    message
                 }
-                else if(!response?.data?.data?.update.success) {
-                    partialError = true;
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Job Upload Error: " + response?.data?.data?.update.message);
-                }
-            });
-        } catch (err) {
+            }`,
+            variables: {
+                input: jobInput,
+            },
+        }),
+        }).then((response) => {
+            console.log("upload_job", response);
+            // console.log("Job Upload Complete");
+            setWaiting(prev => ({...prev, 'save': false}));
+            if(response?.data?.errors || !response?.data?.data?.update.success) {
+                partialError = true;
+                setSnack({active: true, variant:'error', message: "Job Upload Error: " + response.data.errors[0].message})
+            }
+        }).catch((err) => {
             console.log('job upload error', err);
             partialError = true;
-            setSnack(true);
-            setSnackVariant('error');
-            setSnackMessage("Error: " + err.response?.data?.errors[0]?.message);
+            setSnack({active: true, variant:'error', message: "Error: " + err.response?.data?.errors[0]?.message})
             setWaiting(prev => ({...prev, 'save': false}));
-        }
+        })
 
         // If a date is removed from an estimate, make sure it is null before sending to api.
         const cleanEstimateSet = estimateSet.map(est => {
@@ -451,7 +295,7 @@ const JobPage = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `mutation createEstimateFromSet ( $estimateSet: [EstimateInput]!, $jobId: String! ) { 
-                    create_estimate_from_set: createEstimateFromSet( estimateSet: $estimateSet, jobId: $jobId)
+                create_estimate_from_set: createEstimateFromSet( estimateSet: $estimateSet, jobId: $jobId)
                 {
                     success
                     message
@@ -494,10 +338,8 @@ const JobPage = () => {
             },
         }),
         }).then((response) => {
-            console.log(response);
+            // console.log(response);
             const res = response?.data?.data?.create_estimate_from_set;
-            setWaiting(prev => ({...prev, 'save': false}));
-            setSnack(true);
             if(res.success) {
                 setEstimateSet(res.job.estimateSet);
                 
@@ -509,16 +351,15 @@ const JobPage = () => {
                 setTitleChange(true);
 
                 if(!partialError) {
-                    setSnackVariant('success');
-                    setSnackMessage(res.message);
-                    setUpdateRequired(false);
+                    setSnack({active: true, variant:'success', message: res.message})
                 }
                 // TODO: Update the id of any new jobs.
             } 
             else {
-                setSnackVariant('error');
-                setSnackMessage("Estimate Upload Error: " + res.message);
+                setSnack({active: true, variant:'error', message: "Estimate Upload Error: " + res.message})
             }
+        }).finally(() => {
+            setWaiting(prev => ({...prev, 'save': false}));
         });
     }
 
@@ -528,10 +369,8 @@ const JobPage = () => {
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation closeOutEmail ( 
-                    $jobid: String!
-                )
-                { close_out_email: closeOutEmail(jobid: $jobid)
+                query: `mutation closeOutEmail ($jobid: String!) { 
+                    close_out_email: closeOutEmail(jobid: $jobid)
                 {
                     success
                     message
@@ -543,22 +382,19 @@ const JobPage = () => {
         }),
         }).then((response) => {
             const res = response?.data?.data?.close_out_email;
-            
-            setWaiting(prev => ({...prev, 'closeout': false}));
-            setSnack(true);
             setStage("Invoicing");
             setTitleChange(true);
             
             if(res.success) {
                 setJob(prev => ({...prev, 'closeOutDate': new Date().toISOString().slice(0, 10)}));
-                setSnackVariant('success');
-                setSnackMessage(res.message);
+                setSnack({active: true, variant:'success', message: res.message});
                 setUpdateRequired(false);
             }
             else {
-                setSnackVariant('error');
-                setSnackMessage("Email Error: " + res.message);
+                setSnack({active: true, variant:'error', message: "Email Error: " + res.message})
             }
+        }).finally(() => {
+            setWaiting(prev => ({...prev, 'closeout': false}));
         });
     }
 
@@ -581,31 +417,25 @@ const JobPage = () => {
                 }
             })
         }).then((response) => {
-            console.log(response);
+            // console.log(response);
             const res = response.data?.data?.myob_create_invoice;
 
             if(res.success) {
                 // console.log(res.message)
                 const result = JSON.parse(res.message);
-                setSnackVariant('success');
-                setSnackMessage(result);
-                setInvoice(prev => ({...prev, "number": res.number}))
-                setInvoice(prev => ({...prev, "dateCreated": new Date().toISOString().slice(0, 10)}))
+                setSnack({active: true, variant:'success', message:result})
+                setInvoice(prev => ({...prev, "number": res.number, "dateCreated": new Date().toISOString().slice(0, 10)}))
             }
             else {
                 // console.log(response);
-                setSnackVariant('error');
-                setSnackMessage("Invoice Error: " + res.message);
+                setSnack({active: true, variant:'error', message: "Invoice Error: " + res.message})
             }
         }).catch((response) => {
+            setSnack({active: true, variant:'error', message: "Error Creating Invoice. Contact Developer"})
             console.log("Error", response);
-            setSnackVariant('error');
-            setSnackMessage("Error Creating Invoice. Contact Admin");
         }).finally(() => {
             setWaiting(prev => ({...prev, 'invoice': false}));
-            setSnack(true);
         });
-        
     }
 
     const handleSubmitInvoice = async () => {
@@ -633,16 +463,13 @@ const JobPage = () => {
             const res = response?.data?.data?.convert_sale;
 
             if(res.success){
-                setSnackVariant('success');
-                setSnackMessage("Invoice Converted & Submission Tracked");
+                setSnack({active: true, variant:'success', message:"Invoice Converted & Submission Tracked"})
                 setInvoice(prev => ({...prev, "dateIssued": new Date().toISOString().slice(0, 10)}))
             }
             else {
-                setSnackVariant('error');
-                setSnackMessage("Error: " + res.message);
+                setSnack({active: true, variant:'error', message: "Error: " + res.message})
             }           
         }).finally(() => {
-            setSnack(true);
             setWaiting(prev => ({...prev, 'invoiceSubmit': false}));
         })
     }
@@ -659,7 +486,6 @@ const JobPage = () => {
             else if (job.otherId != '') {
                 identifier = job.otherId;
             }
-
         }
 
         let build = job.building + " ";
@@ -700,26 +526,20 @@ const JobPage = () => {
                 }
             })
         }).then((response) => {
-            console.log("response", response);
             const res = response.data?.data?.create;
-
-            setWaiting(prev => ({...prev, 'myobLink': false}));
-            setSnack(true);
-
+           
             if(res.success) {
-                // console.log(res.message)
-                // console.log("Jobs:", JSON.parse(res.message));
                 setJob(prev => ({...prev, 'myobUid': res.uid}));
-                setSnackVariant('success');
-                setSnackMessage(JSON.parse(res.message));
+                setSnack({active: true, variant:'success', message: JSON.parse(res.message)})
                 setUpdateRequired(false);
             }
             else {
-                // console.log("Error!", JSON.parse(res.message) ?? "");
-                setSnackVariant('error');
-                setSnackMessage("Invoice Error: " + JSON.parse(res.message));
+                setSnack({active: true, variant:'error', message: "Invoice Error: " + JSON.parse(res.message)})
+                console.log("Error", JSON.parse(res.message) ?? "");
             }
-        })
+        }).finally(() => {
+            setWaiting(prev => ({...prev, 'myobLink': false}));
+        });
     }
 
     const handleCreateCompletionDocuments = async () => {
@@ -739,145 +559,22 @@ const JobPage = () => {
                 }
             })
         }).then((response) => {
-            // console.log("success", response);
             const res = response.data?.data?.create_completion_documents;
 
+            if(res.success) {
+                setSnack({active: true, variant:'success', message: res.message})
+            }
+            else {
+                setSnack({active: true, variant:'error', message: "Error: " + res.message})
+                console.log("Error",res.message);
+            }
+        }).finally(() => {
             setWaiting(prev => ({...prev, 'compDocs': false}));
-            setSnack(true);
-
-            if(res.success) {
-                setSnackVariant('success');
-                setSnackMessage(res.message);
-            }
-            else {
-                // console.log("Error!", JSON.parse(res.message) ?? "");
-                setSnackVariant('error');
-                setSnackMessage("Error: " + res.message);
-            }
         })
     }
-
-    const checkFolder = async () => {
-
-        setWaiting(prev => ({...prev, 'checkFolder': true}));
-
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation checkFolder($jobId:String!) {
-                    check_folder: checkFolder(jobId:$jobId) {
-                        success
-                        message
-                    }
-                }`,
-                variables: {
-                    jobId: job.id
-                }
-            })
-        }).then((response) => {
-            // console.log("success", response);
-            const res = response.data?.data?.check_folder;
-
-            setWaiting(prev => ({...prev, 'checkFolder': false}));
-            setSnack(true);
-
-            if(res.success) {
-                // console.log(res.message)
-                // console.log("Jobs:", JSON.parse(res.message));
-                setSnackVariant('success');
-                setSnackMessage(res.message);
-            }
-            else {
-                // console.log("Error!", JSON.parse(res.message) ?? "");
-                setSnackVariant('info');
-                setSnackMessage(res.message);
-            }
-        })
-    }
-
-    const repairMyobSync = async () => {
-        setWaiting(prev => ({...prev, 'repairMyobSync': true}));
-
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation repairSync($uid:String!, $jobId:String!) {
-                    repair_sync: repairSync(uid:$uid, jobId:$jobId) {
-                        success
-                        message
-                    }
-                }`,
-                variables: {
-                    uid: auth?.myob.id,
-                    jobId: job.id,
-                }
-            })
-        }).then((response) => {
-            console.log(response);
-            const res = response.data?.data?.repair_sync;
-
-            setWaiting(prev => ({...prev, 'repairMyobSync': false}));
-            setSnack(true);
-
-            if(res.success) {
-                setSnackVariant('success');
-                setSnackMessage(res.message);
-            }
-            else {
-                setSnackVariant('error');
-                setSnackMessage(res.message);
-            }
-        })
-
-    }
-
-    const generateInvoice = async () => {
-
-        setWaiting(prev => ({...prev, 'generateInvoice': true}));
-
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation generateInvoice($uid:String!, $job:String!) {
-                    generate_invoice: generateInvoice(uid:$uid, job:$job) {
-                        success
-                        message
-                    }
-                }`,
-                variables: {
-                    uid: auth?.myob.id,
-                    job: job.id,
-                }
-            })
-        }).then((response) => {
-            // console.log("success", response);
-            const res = response.data?.data?.generate_invoice;
-
-            setWaiting(prev => ({...prev, 'generateInvoice': false}));
-            setSnack(true);
-
-            if(res.success) {
-                setSnackVariant('success');
-                setSnackMessage(res.message);
-            }
-            else {
-                setSnackVariant('error');
-                setSnackMessage(res.message);
-            }
-        })
-    }
-
-    // Navigation Blocker
-    usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
 
     const handleInput = (e) => {
         setJob(prev => ({...prev, [e.target.name]: e.target.value}))
-    }
-
-    const handleCloseSettings = (e, reason) => {
-        if (reason !== 'backdropClick') {
-            setSettingsDialog(false);
-        }
     }
  
     return (
@@ -889,11 +586,6 @@ const JobPage = () => {
         :
         <>
             <Grid container spacing={3}>
-                {/* Title and Stage */}
-                {/* <Grid item xs={12} align="center">
-                    <Typography variant='h6'>{getJobName()}</Typography>
-                    <Typography variant='h6'>{stage}</Typography>
-                </Grid> */}
                 {/* Request Details */}
                 <Grid item xs={12} align="center">
                     <InputField type="select" name="client" label="Client" value={job.client} onChange={handleInput}>
@@ -947,11 +639,11 @@ const JobPage = () => {
                 </Grid>
                 {/* Title */}
                 <Grid item xs={12} align="center"> 
-                    <InputField wide name="title" label="Title" value={job.title} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                    <InputField width={750} name="title" label="Title" value={job.title} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
                 </Grid>
                 {/* Description */}
                 <Grid item xs={12} align="center"> 
-                    <InputField multiline wide name="description" label="Description" value={job.description} onChange={handleInput}/>
+                    <InputField multiline width={750} name="description" label="Description" value={job.description} onChange={handleInput}/>
                 </Grid>
                 <Grid item xs={12} align="center">
                     <Typography variant='body1'>Inspection Details</Typography>
@@ -1036,12 +728,12 @@ const JobPage = () => {
                             )}
                         </Box>
                     </Tooltip>
-                    <InputField disabled style={{width: '150px'}} label="MYOB Invoice" value={invoice?.number} sx={{width: '135px'}}/>
-                    <InputField disabled style={{width: '150px'}} type="date" label="Date Invoice Created" value={invoice?.dateCreated}/>
+                    <InputField disabled width={150} type="text" label="MYOB Invoice" value={invoice?.number}/>
+                    <InputField disabled width={150} type="date" label="Date Invoice Created" value={invoice?.dateCreated}/>
                 </Grid>
                 <Grid item xs={12} align="center"> {/* Accounts */}
-                    <InputField disabled style={{width: '150px'}} type="date" label="Date Invoice Issued" value={invoice?.dateIssued}/>
-                    <InputField disabled style={{width: '150px'}} type="date" label="Date Invoice Paid" value={invoice?.datePaid}/>
+                    <InputField disabled width={150} type="date" label="Date Invoice Issued" value={invoice?.dateIssued}/>
+                    <InputField disabled width={150} type="date" label="Date Invoice Paid" value={invoice?.datePaid}/>
                 </Grid>
                 <Grid item xs={12} align="center" style={{paddingTop: '0px'}}> {/* Accounts */}
                     {job.client !== "1" ?
@@ -1075,40 +767,32 @@ const JobPage = () => {
         </>
         }
 
-        {/* Job Settings Dialog Box */}
-        <Dialog open={settingsDialog} onClose={handleCloseSettings} fullwidth="true" maxWidth={'md'}>
-            <DialogTitle sx={{margin: '0 auto'}}>Job Settings</DialogTitle>
-            <DialogContent sx={{paddingTop: '10px'}}>
-                <Grid container spacing={3}>
-                    <Grid item xs={12} align="center"> {/* Accounts */}
-                        <Typography variant='body1' style={{display:'inline-block', verticalAlign: 'bottom'}}> Cancelled? </Typography>
-                        <Checkbox checked={job.cancelled} onChange={(e) => {setJob(prev => ({...prev, 'cancelled': e.target.checked}))}} style={{paddingBottom: '0px', verticalAlign: 'bottom'}}/>
-                        <InputField name="cancelReason" label="Reason" value={job.cancelReason} onChange={handleInput}/>
-                    </Grid>
-                    <Grid item xs={12} align="center"> {/* Settings */}
-                        <InputField type="select" name="workType" label="Work Type" value={job.workType ?? ""} onChange={handleInput}>
-                            <option key={0} value={""}>None</option>
-                            <option key={1} value={"Commercial"}>Commercial</option>
-                            <option key={2} value={"Resedential"}>Resedential</option>
-                        </InputField>
-                        <InputField type="select" name="opportunityType" label="Opportunity Type" value={job.opportunityType ?? ""} onChange={handleInput}>
-                            <option key={0} value={""}>None</option>
-                            <option key={1} value={"Reactive Maintenance"}>Reactive Maintenance</option>
-                            <option key={2} value={"Project"}>Project</option>
-                        </InputField>
-                    </Grid>
-                    <Grid item xs={12} align="center">
-                        <InputField name="bsafeLink" label="BSAFE Link" value={job.bsafeLink} onChange={handleInput}/>
-                    </Grid>
-                    <Grid item xs={12} align="center">
-                        <Box sx={{position: 'relative', display: 'inline-block'}}>                                              
-                            <Button 
-                                color='navButton'
-                                onClick={checkFolder}
-                                >
-                                Create Job Folder
-                            </Button>
-                            {waiting.checkFolder && (
+        <SettingsDialog 
+            open={settingsDialog} 
+            setOpen={setSettingsDialog} 
+            job={job}
+            setJob={setJob}
+            handleInput={handleInput}
+            waiting={waiting}
+            setWaiting={setWaiting}
+            setSnack={setSnack}
+        />
+
+        <Portal>
+            <SnackBar snack={snack} setSnack={setSnack} />
+        </Portal>
+
+        {/* Footer AppBar with Controls */}
+        <Footer>
+            <Tooltip title="Job Settings">
+                <IconButton onClick={() => {setSettingsDialog(true)}}><Settings /></IconButton>
+            </Tooltip>
+            <Tooltip title={(!updateRequired || waiting.save) ? "No Changes have been made" : "Save Job"}>
+                <Box sx={{display: 'inline-block'}}>
+                    <IconButton disabled={!updateRequired || waiting.save} onClick={handleUploadChanges}>
+                        <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}}>
+                            <SaveIcon />
+                            {waiting.save && (
                                 <CircularProgress size={24} 
                                     sx={{
                                         colour: 'primary', 
@@ -1121,166 +805,68 @@ const JobPage = () => {
                                 />
                             )}
                         </Box>
-                    </Grid>
-                    { auth?.user.role === "DEV" || auth?.user.role === "PMU" ?
-                        <Grid item xs={12} align="center">
-                            <Typography variant='p1'>ID: {job.id}</Typography>
-                            <Box sx={{position: 'relative', align: "center", display: 'inline-block'}}>                                              
-                                <Button 
-                                    color='navButton'
-                                    onClick={generateInvoice}
-                                    >
-                                    Generate Invoice
-                                </Button>
-                                {waiting.generateInvoice && (
-                                    <CircularProgress size={24} 
-                                        sx={{
-                                            colour: 'primary', 
-                                            position: 'absolute',
-                                            top: '50%',
-                                            left: '50%',
-                                            marginTop: '-12px',
-                                            marginLeft: '-12px',
-                                        }}
-                                    />
-                                )}
-                            </Box>
-                            <Box sx={{position: 'relative', align: "center", display: 'inline-block'}}>                                              
-                                <Button 
-                                    color='navButton'
-                                    onClick={repairMyobSync}
-                                    >
-                                    Repair MYOB Sync
-                                </Button>
-                                {waiting.repairMyobSync && (
-                                    <CircularProgress size={24} 
-                                        sx={{
-                                            colour: 'primary', 
-                                            position: 'absolute',
-                                            top: '50%',
-                                            left: '50%',
-                                            marginTop: '-12px',
-                                            marginLeft: '-12px',
-                                        }}
-                                    />
-                                )}
-                            </Box>
-                        </Grid>
-                        :   <></>
-                    }
-                </Grid>
-            </DialogContent>
-            <DialogActions sx={{justifyContent: "center"}}>
-                <Button variant="outlined" onClick={handleCloseSettings}>Close</Button>
-            </DialogActions>
-        </Dialog>
-
-        <Portal>
-            {/* Notification Snackbar */}
-            <Snackbar
-                anchorOrigin={{vertical: "bottom", horizontal:"center"}}
-                open={snack}
-                autoHideDuration={12000}
-                onClose={(e) => setSnack(false)}
-                >
-                <Alert onClose={(e) => setSnack(false)} severity={snackVariant} sx={{width: '100%'}}>{snackMessage}</Alert>
-            </Snackbar>
-        </Portal>
-
-        {/* Footer AppBar with Controls */}
-        <Box sx={{ flexGrow: 1}}>
-            <AppBar position="fixed" sx={{ top:'auto', bottom: 0, zIndex: (theme) => theme.zIndex.drawer + 1 }}
-                style={{height: '50px', backgroundColor: 'rgb(250,250,250)', boxShadow: 'rgb(0 0 0 / 10%) 0px 1px 1px -1px, rgb(0 0 0 / 10%) 0px 1px 1px 0px, rgb(0 0 0 / 10%) 0px 0 10px 2px'}}>
-                <Toolbar style={{minHeight: '50px'}}>
-                    <Box style={{margin: '0 auto'}}>
-                        <Tooltip title="Job Settings">
-                            <IconButton onClick={() => {setSettingsDialog(true)}}><Settings /></IconButton>
-                        </Tooltip>
-                        <Tooltip title={(!updateRequired || waiting.save) ? "No Changes have been made" : "Save Job"}>
-                            <Box sx={{display: 'inline-block'}}>
-                                <IconButton disabled={!updateRequired || waiting.save} onClick={handleUploadChanges}>
-                                    <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}}>
-                                        <SaveIcon />
-                                        {waiting.save && (
-                                            <CircularProgress size={24} 
-                                                sx={{
-                                                    colour: 'primary', 
-                                                    position: 'absolute',
-                                                    top: '50%',
-                                                    left: '50%',
-                                                    marginTop: '-12px',
-                                                    marginLeft: '-12px',
-                                                }}
-                                            />
-                                        )}
-                                    </Box>
-                                </IconButton>
-                            </Box>
-                        </Tooltip>
-                        <Tooltip title="Copy Folder Path">
-                            <IconButton onClick={() => {navigator.clipboard.writeText("Aurify\\Aurify - Maintenance\\Jobs\\" + getJobName())}}><FolderCopyIcon /></IconButton>
-                        </Tooltip>
-                        <Tooltip title={job.bsafeLink ? "Open BSAFE Work Order" : "No BSAFE Link Found"}>
-                            <Box sx={{display: 'inline-block'}}>
-                                <Button 
-                                    color='navButton'
-                                    style={{margin: '5px'}}
-                                    disabled={job.bsafeLink === ""}
-                                    onClick={() => openInNewTab(job.bsafeLink)}
-                                    >
-                                    BSAFE
-                                </Button>
-                            </Box>
-                        </Tooltip>
-                        <Tooltip title={job.myobUid ? "Job Already Linked to MYOB" : "Link Job to MYOB"}>
-                            <Box sx={{position: 'relative', display: 'inline-block'}}>                                              
-                                <Button 
-                                    color='navButton'
-                                    disabled={job.myobUid !== null && job.myobUid !== ""}
-                                    onClick={sendJobToMyob}
-                                >
-                                    MYOB
-                                </Button>
-                                {waiting.myobLink && (
-                                    <CircularProgress size={24} 
-                                        sx={{
-                                            colour: 'primary', 
-                                            position: 'absolute',
-                                            top: '50%',
-                                            left: '50%',
-                                            marginTop: '-12px',
-                                            marginLeft: '-12px',
-                                        }}
-                                    />
-                                )}
-                            </Box>
-                        </Tooltip>
-                        <Tooltip title={updateRequired ? "Please save before creating documents" : "Create New Completion Documents"}>
-                            <Box sx={{display: 'inline-block'}}>
-                                <IconButton disabled={updateRequired} onClick={handleCreateCompletionDocuments}>
-                                    <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
-                                        <NoteAddIcon />
-                                        {waiting.compDocs && (
-                                            <CircularProgress size={24} 
-                                                sx={{
-                                                    colour: 'primary', 
-                                                    position: 'absolute',
-                                                    top: '50%',
-                                                    left: '50%',
-                                                    marginTop: '-12px',
-                                                    marginLeft: '-12px',
-                                                }}
-                                            />
-                                        )}
-                                    </Box>
-                                </IconButton>
-                            </Box>
-                        </Tooltip>
-                    </Box>
-                </Toolbar>
-            </AppBar>
-        </Box>
-        </>
+                    </IconButton>
+                </Box>
+            </Tooltip>
+            <Tooltip title="Copy Folder Path">
+                <IconButton onClick={() => {navigator.clipboard.writeText("Aurify\\Aurify - Maintenance\\Jobs\\" + getJobName())}}><FolderCopyIcon /></IconButton>
+            </Tooltip>
+            <Tooltip title={job.bsafeLink ? "Open BSAFE Work Order" : "No BSAFE Link Found"}>
+                <Box sx={{display: 'inline-block'}}>
+                    <Button 
+                        style={{margin: '5px'}}
+                        disabled={job.bsafeLink === ""}
+                        onClick={() => openInNewTab(job.bsafeLink)}
+                        >
+                        BSAFE
+                    </Button>
+                </Box>
+            </Tooltip>
+            <Tooltip title={job.myobUid ? "Job Already Linked to MYOB" : "Link Job to MYOB"}>
+                <Box sx={{position: 'relative', display: 'inline-block'}}>                                              
+                    <Button 
+                        disabled={job.myobUid !== null && job.myobUid !== ""}
+                        onClick={sendJobToMyob}
+                    >
+                        MYOB
+                    </Button>
+                    {waiting.myobLink && (
+                        <CircularProgress size={24} 
+                            sx={{
+                                colour: 'primary', 
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                marginTop: '-12px',
+                                marginLeft: '-12px',
+                            }}
+                        />
+                    )}
+                </Box>
+            </Tooltip>
+            <Tooltip title={updateRequired ? "Please save before creating documents" : "Create New Completion Documents"}>
+                <Box sx={{display: 'inline-block'}}>
+                    <IconButton disabled={updateRequired} onClick={handleCreateCompletionDocuments}>
+                        <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
+                            <NoteAddIcon />
+                            {waiting.compDocs && (
+                                <CircularProgress size={24} 
+                                    sx={{
+                                        colour: 'primary', 
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        marginTop: '-12px',
+                                        marginLeft: '-12px',
+                                    }}
+                                />
+                            )}
+                        </Box>
+                    </IconButton>
+                </Box>
+            </Tooltip>
+        </Footer>
+    </>
     );
 }
 export default JobPage;

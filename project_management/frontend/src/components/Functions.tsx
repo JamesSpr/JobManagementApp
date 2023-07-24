@@ -1,12 +1,12 @@
 import React from 'react';
-import { Job } from "../types/types";
+import { JobType } from "../types/types";
 
 export const openInNewTab = (url: string) => {
     const newWindow = window.open(url, '_blank', 'noopener, noreferrer')
     if(newWindow) newWindow.opener = null
 }
 
-export const defineJobIdentifier = (job: Job) => {
+export const defineJobIdentifier = (job: JobType) => {
     let identifier = "PO" + job.po; // Default Value is PO
     
     if (job.po == '') {

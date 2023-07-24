@@ -7,8 +7,8 @@ export type User = {
     lastName: string
 }
 
-export interface Job {
-    id: Number,
+export interface JobType {
+    id: string,
     po: string,
     sr: string,
     otherId: string,
@@ -48,7 +48,12 @@ export interface Job {
             datePaid: Date,
         }
     }
+    opportunityType: string,
     bsafeLink: string,
+    workType: string,
+    cancelled: boolean,
+    cancelReason: string,
+
 }
 
 export type JobStage = {
@@ -102,6 +107,7 @@ export interface IAuth {
         username: string;
         refreshToken: string;
         defaultPaginationAmount: Number;
+        role: string;
         company?: {
             id: string;
             name: string;
