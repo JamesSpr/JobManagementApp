@@ -264,11 +264,12 @@ const TimesheetTable = ({timesheets, setTimesheets}: {
             cell: (info: any) => <p style={{margin: '0', textAlign: 'center'}}>{info.getValue()}</p>,
             size: 100
         }), 
-        columnHelper.display({
+        columnHelper.accessor((row: any) => row?.sentToMyob, {
             id: 'processed',
             header: () => <p style={{margin: '0', textAlign: 'center'}}>Processed</p>,
             size: 100,
             cell: ({getValue}) => {
+                console.log(getValue())
                 if(getValue() == "Partial") {
                     return (
                         <div style={{textAlign: 'center'}}>
@@ -281,7 +282,7 @@ const TimesheetTable = ({timesheets, setTimesheets}: {
                 if(getValue() == true) {
                     return (
                         <div style={{textAlign: 'center'}}>
-                            <Tooltip title="Not Processed">
+                            <Tooltip title="Processed">
                                 <CheckCircleOutlineIcon />
                             </Tooltip>
                         </div>

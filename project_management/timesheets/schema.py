@@ -308,7 +308,7 @@ class GetPayrollDetails(graphene.Mutation):
         for employee in res:
             if Employee.objects.filter(myob_uid=employee['Employee']['UID']):
                 emp = Employee.objects.get(myob_uid=employee['Employee']['UID'])
-                emp.pay_basis = employee['Wage']['PayBasis']
+                #emp.pay_basis = employee['Wage']['PayBasis']
                 emp.save()
 
         return self(success=True, message="Successfully Retrieved Payroll Details", 
