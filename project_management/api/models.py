@@ -205,11 +205,11 @@ class Job(models.Model):
                 self.stage = "PAY"
             else:
                 self.stage = 'BSA'
-        elif self.close_out_date:
+        elif (self.completion_date or self.commencement_date) and not self.close_out_date:
             if Estimate.objects.filter(job_id=self).exclude(approval_date__isnull=False).exists() and not Estimate.objects.filter(job_id=self).exclude(approval_date__isnull=True).exists():
                 self.stage= 'QAR'
-            else:
-                self.stage = 'INV'
+        elif self.close_out_date:
+            self.stage = 'INV'
         elif self.completion_date:
             self.stage = 'CLO'
         elif self.commencement_date:

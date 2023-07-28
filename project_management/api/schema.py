@@ -1093,10 +1093,10 @@ class UpdateBill(graphene.Mutation):
 
         b = Bill.objects.get(id=bill.id)
         if bill.job: b.job = Job.objects.get(po=bill.job)
-        if bill.myobUid: b.myob_uid = bill.uid
+        if bill.myobUid: b.myob_uid = bill.myobUid
         if bill.contractor: b.supplier = Contractor.objects.get(name=bill.contractor)
         if bill.processDate: b.process_date = bill.processDate
-        if bill.amount: b.amount = bill.amount
+        if bill.amount: b.amount = str(bill.amount)
         if bill.invoiceDate: b.invoice_date = bill.invoiceDate
         if bill.invoiceNumber: b.invoice_number = bill.invoiceNumber
         if bill.imgPath: b.img_path = bill.imgPath

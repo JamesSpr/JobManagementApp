@@ -774,7 +774,9 @@ class myobRepairJobSync(graphene.Mutation):
             res = json.loads(response.text)
 
             if len(res['Items']) > 0:
-                return self(success=True, message="Job Already Linked Correctly")
+                job.myob_uid = res['Items'][0]['UID']
+                job.save()
+                return self(success=True, message="Job Link Repaired")
             else:
                 job.myob_uid = ''
                 job.save()

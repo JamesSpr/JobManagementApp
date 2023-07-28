@@ -354,6 +354,7 @@ const JobPage = () => {
                     setSnack({active: true, variant:'success', message: res.message})
                 }
                 // TODO: Update the id of any new jobs.
+                setUpdateRequired(false);
             } 
             else {
                 setSnack({active: true, variant:'error', message: "Estimate Upload Error: " + res.message})
