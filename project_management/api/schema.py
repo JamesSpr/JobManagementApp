@@ -1467,7 +1467,7 @@ class Query(graphene.ObjectType):
 
     @login_required
     def resolve_contractors(root, info, **kwargs):
-        return Contractor.objects.all()
+        return Contractor.objects.all().order_by('name')
     
     @login_required
     def resolve_contractors_contacts(root, info, contractor=None, **kwargs):

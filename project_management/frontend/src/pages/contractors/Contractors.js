@@ -254,82 +254,79 @@ const Contractors = () => {
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                    query: `
-                    mutation myobCreateContractor($contractor: myobContractorInput!, $uid: String!) { 
-                        myob_create: myobCreateContractor(contractor: $contractor, uid: $uid) {
-                            success
-                            message
-                            myobUid
-                        }
-                    }`,
-                    variables: { 
-                        uid: auth?.myob.id,
-                        contractor: newContractor,
-                    },
-                }),
-            }).then((response) => {
-                // console.log(response);
-                const res = response?.data?.data?.myob_create;
+                query: `
+                mutation myobCreateContractor($contractor: myobContractorInput!, $uid: String!) { 
+                    myob_create: myobCreateContractor(contractor: $contractor, uid: $uid) {
+                        success
+                        message
+                        myobUid
+                    }
+                }`,
+                variables: { 
+                    uid: auth?.myob.id,
+                    contractor: newContractor,
+                },
+            }),
+        }).then((response) => {
+            // console.log(response);
+            const res = response?.data?.data?.myob_create;
 
-                // TODO: Add Snackbar
-                if(res.success){
-                    // Upon successful response from myob, send to backend
-                    newContractor['myobUid'] = res.myobUid
-                    if(res.success) {
-                        axiosPrivate({
-                            method: 'post',
-                            data: JSON.stringify({
-                                query: `
-                                mutation createContractor($contractor: ContractorInput!) { 
-                                    create: createContractor(contractor: $contractor) {
-                                        success
-                                        contractor {
-                                            id
-                                            myobUid
-                                            name
-                                            abn
-                                            bsb
-                                            bankAccountName
-                                            bankAccountNumber
-                                        }
-                                    }
-                                }`,
-                                variables: { 
-                                    contractor: newContractor,
-                                },
-                            }),
-                        }).then((response) => {
-                            // console.log(response);
-                            const res = response?.data?.data?.create;
-                            if(res.success){
-                                setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
-                                // Clear Dialog Content
-                                setNewContractor({
-                                    'name': '',
-                                    'abn': '',
-                                    'bsb': '',
-                                    'bankAccountName': '',
-                                    'bankAccountNumber': '',
-                                });
-                                setCreateContractor(false);
-                                setData(oldArray => [...oldArray, res.contractor]);
-                            }
-                            else {
-                                console.log("error",res);
-                                setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
-                            }
-                        }).catch((e) => {
-                            console.log("error", e);
-                            setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
-                        });
-                    }     
-                }
-                else {
-                    console.log("error",res);
-                }
-            }).catch((e) => {
-                console.log("error", e);
-            });   
+            // TODO: Add Snackbar
+            if(res.success){
+                // // Upon successful response from myob, send to backend
+                // newContractor['myobUid'] = res.myobUid
+                // if(res.success) {
+                //     axiosPrivate({
+                //         method: 'post',
+                //         data: JSON.stringify({
+                //             query: `
+                //             mutation createContractor($contractor: ContractorInput!) { 
+                //                 create: createContractor(contractor: $contractor) {
+                //                     success
+                //                     contractor {
+                //                         id
+                //                         myobUid
+                //                         name
+                //                         abn
+                //                         bsb
+                //                         bankAccountName
+                //                         bankAccountNumber
+                //                     }
+                //                 }
+                //             }`,
+                //             variables: { 
+                //                 contractor: newContractor,
+                //             },
+                //         }),
+                //     }).then((response) => {
+                //         // console.log(response);
+                //         const res = response?.data?.data?.create;
+                        
+                //     }).catch((e) => {
+                //         console.log("error", e);
+                //         setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
+                //     });
+                // }     
+                setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
+                // Clear Dialog Content
+                setNewContractor({
+                    'name': '',
+                    'abn': '',
+                    'bsb': '',
+                    'bankAccountName': '',
+                    'bankAccountNumber': '',
+                });
+                setCreateContractor(false);
+                setData(oldArray => [...oldArray, res.contractor]);
+            }
+            else {
+                console.log("error",res);
+                setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
+            }
+        }).catch((e) => {
+            console.log("error", e);
+            setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
+        });   
         
     }
 
@@ -480,7 +477,7 @@ const Contractors = () => {
             </Tooltip>
         </Footer>
 
-        <SnackBar {...{snack, setSnack}} />
+        <SnackBar snack={snack} setSnack={setSnack} />
 
         {/* Create Contractor Dialog Box */}
         <CreateDialog createObject={newContractor} open={createContractor} onCreate={handleDialogCreate} onClose={handleDialogClose}/>

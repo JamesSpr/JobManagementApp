@@ -343,6 +343,9 @@ class myobCreateContractor(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
+        if Contractor.objects.filter(abn=contractor.abn).exists():
+            return self(success=False, message="Contractor Already Exists. Check ABN")
+
         if MyobUser.objects.filter(id=uid).exists():
             checkTokenAuth(uid)
             user = MyobUser.objects.get(id=uid)
@@ -378,6 +381,15 @@ class myobCreateContractor(graphene.Mutation):
                 return self(success=False, message=response.text)
 
             myob_uid = response.headers['Location'].replace(link, "")
+
+            new_contractor = Contractor()
+            new_contractor.myob_uid = myob_uid
+            new_contractor.name = contractor.name.strip()
+            new_contractor.abn = contractor.abn.strip()
+            new_contractor.bsb = contractor.bsb.strip()
+            new_contractor.bank_account_name = contractor.bank_account_name.strip()
+            new_contractor.bank_account_number = contractor.bank_account_number.strip()
+            new_contractor.save()
 
             return self(success=True, message=response.text, myob_uid=myob_uid)
         else:
