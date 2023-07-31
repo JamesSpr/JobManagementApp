@@ -153,7 +153,7 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
                     return (
                         <Grid item xs={12/2} sm={12/7}>
                             <p><b>{new Date(work.date).toLocaleDateString('en-AU', { weekday: 'long', day: '2-digit', month: '2-digit', year:'numeric' })}</b></p>
-                            <InputField type='number' label='Hours' width={150} step={0.01} min={'0'} value={work.hours} onChange={e => handleChange(e, i)} />
+                            <InputField type='number' label='Hours' width={150} step={0.01} min={0} value={work.hours} onChange={e => handleChange(e, i)} />
                             <Tooltip title="Allow Overtime" arrow="right">
                                 <input type="checkbox" checked={work.allowOvertime} onChange={e => handleCheck(e, i)} style={{marginLeft: '10px'}}/>
                             </Tooltip>

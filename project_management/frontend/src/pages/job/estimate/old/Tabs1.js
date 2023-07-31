@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Tab, Tabs } from '@mui/material';
-import EstimateTable from './Table';
-import EstimateOptionsOverview from './Overview';
-import NewEstimate from './NewEstimate';
-import useEstimate from './useEstimate';
-import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
+import EstimateTable from '../Table';
+import EstimateOptionsOverview from '../Overview';
+import NewEstimate from '../NewEstimate';
+import useEstimate from '../useEstimate';
+import useAxiosPrivate from '../../../../hooks/useAxiosPrivate';
 
 const TabPanel = ({ children, value, index, ...other }) => (
       <div

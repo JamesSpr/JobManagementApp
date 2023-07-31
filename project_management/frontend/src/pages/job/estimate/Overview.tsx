@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useReactTable, getCoreRowModel, flexRender, } from '@tanstack/react-table'
-import { Box, Button, Tooltip, CircularProgress, Portal, Snackbar, Alert, IconButton } from '@mui/material';
-import useEstimate from './useEstimate';
+import { useReactTable, getCoreRowModel, flexRender, Row } from '@tanstack/react-table'
+import { Box, Button, Tooltip, CircularProgress, Portal, IconButton, Grid } from '@mui/material';
+// import useEstimate from './useEstimate';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import useAuth from '../../auth/useAuth';
 import { produce } from 'immer';
@@ -9,44 +9,52 @@ import Bill from '../../bill/JobBill';
 
 import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteDialog from '../../../components/DeleteDialog';
+import { ContractorType, EmployeeType, EstimateType, JobType, SnackType } from '../../../types/types';
 
-const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired, setUpdateRequired, contractors, client, myobSync}) => {
+const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdateRequired, contractors, snack, setSnack }: {
+    users: EmployeeType[]
+    job: JobType
+    setJob: React.Dispatch<React.SetStateAction<JobType>>
+    updateRequired: boolean
+    setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
+    contractors: ContractorType[]
+    snack: SnackType
+    setSnack: React.Dispatch<React.SetStateAction<SnackType>>
+}) => {
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
-    const { setSelectedEstimate, estimateSet, setEstimateSet } = useEstimate();
+    // const { setSelectedEstimate, estimateSet, setEstimateSet } = useEstimate();
 
     const [rowSelection, setRowSelection] = useState({});
     const [billsDialog, setBillsDialog] = useState(false);
 
-    const [waiting, setWaiting] = useState({});
-    const [snack, setSnack] = useState(false);
-    const [snackMessage, setSnackMessage] = useState('');
-    const [snackVariant, setSnackVariant] = useState('info');
+    const [waiting, setWaiting] = useState({quote: false, estimate: false});
     
     const [approvedEstimate, setApprovedEstimate] = useState({});
     const [lockedEstimate, setLockedEstimate] = useState(false);
     const [data, setData] = useState([]);
 
-    useEffect(() => {
-        setSelectedEstimate(rowSelection);
-    }, [rowSelection])
+    // useEffect(() => {
+    //     setSelectedEstimate(rowSelection);
+    // }, [rowSelection])
 
-    const handleToggleSelected = (row) => {
+    const handleToggleSelected = (row: Row<EstimateType>) => {
         row.toggleSelected();
     }
 
-    useEffect(() => {
-        for(var i = 0; i < estimateSet.length; i++) {
-            if(estimateSet[i]['approvalDate'] !== null) {
-                setApprovedEstimate(estimateSet[i]);
-                setLockedEstimate(true);
-                break;
-            }
-        }
-        setData(estimateSet);
-    }, [estimateSet])
+    // useEffect(() => {
+    //     for(var i = 0; i < estimateSet.length; i++) {
+    //         if(estimateSet[i]['approvalDate'] !== null) {
+    //             setApprovedEstimate(estimateSet[i]);
+    //             setLockedEstimate(true);
+    //             break;
+    //         }
+    //     }
+    //     setData(estimateSet);
+    // }, [estimateSet])
 
-    const editableCell = ({ getValue, row: { index }, column: { id }, table }) => {
+    const editableCell = ({ getValue, row: { index }, column: { id }, table }: 
+        { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
         const initialValue = getValue()
         // We need to keep and update the state of the cell normally
         const [value, setValue] = useState(initialValue)
@@ -64,7 +72,7 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
                     setValueError(true)
                     return
                 }
-                table.options.data.map((est, i) => {
+                table.options.data.map((est: { name: string; }, i: any) => {
                     if(index !== i) {
                         if(value.toLowerCase().trim() === est.name.toLowerCase().trim()){
                             setValueError(true)
@@ -80,15 +88,16 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
 
             // Dont update if the value has not changed
             if(!(!initialValue && value === '') && !(initialValue === value)) {
-                setEstimateSet(prev => prev.map((r, i) => {
-                    if(i === index){
-                        const newEstimateSet = produce(prev[i], draft => {
+                setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((es, i) => {
+                    if(i === index) {
+                        const newEstimateSet = produce(prev.estimateSet[i], (draft: { [x: string]: { id: any; }; }) => {
                             draft[id] = value
                         })
                         return newEstimateSet;
                     }
-                    return r;
-                }))
+                    return es
+                })}))
+                setUpdateRequired(true);
             }
         }
         
@@ -104,26 +113,28 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         )
     }
 
-    const selectionCell = ({ getValue, row: { index }, column: { id }, table }) => {
+    const selectionCell = ({ getValue, row: { index }, column: { id }, table }: 
+        { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
         const initialValue = getValue()
         // We need to keep and update the state of the cell normally
         const [value, setValue] = useState(initialValue)
     
         // When the input is blurred, we'll call our table meta's updateData function
-        const onChange = (value) => {
+        const onChange = (value: string) => {
             table.options.meta?.updateData(index, id, value)
 
             // Dont update if the value has not changed
             if(!(!initialValue && value === '') && !(initialValue === value)) {
-                setEstimateSet(prev => prev.map((r, i) => {
-                    if(i === index){
-                        const newEstimateSet = produce(prev[i], draft => {
+                setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((es, i) => {
+                    if(i === index) {
+                        const newEstimateSet = produce(prev.estimateSet[i], (draft: { [x: string]: { id: any; }; }) => {
                             draft[id] = {'id':value}
                         })
                         return newEstimateSet;
                     }
-                    return r;
-                }))
+                    return es
+                })}))
+                setUpdateRequired(true);
             }
         }
         
@@ -141,7 +152,8 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         )
     }
 
-    const editableDateCell = ({ getValue, row: { index }, column: { id }, table }) => {
+    const editableDateCell = ({ getValue, row: { index }, column: { id }, table }: 
+        { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
         const initialValue = getValue()
         // We need to keep and update the state of the cell normally
         const [value, setValue] = useState(initialValue ?? "")
@@ -152,15 +164,16 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
 
             // Dont update if the value has not changed
             if(!(!initialValue && value === '') && !(initialValue === value)) {
-                setEstimateSet(prev => prev.map((r, i) => {
-                    if(i === index){
-                        const newEstimateSet = produce(prev[i], draft => {
+                setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((es, i) => {
+                    if(i === index) {
+                        const newEstimateSet = produce(prev.estimateSet[i], (draft: { [x: string]: { id: any; }; }) => {
                             draft[id] = value
                         })
                         return newEstimateSet;
                     }
-                    return r;
-                }))
+                    return es
+                })}))
+                setUpdateRequired(true);
             }
         }
         
@@ -186,8 +199,8 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         },
         {
             id: 'quoteBy',
-            accessorFn: row => row.quoteBy?.id,
-            header: () => 'Quote By',
+            accessorFn: (row: { quoteBy: { id: any; }; }) => row.quoteBy?.id,
+            header: "Quote By",
             cell: selectionCell,
             minSize: 200,
             size: 200,
@@ -204,7 +217,7 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         {
             accessorKey: 'price',
             header: () => 'Price',
-            cell: info => <p style={{'textAlign': 'center'}}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue())}</p>,
+            cell: (info: { getValue: () => number | bigint; }) => <p style={{'textAlign': 'center'}}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue())}</p>,
             minSize: 100,
             size: 125,
             maxSize: 150,
@@ -230,11 +243,11 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
             minSize: 80,
             size: 90,
             maxSize: 90,
-            header: '',
-            cell: ({row}) => (
+            header: () => '',
+            cell: ({row}: {row:any}) => (
             <>
             
-                <IconButton onClick={(e) => {setDeleteDialog(prev => ({open: true, row: row, 
+                <IconButton onClick={(e) => {setDeleteDialog(({open: true, row: row, 
                     title: "Delete Estimate", message: "Are you sure you want to delete this estimate? This action can not be undone."}))}}>
                     <DeleteIcon />
                 </IconButton>
@@ -243,16 +256,22 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         }
     ], []);
 
-    const [deleteDialog, setDeleteDialog] = useState({open: false, row: {}, title: '', message: ''});
+    interface DeleteDialog {
+        open: boolean
+        row: Row<EstimateType> | undefined
+        title: string
+        message: string
+    }
+    const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>({open: false, row: undefined, title: '', message: ''});
 
     const deleteEstimate = async () => {
         // Checks
         if(!deleteDialog || !deleteDialog.row) {
-            setSnack(true);
-            setSnackVariant('error');
-            setSnackMessage("Error Deleting Estimate");
+            setSnack({active: true, variant:'error', message: 'Error Deleting Estimate'})
             return;
         }
+        
+        console.log(deleteDialog?.row?.original?.id)
         
         await axiosPrivate({
             method: 'post',
@@ -270,23 +289,20 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
             const res = response?.data?.data?.delete
             if(res?.ok) {
                 // Remove estimate from list
-                setEstimateSet(estimateSet.filter(estimate => estimate.id !== deleteDialog.row.original.id))
+                setJob(prev => ({...prev, estimateSet: prev.estimateSet.filter((estimate: { id: any; }) => estimate.id !== deleteDialog?.row?.original.id)}))
+                // setEstimateSet(estimateSet.filter((estimate: { id: any; }) => estimate.id !== deleteDialog?.row?.original.id))
 
                 // Provide feedback to user
-                setSnackVariant('success');
-                setSnackMessage("Estimate Deleted");
+                setSnack({active: true, variant:'success', message: 'Estimate Deleted'})
             }
             else {
-                setSnackVariant('error');
-                setSnackMessage("Error Deleting Estimate");
+                setSnack({active: true, variant:'error', message: 'Error Deleting Estimate'})
             }
         }).catch((err) => {
-            // console.log(err);
-            setSnackVariant('error');
-            setSnackMessage("Please Contact Admin: " + err);
+            console.log(err);
+            setSnack({active: true, variant:'error', message: 'Error. Please contact Developer'})
         }).finally(() => {
-            setSnack(true);
-            setDeleteDialog({open: false, row: {}, title: '', message: ''})
+            setDeleteDialog({open: false, row: undefined, title: '', message: ''})
             setUpdateRequired(false);
         });
     }
@@ -294,59 +310,42 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
     const handleCreateQuote = async () => {
         setWaiting(prev => ({...prev, quote: true}));
         // console.log(auth);
-        try {
-            await axiosPrivate({
-                method: 'post',
-                data: JSON.stringify({
-                    query: `mutation createQuote ( $jobId: String!, $selectedEstimate: String!, $userId: String! ) { 
-                        create_quote: createQuote( jobId: $jobId, selectedEstimate: $selectedEstimate, userId: $userId)
-                        {
-                            success
-                            message
-                        }
-                }`,
-                variables: {
-                    jobId: jobId,
-                    selectedEstimate: data[Object.keys(rowSelection)[0]].id,
-                    userId: auth.user.id,
-                },
-            }),
-            }).then((response) => {
-                const res = response?.data?.data?.create_quote
-                // console.log("Successful Quote Creation?", res);
-                // console.log("Successful Quote Creation?", res?.success);
-                if(res?.success) {
-                    setSnack(true);
-                    setSnackVariant('success');
-                    setSnackMessage("Quote Created");
-                    setWaiting(prev => ({...prev, quote: false}));
-                }
-                else if (res?.message) {
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Quote Error: " + res.message);
-                    setWaiting(prev => ({...prev, quote: false}));
-                }
-                else {
-                    // console.log(response);
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Quote Error: " + response?.data?.errors[0]?.message);
-                    setWaiting(prev => ({...prev, quote: false}));
-                }
-            });
-        } catch (err) {
-            // console.log(err);
-            setSnack(true);
-            setSnackVariant('error');
-            setSnackMessage("Server Error. Please Contact Admin: " + err);
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation createQuote ( $jobId: String!, $selectedEstimate: String!, $userId: String! ) { 
+                    create_quote: createQuote( jobId: $jobId, selectedEstimate: $selectedEstimate, userId: $userId)
+                    {
+                        success
+                        message
+                    }
+            }`,
+            variables: {
+                jobId: job.id,
+                selectedEstimate: job.estimateSet[parseInt(Object.keys(rowSelection)[0])].id,
+                userId: auth?.user.id,
+            },
+        }),
+        }).then((response) => {
+            const res = response?.data?.data?.create_quote
+            
+            if(res?.success) {
+                setSnack({active: true, variant:'success', message: 'Quote Created'})
+            }
+            else {
+                setSnack({active: true, variant:'error', message: 'Quote Error: ' + res.message})
+            }
+        }).catch((err) => {
+            setSnack({active: true, variant:'error', message: 'Server Error. Please Contact Developer'})
+            console.log(err)
+        }).finally(() => {
             setWaiting(prev => ({...prev, quote: false}));
-        }
+        });
     }
 
     const handleCreateEstimate = async () => {
         setWaiting(prev => ({...prev, estimate: true}));
-        // console.log(auth);
+
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
@@ -358,90 +357,67 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
                     }
             }`,
             variables: {
-                jobId: jobId,
-                selectedEstimate: data[Object.keys(rowSelection)[0]].id,
+                jobId: job.id,
+                selectedEstimate: job.estimateSet[parseInt(Object.keys(rowSelection)[0])].id,
             },
         }),
         }).then((response) => {
             const res = response?.data?.data?.create_bgis_estimate
             if(res?.success) {
-                setSnackVariant('success');
-                setSnackMessage("Blank Estimate Created");
-            }
-            else if (res?.message) {
-                setSnackVariant('error');
-                setSnackMessage("Estimate Creation Error: " + res.message);
+                setSnack({active: true, variant:'success', message: 'Estimate Created'})
             }
             else {
-                setSnackVariant('error');
-                setSnackMessage("Estimate Creation Error: " + response?.data?.errors[0]?.message);
+                setSnack({active: true, variant:'error', message: "Estimate Creation Error: " + res.message})
             }
         }).catch((err) => {
             console.log(err);
-            setSnackVariant('error');
-            setSnackMessage("Server Error. Please Contact Admin: " + err);
+            setSnack({active: true, variant:'error', message: "Server Error. Please Contact Admin: " + err})
         }).finally(() => {
-            setSnack(true);
             setWaiting(prev => ({...prev, estimate: false}));
         });
         
     }
 
-    const handleEmailQuote = async () => {
-        setWaiting(prev => ({...prev, email: true}));
-        // console.log(auth);
-        try {
-            await axiosPrivate({
-                method: 'post',
-                data: JSON.stringify({
-                    query: `mutation emailQuote ( $jobId: String!, $selectedEstimate: String!, $userId: String! ) { 
-                        email_quote: emailQuote( jobId: $jobId, selectedEstimate: $selectedEstimate, userId: $userId)
-                        {
-                            success
-                            message
-                        }
-                }`,
-                variables: {
-                    jobId: jobId,
-                    selectedEstimate: data[Object.keys(rowSelection)[0]].name,
-                    userId: auth.user.id,
-                },
-            }),
-            }).then((response) => {
-                const res = response?.data?.data?.email_quote
-                console.log("Successful Quote Creation?", res);
-                // console.log("Successful Quote Creation?", res?.success);
-                if(res?.success) {
-                    setSnack(true);
-                    setSnackVariant('success');
-                    setSnackMessage(res?.message ?? "Quote Emailed");
-                    setWaiting(prev => ({...prev, email: false}));
-                }
-                else if (res?.message) {
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Quote Error: " + res.message);
-                    setWaiting(prev => ({...prev, email: false}));
-                }
-                else {
-                    // console.log(response);
-                    setSnack(true);
-                    setSnackVariant('error');
-                    setSnackMessage("Quote Error: " + response?.data?.errors[0]?.message);
-                    setWaiting(prev => ({...prev, email: false}));
-                }
-            });
-        } catch (err) {
-            // console.log(err);
-            setSnack(true);
-            setSnackVariant('error');
-            setSnackMessage("Server Error. Please Contact Admin: " + err);
-            setWaiting(prev => ({...prev, email: false}));
-        }
-    }
+    // const handleEmailQuote = async () => {
+    //     setWaiting(prev => ({...prev, email: true}));
+    //     // console.log(auth);
+    //     await axiosPrivate({
+    //         method: 'post',
+    //         data: JSON.stringify({
+    //             query: `mutation emailQuote ( $jobId: String!, $selectedEstimate: String!, $userId: String! ) { 
+    //                 email_quote: emailQuote( jobId: $jobId, selectedEstimate: $selectedEstimate, userId: $userId)
+    //                 {
+    //                     success
+    //                     message
+    //                 }
+    //         }`,
+    //         variables: {
+    //             jobId: job.id,
+    //             selectedEstimate: job.estimateSet[parseInt(Object.keys(rowSelection)[0])].name,
+    //             userId: auth?.user.id,
+    //         },
+    //     }),
+    //     }).then((response) => {
+    //         const res = response?.data?.data?.email_quote
+    //         console.log("Successful Quote Creation?", res);
+    //         // console.log("Successful Quote Creation?", res?.success);
+    //         if(res?.success) {
+    //             setSnack({active: true, variant:'success', message: res?.message ?? "Quote Emailed"})
+    //         }
+    //         else {
+    //             setSnack({active: true, variant:'error', message: "Quote Error: " + res.message})
+    //         }
+    //     }).catch((err) => {
+    //         console.log(err);
+    //         setSnack({active: true, variant:'error', message: "Server Error. Please Contact Developer: " + err})            
+    //     }).finally(() => {
+    //         setWaiting(prev => ({...prev, email: false}));
+
+    //     })
+    // }
 
     const table = useReactTable({
-        data,
+        data: job.estimateSet,
         columns,
         getCoreRowModel: getCoreRowModel(),
         state: {
@@ -452,12 +428,13 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
         // debugTable: true,
     });    
 
-    const handleBillClose = (event, reason) => {
+    const handleBillClose = (event: any, reason: any) => {
         setBillsDialog(false);
     }
 
     return (
-        <>
+        <>        
+        <Grid container direction={'column'} alignItems={'center'}>
             <table className="estimateOverview" style={{ width: table.getTotalSize()}}>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
@@ -499,7 +476,7 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
                         )) 
                     ):(
                         <tr className="EmptyTableData" key={"NoQuote"}>
-                            <td className="EmptyTableData" colSpan="100%">
+                            <td className="EmptyTableData" colSpan={7}>
                                 No Quotes Found. Press the + above to create a Quote.
                             </td>
                         </tr>
@@ -507,43 +484,18 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
                 </tbody>
             </table>
 
-            <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
-                <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
-                    <Button 
-                        variant="outlined" 
-                        style={{marginRight: '10px'}} 
-                        disabled={Object.keys(rowSelection).length === 0 || updateRequired} 
-                        onClick={handleCreateQuote}
-                    >
-                        Print Quote
-                    </Button>
-                    {waiting.quote && (
-                        <CircularProgress size={24} 
-                            sx={{
-                                colour: 'primary', 
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                marginTop: '-12px',
-                                marginLeft: '-12px',
-                            }}
-                        />
-                    )}
-                </Box>
-            </Tooltip> 
-            
-            {client == "1" ? 
+            <Grid item xs={12}>
                 <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
                     <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
                         <Button 
                             variant="outlined" 
                             style={{marginRight: '10px'}} 
                             disabled={Object.keys(rowSelection).length === 0 || updateRequired} 
-                            onClick={handleCreateEstimate}
+                            onClick={handleCreateQuote}
                         >
-                            New Estimate
+                            Print Quote
                         </Button>
-                        {waiting.estimate && (
+                        {waiting.quote && (
                             <CircularProgress size={24} 
                                 sx={{
                                     colour: 'primary', 
@@ -556,26 +508,54 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
                             />
                         )}
                     </Box>
-                </Tooltip> : <></>
-            }
-
-            {lockedEstimate &&
-                <Tooltip title={myobSync === null || myobSync === "" ? "Please Sync with MYOB" : null}>
-                    <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
-                        <Button 
-                            variant="outlined" 
-                            style={{marginRight: '10px'}} 
-                            disabled={myobSync === null || myobSync === ""}
-                            onClick={e => setBillsDialog(true)}
-                            >
-                            Open Bills
-                        </Button>
-                    </Box>
                 </Tooltip> 
-            }
+                
+                {job.client == "1" ? 
+                    <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
+                        <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
+                            <Button 
+                                variant="outlined" 
+                                style={{marginRight: '10px'}} 
+                                disabled={Object.keys(rowSelection).length === 0 || updateRequired} 
+                                onClick={handleCreateEstimate}
+                            >
+                                New Estimate
+                            </Button>
+                            {waiting.estimate && (
+                                <CircularProgress size={24} 
+                                    sx={{
+                                        colour: 'primary', 
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        marginTop: '-12px',
+                                        marginLeft: '-12px',
+                                    }}
+                                />
+                            )}
+                        </Box>
+                    </Tooltip> : <></>
+                }
 
-            <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate} 
-                bills={bills} setBills={setBills} contractors={contractors}/>
+                {lockedEstimate &&
+                    <Tooltip title={job.myobUid === "" ? "Please Sync with MYOB" : null}>
+                        <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
+                            <Button 
+                                variant="outlined" 
+                                style={{marginRight: '10px'}} 
+                                disabled={job.myobUid === ""}
+                                onClick={e => setBillsDialog(true)}
+                                >
+                                Open Bills
+                            </Button>
+                        </Box>
+                    </Tooltip> 
+                }
+            </Grid>
+
+            {/* Todo */}
+            {/* <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate}
+                bills={bills} setBills={setBills} contractors={contractors}/> */}
 
             {/* { auth.user.role === "DEV" ? 
                 <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
@@ -605,17 +585,7 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
                 : <></>
             } */}
 
-            <Portal>
-                {/* Notification Snackbar */}
-                <Snackbar
-                    anchorOrigin={{vertical: "bottom", horizontal:"center"}}
-                    open={snack}
-                    autoHideDuration={6000}
-                    onClose={(e) => setSnack(false)}
-                    >
-                    <Alert onClose={(e) => setSnack(false)} severity={snackVariant} sx={{width: '100%'}}>{snackMessage}</Alert>
-                </Snackbar>
-            </Portal>
+        </Grid>
 
             <DeleteDialog 
                 open={deleteDialog.open} 
@@ -623,27 +593,9 @@ const EstimateOptionsOverview = ({bills, setBills, users, jobId, updateRequired,
                 title={deleteDialog.title} message={deleteDialog.message} 
                 action={() => deleteEstimate()} 
             />
-
-            
-
-            {/* {waiting ?
-                <>
-                    <div className="loader" style={{visibility: waiting ? 'visible' : 'hidden'}}></div>
-                    <p className="loader-text" style={{visibility: waiting ? 'visible' : 'hidden'}}>Processing</p>
-                </>
-            :
-                <>
-                    <div className="icon" style={{visibility: uploadStatus === '' ? 'hidden' : 'visible'}}>
-                        <Tooltip title={uploadStatusMessage} placement="top">
-                            {uploadStatus === 'Error' ? <ErrorOutlineIcon color='error'/> :
-                                uploadStatus === 'Success' ? <DoneIcon color='primary'/> : <></>}
-                        </Tooltip>
-                    </div>
-                    <p className="loader-text" style={{visibility: uploadStatus === '' ? 'hidden' : 'visible'}}>{uploadStatus}</p>
-                </>
-            } */}
         </>
     );
 }
 
 export default EstimateOptionsOverview;
+// export default () => '';

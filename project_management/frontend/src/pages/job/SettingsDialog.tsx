@@ -9,7 +9,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWa
     setOpen: React.Dispatch<React.SetStateAction<boolean>>
     job: JobType
     setJob: React.Dispatch<React.SetStateAction<JobType>>
-    handleInput: () => void
+    handleInput: (e: { target: { name?: any; value?: any; }; }) => void
     waiting: any
     setWaiting: React.Dispatch<React.SetStateAction<any>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>

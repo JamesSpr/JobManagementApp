@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Grid, Typography, Button } from '@mui/material';
 
-import useEstimate from './useEstimate';
-import { InputField, Tooltip } from '../../../components/Components';
+import useEstimate from '../useEstimate';
+import { InputField, Tooltip } from '../../../../components/Components';
 
 const NewEstimate = ({users, estimateData}) => {
 

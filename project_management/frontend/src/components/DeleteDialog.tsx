@@ -4,7 +4,7 @@ import React, { FC } from 'react';
 
 interface DeleteDialogType {
     open: boolean
-    close: () => {}
+    close: () => void
     action: () => {}
     title: string
     message: string

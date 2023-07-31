@@ -8,61 +8,138 @@ export type User = {
 }
 
 export interface JobType {
-    id: string,
-    po: string,
-    sr: string,
-    otherId: string,
-    client: {
-        name: string
-    }
-    location: {
-        name: string,
-        region: {
-            shortName: string
-        }
-    }
-    building: string,
-    title: string,
-    priority: string,
-    dateIssued: Date,
-    overdueDate: Date,
-    stage: string,
-    description: string,
-    detailedLocation: string,
-    estimateSet: {
-        id: Number
-        name: string,
-        description: string,
-        price: Number,
-        issueDate: Date,
-        approvalDate: Date,
-        quoteBy: {
-            id: Number
-        }
-    }
+    id: string
+    myobUid: string
+    po: string
+    sr: string
+    otherId: string
+    client: ClientType | string
+    requester: ContactType | string
+    location: LocationType | string
+    building: string
+    title: string
+    priority: string
+    dateIssued: string
+    overdueDate: string
+    stage: string
+    description: string
+    detailedLocation: string
+    inspectionDate: string
+    commencementDate: string
+    completionDate: string
+    closeOutDate: string
+    totalHours: number
+    pocName: string
+    pocPhone: string
+    pocEmail: string
+    altPocName: string
+    altPocPhone: string
+    altPocEmail: string
+    specialInstructions: string
+    inspectionBy: string
+    inspectionNotes: string
+    scope: string
+    workNotes: string
+    siteManager: string
+    estimateSet: EstimateType[]
     jobinvoiceSet: {
-        invoice: {
-            number: string,
-            dateCreated: Date,
-            dateIssued: Date,
-            datePaid: Date,
-        }
+        invoice: InvoiceType[]
     }
-    opportunityType: string,
-    bsafeLink: string,
-    workType: string,
-    cancelled: boolean,
-    cancelReason: string,
+    billSet: {
+
+    }
+    opportunityType: string
+    bsafeLink: string
+    workType: string
+    cancelled: boolean
+    cancelReason: string
 
 }
 
-export type JobStage = {
+export interface EstimateType {
+    id: string
+    name: string
+    description: string
+    price: number
+    issueDate: string
+    approvalDate: string
+    scope: string
+    estimateheaderSet: EstimateHeaderType[]
+    quoteBy: {
+        id: number | undefined
+    }
+}
+
+// Have to modify the type with optionals for table subRows
+export interface EstimateHeaderType {
+    id: string
+    description: string
+    quantity?: number
+    itemType?: string
+    rate?: number
+    extension?: number
+    markup: number
+    gross: number
+    estimateitemSet: EstimateItemSet[]
+}
+
+export interface EstimateItemSet {
+    id: string
+    description: string
+    quantity: number
+    itemType: string
+    rate: number
+    extension: number
+    markup: number
+    gross: number
+    estimateitemSet: EstimateItemSet[]
+}
+
+export interface InvoiceType {
+    number: string
+    dateCreated: string
+    dateIssued: string
+    datePaid: string
+}
+
+export interface BillType {
+    id: string
+    invoiceNumber: string
+    myobUid: string
+    supplier: ContractorType
+    amount: number
+}
+
+export interface ContractorType {
+    id: string
+    myobUid: string
+    name: string
+}
+
+export interface JobStageType {
+    name: '' | 'INS' | 'SUB' | 'APP' | 'QAR' | 'UND' | 'CLO' | 'INV' | 'BSA' | 'PAY' | 'FIN' | 'CAN' | 'PRO'
+    description: ''
+}
+
+export interface EmployeeType {
+    id?: string
+    firstName: string
+    lastName: string
+    email: string
+    position: string
+    myobUser: {
+        id: string
+        username: string
+    }
+    myobAccess: boolean
+    role: string
+    isActive: boolean
 
 }
 
 export interface ClientType {
-    id: string
-    name: string
+    id: string,
+    name: string,
     displayName: string
 }
 
@@ -73,24 +150,22 @@ export interface ContactType {
     position: string
     phone: string
     email: string
+    client: ClientType
     region: {
         id: string
+        shortName: string
     }
 }
 
 export interface LocationType {
     id: string
-    clientRef: string
+    client: ClientType
     name: string
     address: string
     locality: string
     state: string
     postcode: string
-    region: {
-        shortName: string
-        name: string
-        email: string
-    }
+    region: RegionType
 }
 
 export interface RegionType {
@@ -140,7 +215,7 @@ export interface InputFieldType {
     type: string
     name?: string
     label?: string
-    min?: string
+    min?: number
     max?: string
     children?: ReactNode
     multiline?: boolean
@@ -152,10 +227,12 @@ export interface InputFieldType {
     noMargin?: boolean
     value?: any
     defaultValue?:any
-    onChange: (event: React.ChangeEvent<HTMLElementChange>) => void
+    onChange?: (event: React.ChangeEvent<HTMLElementChange>) => void
     style?: React.CSSProperties
     step?: number
     props?: any
+    onBlur?: (event: React.ChangeEvent<HTMLElementChange>) => void
+    disabled?: boolean
 }
 
 export type HTMLElementChange = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -187,22 +264,6 @@ export interface InsuranceType {
     active: boolean
     thumbnail: string
     filename?: string
-}
-
-export interface EmployeeType {
-    id?: string
-    firstName: string
-    lastName: string
-    email: string
-    position: string
-    myobUser: {
-        id: string
-        username: string
-    }
-    myobAccess: boolean
-    role: string
-    isActive: boolean
-
 }
 
 export interface MYOBUserType {
