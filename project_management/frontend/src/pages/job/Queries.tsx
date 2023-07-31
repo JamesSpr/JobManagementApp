@@ -68,7 +68,7 @@ export const jobAllQuery = () => {
                                 description
                                 markup
                                 gross
-                                subRows: estimateitemSet {
+                                estimateitemSet {
                                     id
                                     description
                                     quantity

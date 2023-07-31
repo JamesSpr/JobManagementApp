@@ -113,7 +113,6 @@ class Job(models.Model):
     # State Of Job
     JOB_STATE = [
         ('INS', 'Inspection/Quote Required'),
-        # ('QUO', 'Quote Required'),
         ('SUB', 'Quote Submitted'),
         ('APP', 'Quote Approved'),
         ('QAR', 'Quote Approval Required'),

@@ -407,24 +407,86 @@ class EstimateType(DjangoObjectType):
     class Meta:
         model = Estimate
         fields = '__all__'
+
+
+class EstimateLineInput(graphene.InputObjectType):
+    id = graphene.String()
+    description = graphene.String()
+    quantity = graphene.Float()
+    itemType = graphene.String()
+    rate = graphene.Float()
+    extension = graphene.Float()
+    markup = graphene.Float()
+    gross = graphene.Float()
+
+class EstimateHeaderInput(graphene.InputObjectType):
+    id = graphene.String()
+    description = graphene.String()
+    gross = graphene.Float()
+    markup = graphene.Float()
+    estimateitemSet = graphene.List(EstimateLineInput)
+
+class QuoteByInput(graphene.InputObjectType):
+    id = graphene.String()
+
+class EstimateInput(graphene.InputObjectType):
+    id = graphene.String()
+    name = graphene.String()
+    description = graphene.String()
+    price = graphene.Float()
+    issue_date = graphene.String()
+    approval_date = graphene.String()
+    scope = graphene.String()
+    quote_by = graphene.Field(QuoteByInput)
+    estimateheaderSet = graphene.List(EstimateHeaderInput)
         
 class CreateEstimate(graphene.Mutation):
     class Arguments:
-        job_id = graphene.String(name='job')
-        name = graphene.String()
-        price = graphene.Float()
+        job_id = graphene.String()
+        estimate = EstimateInput()
 
+    success = graphene.Boolean()
     estimate = graphene.Field(EstimateType)
 
     @classmethod
-    def mutate(self, root, info, job_id, name, price):
-        estimate = Estimate()
-        estimate.job_id = Job.objects.get(id=job_id)
-        estimate.name = name
-        estimate.price = price
+    def mutate(self, root, info, job_id, estimate):
 
-        estimate.save()
-        return self(estimate=estimate)
+        est = Estimate()
+        est.quote_by = CustomUser.objects.get(id=estimate.quote_by.id)
+        est.job_id = Job.objects.get(id=job_id)
+        est.name = estimate.name
+        est.price = str(estimate.price)
+        est.description = estimate.description
+        est.scope = estimate.scope
+        est.save()
+
+        # If an existing estimate has been copied
+        if len(estimate.estimateheaderSet) > 0:
+            # Create the estimate headers
+            for header in estimate.estimateheaderSet:
+                estHeader = EstimateHeader()
+                estHeader.estimate_id = est
+                estHeader.description = header.description
+                estHeader.gross = header.gross
+                estHeader.markup = header.markup
+                estHeader.save()
+
+                # Create the estimate items
+                for item in header.estimateitemSet:
+                    estItem = EstimateItem()
+                    estItem.header_id = estHeader
+                    estItem.description = item.description
+                    estItem.quantity = item.quantity
+                    estItem.item_type = item.itemType
+                    estItem.rate = item.rate
+                    estItem.extension = item.extension
+                    estItem.markup = item.markup
+                    estItem.gross = item.gross
+                    estItem.save()
+
+
+
+        return self(success=True, estimate=est)
 
 class UpdateEstimate(graphene.Mutation):
     class Arguments:
@@ -459,23 +521,39 @@ class EstimateHeaderType(DjangoObjectType):
 
 class CreateEstimateHeader(graphene.Mutation):
     class Arguments:
-        estimate_id = graphene.Int(name='estimate')
-        title = graphene.String()
-        markup = graphene.Float()
-        price = graphene.Float()
+        estimate_id = graphene.String()
 
+    success = graphene.Boolean()
     estimate_header = graphene.Field(EstimateHeaderType)
 
     @classmethod
-    def mutate(self, root, info, estimate_id, title, markup, price):
-        estimate_header = EstimateHeader()
-        estimate_header.estimate_id = Estimate.objects.get(id=estimate_id)
-        estimate_header.title = title
-        estimate_header.markup = markup
-        estimate_header.price = price
+    def mutate(self, root, info, estimate_id):
+        estHeader = EstimateHeader()
+        estHeader.estimate_id = Estimate.objects.get(id=estimate_id)
+        estHeader.save()
 
-        estimate_header.save()
-        return CreateEstimateHeader(estimate_header=estimate_header)
+        estItem = EstimateItem()
+        estItem.header_id = estHeader
+        estItem.save()
+
+        return self(success=True, estimate_header=estHeader)
+    
+class DeleteEstimateHeader(graphene.Mutation):
+    class Arguments:
+        header_id = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, header_id):
+        estimateItems = EstimateItem.objects.filter(header_id = header_id)
+        for item in estimateItems:
+            item.delete()
+
+        estHeader = EstimateHeader.objects.get(id=header_id)
+        estHeader.delete()
+
+        return self(success=True)
 
 class EstimateItemType(DjangoObjectType):
     class Meta:
@@ -485,65 +563,32 @@ class EstimateItemType(DjangoObjectType):
 
 class CreateEstimateItem(graphene.Mutation):
     class Arguments:
-        header_id = graphene.Int(name='header')
-        title = graphene.String()
-        quantity = graphene.Float()
-        item_type = graphene.String()
-        rate = graphene.Float()
-        extension = graphene.Float()
-        markup = graphene.Float()
-        gross = graphene.Float()
+        header_id = graphene.String()
 
+    success = graphene.Boolean()
     estimate_item = graphene.Field(EstimateItemType)
 
     @classmethod
-    def mutate(self, root, info, header_id, title, quantity, item_type, rate, extension, markup, gross):
+    def mutate(self, root, info, header_id):
         estimate_item = EstimateItem()
-        estimate_item.header_id = Estimate.objects.get(id=header_id)
-        estimate_item.title = title
-        estimate_item.quantity = quantity
-        estimate_item.item_type = item_type
-        estimate_item.rate = rate
-        estimate_item.extension = extension
-        estimate_item.markup = markup
-        estimate_item.gross = gross
-
+        estimate_item.header_id = EstimateHeader.objects.get(id=header_id)
         estimate_item.save()
-        return CreateEstimateItem(estimate_item=estimate_item)
+        
+        return self(success=True, estimate_item=estimate_item)
+    
+class DeleteEstimateItem(graphene.Mutation):
+    class Arguments:
+        item_id = graphene.String()
 
-class EstimateLineInput(graphene.InputObjectType):
-    id = graphene.String()
-    description = graphene.String()
-    quantity = graphene.Float()
-    itemType = graphene.String()
-    rate = graphene.Float()
-    extension = graphene.Float()
-    markup = graphene.Float()
-    gross = graphene.Float()
+    success = graphene.Boolean()
 
-class EstimateHeaderInput(graphene.InputObjectType):
-    id = graphene.String()
-    description = graphene.String()
-    gross = graphene.Float()
-    markup = graphene.Float()
-    subRows = graphene.List(EstimateLineInput)
-
-class QuoteByInput(graphene.InputObjectType):
-    id = graphene.String(required=True)
-    first_name = graphene.String()
-    last_name = graphene.String()
-
-class EstimateInput(graphene.InputObjectType):
-    id = graphene.String()
-    name = graphene.String()
-    description = graphene.String()
-    price = graphene.Float()
-    issue_date = graphene.Date()
-    approval_date = graphene.Date()
-    scope = graphene.String()
-    quote_by = graphene.Field(QuoteByInput)
-    estimateheaderSet = graphene.List(EstimateHeaderInput)
-
+    @classmethod
+    def mutate(self, root, info, item_id):
+        estimate_item = EstimateItem.objects.get(id=item_id)
+        estimate_item.save()
+        
+        return self(success=True)
+    
 class CreateEstimateFromSet(graphene.Mutation):
     class Arguments:
         estimate_set = graphene.List(EstimateInput)
@@ -561,7 +606,7 @@ class CreateEstimateFromSet(graphene.Mutation):
         message = ""
 
         for est in estimate_set:
-            # Get existing estimate for that job with the same name
+            # Get existing estimate for that job `with the same name
             print("Saving Estimate:", est.name)
             if Estimate.objects.filter(job_id=job, id=est.id).exists():
                 estimate = Estimate.objects.get(job_id=job, id=est.id)
@@ -604,7 +649,7 @@ class CreateEstimateFromSet(graphene.Mutation):
                 estimate_header.markup = header.markup
                 estimate_header.gross = header.gross
                 estimate_header.save()
-                for item in header.subRows:
+                for item in header.estimateitemSet:
                     estimate_item = EstimateItem()
                     estimate_item.header_id = estimate_header
                     estimate_item.description = item.description
@@ -1566,11 +1611,6 @@ class Mutation(graphene.ObjectType):
     update_contractor = UpdateContractor.Field()
     delete_contractor = DeleteContractor.Field()
 
-    create_estimate = CreateEstimate.Field()
-    update_estimate = UpdateEstimate.Field()
-    delete_estimate = DeleteEstimate.Field()
-    transfer_estimate = TransferEstimate.Field()
-
     create_invoice = CreateInvoice.Field()
     update_invoice = UpdateInvoice.Field()
     update_invoices = UpdateInvoices.Field()
@@ -1585,7 +1625,17 @@ class Mutation(graphene.ObjectType):
     delete_bill = DeleteBill.Field()
 
     create_estimate_from_set = CreateEstimateFromSet.Field()
+
+    create_estimate = CreateEstimate.Field()
+    update_estimate = UpdateEstimate.Field()
+    delete_estimate = DeleteEstimate.Field()
+    transfer_estimate = TransferEstimate.Field()
+
     create_estimate_header = CreateEstimateHeader.Field()
+    delete_estimate_header = DeleteEstimateHeader.Field()
+
+    create_estimate_item = CreateEstimateItem.Field()
+    delete_estimate_item = DeleteEstimateItem.Field()
 
     create_quote = CreateQuote.Field()
     create_bgis_estimate = CreateBGISEstimate.Field()

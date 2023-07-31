@@ -1,17 +1,17 @@
-import React, { useState, createContext } from "react";
+// import React, { ReactNode, useState, createContext } from "react";
 
-const EstimateContext = createContext([]);
+// const EstimateContext = createContext([]);
 
-export const EstimateProvider = ({ children }) => {
-    const [selectedEstimate, setSelectedEstimate] = useState({});
-    const [estimate, setEstimate] = useState({});
-    const [estimateSet, setEstimateSet] = useState([]);
+// export const EstimateProvider = ({ children }: {children?: ReactNode}) => {
+//     const [selectedEstimate, setSelectedEstimate] = useState({});
+//     const [estimate, setEstimate] = useState({});
+//     const [estimateSet, setEstimateSet] = useState([]);
 
-    return (
-        <EstimateContext.Provider value={{ estimate, estimateSet, setEstimate, setEstimateSet, selectedEstimate, setSelectedEstimate }}> 
-            { children } 
-        </EstimateContext.Provider>
-    )
-}
+//     return (
+//         <EstimateContext.Provider value={{ estimate, estimateSet, setEstimate, setEstimateSet, selectedEstimate, setSelectedEstimate }}> 
+//             { children } 
+//         </EstimateContext.Provider>
+//     )
+// }
 
-export default EstimateContext;
+// export default EstimateContext;
