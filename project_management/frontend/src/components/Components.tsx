@@ -8,7 +8,7 @@ import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
 
 declare module '@tanstack/react-table' {
     interface TableMeta<TData extends RowData> {
-      updateData: (rowIndex: number, columnId: string, value: unknown) => void
+      updateData: (rowIndex: string, columnId: keyof TData, value: any, row: Row<TData>) => void
       getRegions?: () => RegionType[]
     }
 }

@@ -45,9 +45,7 @@ export interface JobType {
     jobinvoiceSet: {
         invoice: InvoiceType[]
     }
-    billSet: {
-
-    }
+    billSet: BillType[]
     opportunityType: string
     bsafeLink: string
     workType: string
@@ -80,10 +78,10 @@ export interface EstimateHeaderType {
     extension?: number
     markup: number
     gross: number
-    estimateitemSet: EstimateItemSet[]
+    estimateitemSet: EstimateItemType[]
 }
 
-export interface EstimateItemSet {
+export interface EstimateItemType {
     id: string
     description: string
     quantity: number
@@ -92,7 +90,7 @@ export interface EstimateItemSet {
     extension: number
     markup: number
     gross: number
-    estimateitemSet: EstimateItemSet[]
+    estimateitemSet: EstimateItemType[]
 }
 
 export interface InvoiceType {

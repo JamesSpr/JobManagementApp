@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Tab, Tabs } from '@mui/material';
 import EstimateTable from './Table';
@@ -7,8 +7,6 @@ import NewEstimate from './NewEstimate';
 // import useEstimate from './useEstimate';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import { BillType, ClientType, EmployeeType, JobType, SnackType } from '../../../types/types';
-
-
 
 interface TabPanelProps {
     children: React.ReactNode;
@@ -43,12 +41,7 @@ const EstimateModule = ({ job, setJob, updateRequired, setUpdateRequired, users,
 }) => {
 
     const axiosPrivate = useAxiosPrivate();
-    // const { estimateSet } = useEstimate();
-    // const [estimateData, setEstimateData] = useState([]);
-    // const [isLoading, setIsLoading] = useState(true);
     const [value, setValue] = useState(0); // Active Tab Value
-    // const [selected, setSelected] = useState(false);
-    // const [creating, setCreating] = useState(false);
     const [contractors, setContractors] = useState([]);
 
     useEffect(() => {
@@ -91,37 +84,12 @@ const EstimateModule = ({ job, setJob, updateRequired, setUpdateRequired, users,
         } 
     }, [])
 
-    
-    // useEffect(() => {
-    //     setIsLoading(false);
-
-    //     if(estimates) {
-    //         estimates?.map((estimateOption) => {
-    //             setEstimateData(oldArray => [...oldArray, estimateOption]);
-    //         })
-    //     }
-    
-    // }, [estimates])
-
-    // useEffect(() => {
-    //     if(estimateSet.length > 0) {
-    //         setEstimateData(estimateSet);
-    //     }
-    //     setSelected(false);
-    // }, [estimateSet])
-
     const a11yProps = (index: number) => {
         return {
             id: `simple-tab-${index}`,
             'aria-controls': `simple-tabpanel-${index}`,
         }
     }
-
-    // const handleLockEstimate = (accessor) => {
-    //     if(!estimateData[accessor]['approvalDate']) {
-    //         setSelected(true)
-    //     }
-    // }
 
     return(
         <Box sx={{width: '100%', borderBottom: 1, borderColor: 'divider' }}>
@@ -137,29 +105,33 @@ const EstimateModule = ({ job, setJob, updateRequired, setUpdateRequired, users,
                         <Tab label="+" {...a11yProps(job.estimateSet?.length)}/>
                     </Tabs>
                 </Box>
-                
+
+
+                {/* {TabPanels} */}
+
                 <TabPanel key={0} value={value} index={0}>
                     {job.estimateSet && 
                         <EstimateOptionsOverview users={users} job={job} setJob={setJob} updateRequired={updateRequired} 
-                            setUpdateRequired={setUpdateRequired} contractors={contractors} 
-                            snack={snack} setSnack={setSnack} />
+                        setUpdateRequired={setUpdateRequired} contractors={contractors} 
+                        setSnack={setSnack} />
                     }
                 </TabPanel>
-                {job.estimateSet.map((item, accessor) => {
-                    let index = accessor + 1;
-                    return (
-                        <TabPanel key={index} value={value} index={index}>
-                            {job.estimateSet[accessor] && 
-                                <EstimateTable job={job} setJob={setJob} accessorId={accessor} 
+                    {job.estimateSet.map((item, accessor) => {
+                        let index = accessor + 1;
+                        return (
+                            <TabPanel key={index} value={value} index={index}>
+                                {job.estimateSet[accessor] && 
+                                    <EstimateTable job={job} setJob={setJob} accessorId={accessor} 
                                     setUpdateRequired={setUpdateRequired} setSnack={setSnack}
-                                /> 
-                            }
-                        </TabPanel>
-                    )
-                })}
+                                    /> 
+                                }
+                            </TabPanel>
+                        )
+                    })}
                 <TabPanel key={job.estimateSet.length + 1} value={value} index={job.estimateSet?.length + 1}>
                     <NewEstimate job={job} setJob={setJob} users={users} snack={snack} setSnack={setSnack}/>
                 </TabPanel>
+                
             </> 
         </Box>    
     )

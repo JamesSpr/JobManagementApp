@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, } from 'react';
-import { useReactTable, getCoreRowModel, getExpandedRowModel, flexRender, Row, ColumnDef } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, getExpandedRowModel, flexRender, Row, ColumnDef, TableMeta, RowData, createColumnHelper } from '@tanstack/react-table'
 import { Table, TableHead, TableBody, TableFooter, TableCell, TableRow, TableContainer, Grid,
     Button, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, } from '@mui/material';
 
@@ -13,7 +13,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import { InputField, useSkipper } from '../../../components/Components';
-import { EstimateHeaderType, EstimateItemSet, JobType, SnackType } from '../../../types/types';
+import { EstimateHeaderType, EstimateItemType, EstimateType, JobType, SnackType } from '../../../types/types';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 
 const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : {
@@ -23,38 +23,26 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
     setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
-
-    // Intialise Data
-    // const [scope, setScope] = useState('');
-
-    // useEffect(() => {
-    //     setScope(estimateSet[accessorId].scope);
-    // }, [])
-    
-    // useEffect(() => {
-    //     setEstimateInfo(props.estimateSet[accessorId]);
-    // }, [props.estimate])
-
-    // const [estimateInfo, setEstimateInfo] = useState({});
     
     const axiosPrivate = useAxiosPrivate();
 
-    // const { setEstimateSet } = useEstimate(); 
     const [expanded, setExpanded] = useState({});
     const [rowSelection, setRowSelection] = useState({});
     const [dialogTitle, setDialogTitle] = useState("");
     const [dialogMessage, setDialogMessage] = useState("");
     const [openAlert, setOpenAlert] = useState(false);
     const [dialogOkay, setDialogOkay] = useState(false);
-    const [dialogYesAction, setDialogYesAction] = useState({action: "", row: null});
+
+    interface DialogActionType {
+        action: string
+        row: Row<EstimateHeaderType> | null
+    }
+    const [dialogYesAction, setDialogYesAction] = useState<DialogActionType>({action: "", row: null});
     
-    // const [saveRequired, setSaveRequired] = useState(false);
-
-    // Navigation Blocker
-    // usePrompt('You have unsaved changes (quote). Are you sure you want to leave?', saveRequired);
-
     const EditableCell = ({ getValue, row, column: { id }, table }: 
         { getValue: any, row: any, column: { id: any }, table: any }) => {
+
+        // For line items
         if (row.depth > 0){
             // We need to keep and update the state of the cell normally
             const initialValue = getValue();
@@ -69,72 +57,68 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             } 
     
             // We'll only update the external data when the input is blurred
-            const onBlur = () => {
-                // Table Calculations - Calculate values and update as required for each field
-                if(id === 'quantity') {
-                    let extension:number = (value * row.getValue('rate'));
-                    // isNaN(extension) ? extension = "0.00" : null;
-                    let gross:number = (extension * (1 + (row.getValue('markup') / 100)));
-                    // isNaN(gross) ? gross = "0.00" : null;
-    
-                    (table.options.meta).updateData(row, 'extension', extension.toFixed(2));
-                    (table.options.meta).updateData(row, 'gross', gross.toFixed(2));
-                }
-    
-                if(id === 'rate') {
-                    let extension:number =  (value * row.getValue('quantity'));
-                    // isNaN(extension) ? extension = "0.00" : null;
-                    let gross:number = (extension * (1 + (row.getValue('markup') / 100)));
-                    // isNaN(gross) ? gross = "0.00" : null;
+            const onBlur = (e: { target: { select: () => void; }; }) => {
+                if(initialValue !== value) {
+                    const val:number = parseFloat(value.toString())
 
-                    ;(table.options.meta).updateData(row, 'extension', extension.toFixed(2));
-                    ;(table.options.meta).updateData(row, 'gross', gross.toFixed(2));
-                }
-    
-                if(id === 'extension'){
-                    if(row.getValue('quantity') === '') {
-                        let quantity:number = value / row.getValue('rate');
-                        // isNaN(quantity) ? quantity = "0.00" : null;
-                        let gross:number = value * (1 + (row.getValue('markup') / 100));
-                        // isNaN(gross) ? gross = "0.00" : null;
+                    // Table Calculations - Calculate values and update as required for each field
+                    if(id === 'quantity') {
+                        let extension = (val * row.getValue('rate'));
+                        let gross = (extension * (1 + (row.getValue('markup') / 100)));
+        
+                        (table.options.meta).updateData(row.id, 'extension', extension, row);
+                        (table.options.meta).updateData(row.id, 'gross', gross, row);
+                    }
+        
+                    if(id === 'rate') {
+                        let extension =  (val * row.getValue('quantity'));
+                        let gross = (extension * (1 + (row.getValue('markup') / 100)));
 
-                        ;(table.options.meta).updateData(row, 'quantity', quantity.toFixed(2));
-                        ;(table.options.meta).updateData(row, 'gross', gross.toFixed(2));
+                        (table.options.meta).updateData(row.id, 'extension', extension, row);
+                        (table.options.meta).updateData(row.id, 'gross', gross, row);
                     }
-                    else {
-                        let rate:number = (value / row.getValue('quantity'));
-                        // isNaN(rate) ? rate = "0.00" : null;
-                        let gross:number = (value * (1 + (row.getValue('markup') / 100)));
-                        // isNaN(gross) ? gross = "0.00" : null;
-                        
-                        ;(table.options.meta).updateData(row, 'rate', rate.toFixed(2));
-                        ;(table.options.meta).updateData(row, 'gross', gross.toFixed(2));
+        
+                    if(id === 'extension'){
+                        if(row.getValue('quantity') === '') {
+                            let quantity = val / row.getValue('rate');
+                            let gross = val * (1 + (row.getValue('markup') / 100));
+
+                            (table.options.meta).updateData(row.id, 'quantity', quantity, row);
+                            (table.options.meta).updateData(row.id, 'gross', gross, row);
+                        }
+                        else {
+                            let rate = (val / row.getValue('quantity'));
+                            let gross = (val * (1 + (row.getValue('markup') / 100)));
+                            
+                            (table.options.meta).updateData(row.id, 'rate', rate, row);
+                            (table.options.meta).updateData(row.id, 'gross', gross, row);
+                        }
                     }
+        
+                    if(id === 'markup') {
+                        let gross = (row.getValue('extension') * (1 + (val / 100)));
+                        (table.options.meta).updateData(row.id, 'gross', gross, row);
+                    }
+        
+                    if(id === 'gross') {
+                        let markup = (((val / row.getValue('extension')) - 1) * 100);
+                        (table.options.meta).updateData(row.id, 'markup', markup, row);
+                    }
+        
+                    // Update data with inputted value and recalculate header values
+                    (table.options.meta).updateData(row.id, id, val, row);
+                    setUpdateRequired(true);
+                    // setValue(val.toFixed(2));
                 }
-    
-                if(id === 'markup') {
-                    let gross:number = (row.getValue('extension') * (1 + (value / 100)));
-                    // isNaN(gross) ? gross = "0.00" : null;
-                    ;(table.options.meta).updateData(row, 'gross', gross.toFixed(2));
-                }
-    
-                if(id === 'gross') {
-                    let markup:number = (((value / row.getValue('extension')) - 1) * 100);
-                    // isNaN(markup) ? markup = "0.00" : null;
-                    ;(table.options.meta).updateData(row, 'markup', markup.toFixed(2));
-                }
-    
-                // Update data with inputted value and recalculate header values
-                (table.options.meta).updateData(row, id, value.toFixed(2));
-                setUpdateRequired(true);
             }
     
             // If the initialValue is changed external, sync it up with our state
             useEffect(() => {
-                setValue(initialValue);
+                setValue(parseFloat(initialValue.toString()).toFixed(2));
             }, [initialValue])
     
-            if(job.estimateSet[accessorId]['approvalDate']) {
+            // If estimateset is approved then do not allow for editing of data
+            if(job.estimateSet[accessorId].approvalDate) {
                 switch(id) {
                     case 'markup':
                         return <p className='locked-estimate-line'>{value}%</p>
@@ -148,48 +132,71 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                         return <p className='locked-estimate-line'>{value}</p>
                 }
             }
-    
-            if(id === 'itemType') {
-                return (
-                    <select value={value} onChange={onChange} className="estimateTableInput"
-                        onBlur={(e) => { table.options.meta.updateData(row, id, value);}}
-                    >
-                        <option key={"0"} value={''}>{''}</option>
-                        <option key={"1"} value={'quote'}>quote</option>
-                        <option key={"2"} value={'quantity'}>quantity</option>
-                        <option key={"3"} value={'item'}>item</option>
-                        <option key={"4"} value={'hours'}>hours</option>
-                        <option key={"5"} value={'days'}>days</option>
-                        <option key={"6"} value={'weeks'}>weeks</option>
-                        <option key={"7"} value={'m'}>m</option>
-                        <option key={"8"} value={'m2'}>m2</option>
-                        <option key={"9"} value={'m3'}>m3</option>
-                        <option key={"10"} value={'kg'}>kg</option>
-                        <option key={"11"} value={'tonne'}>tonne</option>
-                        <option key={"12"} value={'bag'}>bag</option>
-                    </select>
-                );
-            }
 
             return (
                 <input className="estimateTableInput" type="number" step="0.01" onFocus={onFocus} value={value} onChange={onChange} onBlur={onBlur} />
             );
         }
+
     
         if(id === 'markup') {
             return(
-                getValue() ? <p style={{paddingLeft: '5px', margin: '0px'}}>{getValue()}%</p> : ''
+                getValue() ? <p style={{paddingLeft: '5px', margin: '0px'}}>{getValue().toFixed(2)}%</p> : <p style={{paddingLeft: '5px', margin: '0px'}}>0.00%</p> 
             );
         }
     
         if(id === 'gross') {
             return(
-                getValue() ? <p style={{paddingLeft: '5px', margin: '0px'}}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getValue())}</p> : ''
+                getValue() ? <p style={{paddingLeft: '5px', margin: '0px'}}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getValue())}</p> : <p style={{paddingLeft: '5px', margin: '0px'}}>$0.00</p> 
             );
         }
 
         return(null);
-    
+    }
+
+    const SelectionCell = ({ getValue, row, column: { id }, table }: { 
+        getValue: any, row: any, column: { id: any }, table: any }) => {
+
+        // For line items
+        if (row.depth > 0){
+            // We need to keep and update the state of the cell normally
+            const initialValue = getValue();
+            const [value, setValue] = useState(initialValue);
+
+            const onChange = (e: { target: { value: any; }; }) => {
+                setValue(e.target.value);
+            } 
+        
+            // If the initialValue is changed external, sync it up with our state
+            useEffect(() => {
+                setValue(initialValue);
+            }, [initialValue])
+
+            return (
+                <select value={value} onChange={onChange} className="estimateTableInput"
+                    onBlur={(e) => { 
+                        if(initialValue !== value) {
+                            table.options.meta.updateData(row.id, id, value, row);
+                        }
+                    }}
+                >
+                    <option key={"0"} value={''}>{''}</option>
+                    <option key={"1"} value={'quote'}>quote</option>
+                    <option key={"2"} value={'quantity'}>quantity</option>
+                    <option key={"3"} value={'item'}>item</option>
+                    <option key={"4"} value={'hours'}>hours</option>
+                    <option key={"5"} value={'days'}>days</option>
+                    <option key={"6"} value={'weeks'}>weeks</option>
+                    <option key={"7"} value={'m'}>m</option>
+                    <option key={"8"} value={'m2'}>m2</option>
+                    <option key={"9"} value={'m3'}>m3</option>
+                    <option key={"10"} value={'kg'}>kg</option>
+                    <option key={"11"} value={'tonne'}>tonne</option>
+                    <option key={"12"} value={'bag'}>bag</option>
+                </select>
+            );
+        }
+        return null
     }
 
     // Table Columns
@@ -242,8 +249,10 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                 
                         // We'll only update the external data when the input is blurred
                         const onBlur = () => {
-                            table.options.meta.updateData(row, id, value);
-                            setUpdateRequired(true);
+                            if(value !== initialValue) {
+                                table.options.meta.updateData(row.id, id, value as string, row);
+                                setUpdateRequired(true);
+                            }
                         }
                 
                         const onChange = (e: { target: { value: any; }; }) => {
@@ -283,7 +292,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                     size: 200,
                     maxSize: 250,
                     header: () => 'Units',
-                    cell: EditableCell,
+                    cell: SelectionCell,
                 },
                 {
                     accessorKey: 'rate',
@@ -333,50 +342,37 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             id: "settings",
             header: '',
             columns: [
-                {
-                    id: 'lineControls',
-                    minSize: 80,
-                    size: 90,
-                    maxSize: 90,
-                    // header: ({table}) => (
-                    //     <>
-                    //         {!job.estimateSet[accessorId]['approvalDate'] && 
-                    //             <IconButton onClick={(e) => {
-                    //                 // handleSaveEstimate(table.options.data, table.options.meta.getScope());
-                    //             }}> 
-                    //                 <SaveIcon />
-                    //             </IconButton>
-                    //         }
-                    //     </>
-                    // ),
-                    cell: ({row}) => (
-                        <>
-                            {!job.estimateSet[accessorId]['approvalDate'] && (
-                                row.depth !== 0 ? (
+            {
+                id: 'lineControls',
+                minSize: 80,
+                size: 90,
+                maxSize: 90,
+                cell: ({row}) => (
+                    <>
+                        {!job.estimateSet[accessorId].approvalDate && (
+                            row.depth !== 0 ? (
+                            <>
+                                <IconButton onClick={(e) => {handleNewItem(row)}}>
+                                    <AddIcon />
+                                </IconButton>
+                                <IconButton onClick={(e) => {openDialog("DeleteLine", row)}}>
+                                    <DeleteIcon />
+                                </IconButton>
+                            </>
+                            ) : (
                                 <>
-                                    <IconButton onClick={(e) => {handleNewItem(row)}}>
-                                        <AddIcon />
-                                    </IconButton>
-
-                                    <IconButton onClick={(e) => {openDialog("DeleteLine", row)}}>
+                                    <IconButton onClick={(e) => {openDialog("DeleteHeader", row)}}>
                                         <DeleteIcon />
                                     </IconButton>
                                 </>
-                                ) : (
-                                    <>
-                                        <IconButton onClick={(e) => {openDialog("DeleteHeader", row)}}>
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </>
-                                )
-                            )}
-                        </>
-                    ),
-                },
+                            )
+                        )}
+                    </>
+                ),
+            },
             ]
         }
     ], []);
-
 
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper();
 
@@ -396,119 +392,99 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
         getExpandedRowModel: getExpandedRowModel(),
         autoResetPageIndex,
         meta: {
-            updateData: (Row, columnId, value) => {
+            updateData: (rowIndex, columnId, value, row) => {
                 skipAutoResetPageIndex();
                 
-                // if(Row.original?.estimateitemSet) { // If line is header
-                    // Todo
-                    // setData((old: any[]) => old.map((row: any, index: any) => {
-                    //     if (index === Row.index) {
-                    //         const newHeader = produce(old[Row.index], (draft: { [x: string]: unknown; }) => {
-                    //             draft[columnId] = value;
-                    //         })
-                    //         return newHeader;
-                    //     }
-                    //     return row;
-                    // }))
-                // }
-                // else { // When line is item
+                if(row.depth === 0) { // If line is header
+                    setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((estimate, index) => {
+                        if(index === accessorId) {
+                            const newEstimate = produce(prev.estimateSet[accessorId], draft => {
+                                const idx = draft.estimateheaderSet.findIndex(header => header.id === row.original.id)
+                                if(idx !== -1) {
+                                    draft.estimateheaderSet[idx].description = value;
+                                }
+                            })
+                            return newEstimate;
+                        }
+                        return estimate;
+                    })}))
+                }
+                else { // When line is item
                     // Get Parent Row Id
-                    // const parentId = parseInt(Row.id.split(".")[0])
+                    const parentId:number = parseInt(row.parentId ?? row.id)
+                    const numberItems = ['markup', 'extension', 'gross', 'rate', 'quantity']
 
                     // Update Data
-                    // Todo
-                //     setData(old => old.map((row, index) => {
-                //         if (index === parentId) {
-                //             const newLineItem = old[parentId].estimateitemSet.map((row1, index1) => {
-                //                 if(index1 === Row.index) {
-                //                     const newEstimateItem = produce(old[parentId].estimateitemSet[index1], draft => {
-                //                         draft[columnId] = value;
-                //                     })
-                //                     return newEstimateItem;
-                //                 }
-                //                 return row1;
-                //             })
-                //             if(newLineItem) {
-                //                 // Recaculate Header Values
-                //                 let extension = 0.0;
-                //                 let markup = 0.0;
-                //                 let gross = 0.0;
+                    setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((estimate, index) => {
+                        if(index === accessorId) {
+                            const newEstimate = produce<EstimateType>(prev.estimateSet[accessorId], draft => {
+                                const itemIdx = draft.estimateheaderSet[parentId].estimateitemSet.findIndex(item => item.id === row.original.id)
+                                if(itemIdx !== -1) {
 
-                //                 //  Sum values
-                //                 for(let i = 0; i < old[parentId].estimateitemSet.length; i++) {
-                //                     // If new value is entered into markup or gross, use that instead of previous value
-                //                     if(i == Row.index) {  
-                //                         if(columnId === 'markup') {
-                //                             // markup += parseFloat(value);
-                //                             extension += parseFloat(old[parentId].estimateitemSet[i].extension);
-                //                             gross += parseFloat(old[parentId].estimateitemSet[i].gross);
-                //                         }
-                //                         else if (columnId === 'extension') {
-                //                             // markup += parseFloat(old[parentId].estimateitemSet[i].markup);
-                //                             extension += parseFloat(value);
-                //                             gross += parseFloat(old[parentId].estimateitemSet[i].gross);
-                //                         }
-                //                         else if (columnId === 'gross') {
-                //                             // markup += parseFloat(old[parentId].estimateitemSet[i].markup);
-                //                             extension += parseFloat(old[parentId].estimateitemSet[i].extension);
-                //                             gross += parseFloat(value);
-                //                         }
-                //                         else {
-                //                             // markup += parseFloat(old[parentId].estimateitemSet[i].markup);
-                //                             extension += parseFloat(old[parentId].estimateitemSet[i].extension);
-                //                             gross += parseFloat(old[parentId].estimateitemSet[i].gross);
-                //                         }
-                //                     }
-                //                     else {
-                //                         // markup += parseFloat(old[parentId].estimateitemSet[i].markup);
-                //                         gross += parseFloat(old[parentId].estimateitemSet[i].gross);
-                //                         extension += parseFloat(old[parentId].estimateitemSet[i].extension);
-                //                     }
-                //                 }
+                                    if(numberItems.includes(columnId)) {
+                                        (draft.estimateheaderSet[parentId].estimateitemSet[itemIdx] as any)[columnId] = value.toFixed(2);
+                                    }
+                                    else {
+                                        (draft.estimateheaderSet[parentId].estimateitemSet[itemIdx] as any)[columnId] = value;
+                                    }
+                            
+                                    // Recaculate Header Values
+                                    let extension = 0;
+                                    let markup = 0;
+                                    let gross = 0;
 
+                                    // Sum values
+                                    for(let i = 0; i < prev.estimateSet[accessorId].estimateheaderSet[parentId].estimateitemSet.length; i++) {
+                                        // If new value is entered into markup or gross, use that instead of previous value
+                                        const item = prev.estimateSet[accessorId].estimateheaderSet[parentId].estimateitemSet[i]
+
+                                        if(i === parseInt(rowIndex.split('.')[1])) {  
+                                            if(columnId === 'markup') {
+                                                extension += parseFloat(item.extension.toString());
+                                                gross += parseFloat(item.gross.toString());
+                                            }
+                                            else if (columnId === 'extension') {
+                                                gross += parseFloat(item.gross.toString());
+                                                extension += parseFloat(value.toString());
+                                            }
+                                            else if (columnId === 'gross') {
+                                                extension += item.extension;
+                                                gross += parseFloat(value.toString());
+                                            }
+                                            else {
+                                                extension += parseFloat(item.extension.toString());
+                                                gross += parseFloat(item.gross.toString());
+                                            }
+                                        }
+                                        else {
+                                            gross += parseFloat(item.gross.toString());
+                                            extension += parseFloat(item.extension.toString());
+                                        }
+                                    }
+
+                                    console.log(extension, markup, gross)
+
+                                    // Average markup
+                                    gross = isNaN(gross) ? 0 : gross
+                                    markup = isNaN(gross / extension) ? 0 : ((gross / extension) - 1) * 100;
+
+                                    draft.estimateheaderSet[parentId].markup = markup;
+                                    draft.estimateheaderSet[parentId].gross = gross;
+                                }
                                 
-                //                 // Average markup
-                //                 markup = ((gross / extension) - 1) * 100;
-                //                 isNaN(markup) ? markup = 0.00 : null;
+                            })
 
-                //                 const newEstimateHeader = produce(old[parentId], draft => {
-                //                     draft.markup = markup.toFixed(2);
-                //                     draft.gross = gross.toFixed(2);
-                //                     draft.estimateitemSet = newLineItem;
-                //                 })
-                //                 return(newEstimateHeader);
-                //             }
-                //         }
-                //         return row;
-                //     }))
-                // }
-
-                
+                            return newEstimate;
+                        }
+                        return estimate;
+                    })}))
+                }
             },
         },
         // debugTable: true,
         // debugHeaders: true,
         // debugColumns: true,
     });
-
-    // Calculate Total Values
-    let totalExtension = 0.0;
-    let totalAvgMarkup = 0.0;
-    let totalGross = 0.0;
-    let totalItems = 0;
-
-    table.getRowModel().flatRows.forEach((row) => {
-        if(row.depth === 0) { 
-            totalAvgMarkup += row.original.markup;
-            totalGross += row.original.gross;
-            totalItems ++;
-        }
-        else {
-            totalExtension += row.original.extension ?? 0;
-        }
-    })
-
-    totalAvgMarkup = ((totalGross/totalExtension)-1) * 100 ;
 
     const handleNewHeader = async () => {
         await axiosPrivate({
@@ -547,7 +523,10 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                 const newHeader = res.estimateHeader;
                 setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((estimate, index) => {
                     if(index === accessorId) {
-                        return {...estimate, estimateheaderSet: [...estimate.estimateheaderSet, newHeader]};
+                        const newEstimate = produce(prev.estimateSet[accessorId], draft => {
+                            draft.estimateheaderSet.push(newHeader);
+                        })
+                        return newEstimate;
                     }
                     return estimate;
                 })}))
@@ -582,7 +561,10 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                 // Remove the line that got deleted
                 setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((estimate, index) => {
                     if(index === accessorId) {
-                        return {...estimate, estimateheaderSet: estimate.estimateheaderSet.filter((header) => header.id !== row.original.id)}
+                        const newEstimate = produce(prev.estimateSet[accessorId], draft => {
+                            draft.estimateheaderSet = draft.estimateheaderSet.filter((header) => header.id !== row.original.id);
+                        })
+                        return newEstimate;
                     }
                     return estimate;
                 })}))
@@ -600,15 +582,14 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             setDialogTitle("");
             setDialogMessage("");
             setDialogYesAction({action: "", row: null});
-        })
-
-        
-            
+        }) 
     }
 
     const handleNewItem = async (row: Row<EstimateHeaderType>) => {
-        const setId = row.parentId ?? ''
-        const headerId = job.estimateSet[accessorId].estimateheaderSet[parseInt(setId)].id
+
+        // useMemo gets original job value, so we get the id from the table data
+        const job = table.options.data
+        const headerId = job[parseInt(row.parentId ?? '-1')].id
 
         await axiosPrivate({
             method: 'post',
@@ -640,23 +621,13 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                 const newItem = res.estimateItem;
                 setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((estimate, index) => {
                     if(index === accessorId) {
-                        estimate.estimateheaderSet.map((header) => {
-                            if(header.id === headerId) {
-                                const newHeader = produce(prev.estimateSet[accessorId].estimateheaderSet[parseInt(headerId)].estimateitemSet, draft => {
-                                    draft.push(newItem);
-                                })
-                                return newHeader;
-                            // return {...header, estimateitemSet: [...header.estimateitemSet, newItem]};
+                        const newEstimate = produce(prev.estimateSet[accessorId], draft => {
+                            const idx = draft.estimateheaderSet.findIndex(header => header.id === headerId)
+                            if(idx !== -1) {
+                                draft.estimateheaderSet[idx].estimateitemSet.push(newItem);
                             }
-                            return header;
                         })
-                        // return {...estimate, estimateheaderSet: 
-                        //     console.log(header)
-                        //     if(header.id === headerId) {
-                        //         return {...header, estimateitemSet: [...header.estimateitemSet, newItem]};
-                        //     }
-                        //     return header;
-                        // })};
+                        return newEstimate;
                     }
                     return estimate;
                 })}))
@@ -673,8 +644,6 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
 
 
     const handleDeleteItem = async (row: Row<EstimateHeaderType>) => {
-
-        console.log("ROW", row)
         const headerId = job.estimateSet[accessorId].estimateheaderSet[parseInt(row.parentId ?? '-1')].id
 
         await axiosPrivate({
@@ -691,17 +660,17 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             })
         }).then((response) => {
             const res = response?.data?.data?.delete
-            // console.log(res)
 
             if(res?.success) {
                 setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((estimate, index) => {
                     if(index === accessorId) {
-                        return {...estimate, estimateheaderSet: estimate.estimateheaderSet.map((header) => {
-                            if(header.id === headerId) {
-                                return {...header, estimateitemSet: header.estimateitemSet.filter((item) => item.id !== row.original.id)};
+                        const newEstimate = produce(prev.estimateSet[accessorId], draft => {
+                            const idx = draft.estimateheaderSet.findIndex(header => header.id === headerId)
+                            if(idx !== -1) {
+                                draft.estimateheaderSet[idx].estimateitemSet = draft.estimateheaderSet[idx].estimateitemSet.filter((item) => item.id !== row.original.id);
                             }
-                            return header;
-                        })};
+                        })
+                        return newEstimate;
                     }
                     return estimate;
                 })}))
@@ -723,7 +692,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
     }
 
     // Dynamic Dialog Controls
-    const openDialog = (dialogType: React.SetStateAction<string>, row: any) => {
+    const openDialog = (dialogType: React.SetStateAction<string>, row: Row<EstimateHeaderType>) => {
         switch(dialogType) {
             case "DeleteLine":
                 setDialogTitle("Delete Line");
@@ -760,32 +729,6 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
         }
     }
 
-    // const handleSaveEstimate = (tableData: any[], scope: any) => {
-    //     // Calculate sum of child elements
-    //     let estimateSum = 0.00;
-    //     tableData.map((item: { gross: string; }) => {
-    //         estimateSum += parseFloat(item.gross);
-    //     })
-
-    //     console.log(tableData)
-    //     console.log("SOW:", scope)
-
-        // Update the current estimateSet
-        // setEstimateSet(prev => prev.map((row, index) => {
-        //     if(index === accessorId) {
-        //         const savedEstimateOption = produce(prev[index], draft => {
-        //             draft.price = estimateSum.toFixed(2);
-        //             draft.estimateheaderSet = tableData;
-        //             draft.scope = scope;
-        //         })
-        //         return savedEstimateOption;
-        //     }
-        //     return row;
-        // }));
-
-    //     setUpdateRequired(false);
-    // }
-
     const updateScope = (e: { target: { value: any; }; }) => {
         setJob(prev => ({...prev, estimateSet:
             job.estimateSet.map((row, index) => {
@@ -796,10 +739,28 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
         })}))
     }
 
+    // Calculate Total Values
+    let totalExtension:number = 0;
+    let totalAvgMarkup:number = 0;
+    let totalGross:number = 0;
+    let totalItems:number = 0;
+
+    table.getRowModel().flatRows.forEach((row) => {
+        if(row.depth === 0) {
+            totalGross += typeof(row.original.gross) == "string" ? parseFloat(row.original.gross) ?? 0 : row.original.gross ?? 0;
+            totalItems ++;
+        }
+        else {
+            totalExtension += typeof(row.original.extension) == "string" ? parseFloat(row.original.extension) ?? 0 : row.original.extension ?? 0;
+        }
+    })
+
+    totalAvgMarkup = isNaN(totalGross/totalExtension) ? 0 : ((totalGross/totalExtension) - 1) * 100;
+
     return (
         <Grid container direction={'column'} alignItems={'center'}>
             <InputField type="text" multiline width={1000} name="scope" label="Detailed Scope of Works" value={job.estimateSet[accessorId].scope} onChange={updateScope}/>
-            <TableContainer sx={{paddingBottom: "20px"}}>
+            {/* <TableContainer sx={{paddingBottom: "20px"}}> */}
                 <Table {...{sx: { width: table.getTotalSize(), maxWidth: '100%'},}}>
                     <TableHead>
                         {table.getHeaderGroups().map(headerGroup => (
@@ -871,13 +832,13 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                             </TableCell>
                             <TableCell sx={{ padding: '2px'}} key={"footer_1"} colSpan={4} >Items {totalItems}</TableCell>
                             <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_2"} colSpan={1} >{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(totalExtension)}</TableCell>
-                            <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_3"} colSpan={1} >{totalAvgMarkup.toFixed(2)}%</TableCell>
+                            <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_3"} colSpan={1} >{totalAvgMarkup.toFixed(2) }%</TableCell>
                             <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_4"} colSpan={1} >{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(totalGross)}</TableCell>
                             <TableCell sx={{ padding: '2px'}} key={"footer_5"} colSpan={1}>ID: {job.estimateSet[accessorId].id}</TableCell>
                         </TableRow>
                     </TableFooter>
                 </Table>
-            </TableContainer>
+            {/* </TableContainer> */}
             
             {/* Alert Dialog */}
             <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>

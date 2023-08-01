@@ -58,16 +58,12 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
         if(dupe) return
         newEstimate.name = newEstimate.name.trim()
 
-        console.log("Copy", copyOption)
         if(copyOption > 0) {
             newEstimate.scope = job.estimateSet[copyOption-1]?.scope ?? "";
             newEstimate.price = job.estimateSet[copyOption-1]?.price ?? 0.00;
             newEstimate.estimateheaderSet = job.estimateSet[copyOption-1]?.estimateheaderSet ?? [];
         }
         
-        console.log(job.id, newEstimate)
-
-
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
@@ -111,12 +107,15 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
             })
         }).then((response) => {
             const res = response?.data?.data?.create
-            console.log(res)
+
+            setWaiting(false)
+            setValueError(false);
+            setErrorText("");
 
             if(res?.success) {
-                setJob(prev => ({...prev, estimateSet: [...prev.estimateSet, res.estimate]}))
-                setSnack({active: true, variant:'success', message: 'Estimate Created'})
                 setNewEstimate(blankEstimate);
+                setSnack({active: true, variant:'success', message: 'Estimate Created'})
+                setJob(prev => ({...prev, estimateSet: [...prev.estimateSet, res.estimate]}))
             }
             else {
                 setSnack({active: true, variant:'error', message: 'Error Creating Estimate'})
@@ -125,12 +124,8 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
         }).catch((err) => {
             console.log(err);
             setSnack({active: true, variant:'error', message: 'Error. Please contact Developer'})
-
-        }).finally(() => {
-            setWaiting(false)
-            setValueError(false);
-            setErrorText("");
-        });
+            
+        })
     }
 
     const handleInput = (e: { target: { name: any; value: any; }; }) => {

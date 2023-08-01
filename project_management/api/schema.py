@@ -408,7 +408,6 @@ class EstimateType(DjangoObjectType):
         model = Estimate
         fields = '__all__'
 
-
 class EstimateLineInput(graphene.InputObjectType):
     id = graphene.String()
     description = graphene.String()
@@ -519,6 +518,9 @@ class EstimateHeaderType(DjangoObjectType):
         model = EstimateHeader
         fields = '__all__'
 
+    markup = graphene.Float()
+    gross = graphene.Float()
+
 class CreateEstimateHeader(graphene.Mutation):
     class Arguments:
         estimate_id = graphene.String()
@@ -561,6 +563,12 @@ class EstimateItemType(DjangoObjectType):
         fields = '__all__'
         convert_choices_to_enum = False
 
+    quantity = graphene.Float()
+    rate = graphene.Float()
+    extension = graphene.Float()
+    markup = graphene.Float()
+    gross = graphene.Float()
+
 class CreateEstimateItem(graphene.Mutation):
     class Arguments:
         header_id = graphene.String()
@@ -585,7 +593,7 @@ class DeleteEstimateItem(graphene.Mutation):
     @classmethod
     def mutate(self, root, info, item_id):
         estimate_item = EstimateItem.objects.get(id=item_id)
-        estimate_item.save()
+        estimate_item.delete()
         
         return self(success=True)
     

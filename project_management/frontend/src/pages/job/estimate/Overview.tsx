@@ -8,50 +8,29 @@ import { produce } from 'immer';
 import Bill from '../../bill/JobBill';
 
 import DeleteIcon from '@mui/icons-material/Delete';
-import DeleteDialog from '../../../components/DeleteDialog';
 import { ContractorType, EmployeeType, EstimateType, JobType, SnackType } from '../../../types/types';
+import { BasicDialog } from '../../../components/Components';
 
-const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdateRequired, contractors, snack, setSnack }: {
+const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdateRequired, contractors, setSnack }: {
     users: EmployeeType[]
     job: JobType
     setJob: React.Dispatch<React.SetStateAction<JobType>>
     updateRequired: boolean
     setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
     contractors: ContractorType[]
-    snack: SnackType
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
-    // const { setSelectedEstimate, estimateSet, setEstimateSet } = useEstimate();
 
     const [rowSelection, setRowSelection] = useState({});
     const [billsDialog, setBillsDialog] = useState(false);
 
     const [waiting, setWaiting] = useState({quote: false, estimate: false});
     
-    const [approvedEstimate, setApprovedEstimate] = useState({});
-    const [lockedEstimate, setLockedEstimate] = useState(false);
-    const [data, setData] = useState([]);
-
-    // useEffect(() => {
-    //     setSelectedEstimate(rowSelection);
-    // }, [rowSelection])
-
     const handleToggleSelected = (row: Row<EstimateType>) => {
         row.toggleSelected();
     }
-
-    // useEffect(() => {
-    //     for(var i = 0; i < estimateSet.length; i++) {
-    //         if(estimateSet[i]['approvalDate'] !== null) {
-    //             setApprovedEstimate(estimateSet[i]);
-    //             setLockedEstimate(true);
-    //             break;
-    //         }
-    //     }
-    //     setData(estimateSet);
-    // }, [estimateSet])
 
     const editableCell = ({ getValue, row: { index }, column: { id }, table }: 
         { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
@@ -270,9 +249,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
             setSnack({active: true, variant:'error', message: 'Error Deleting Estimate'})
             return;
         }
-        
-        console.log(deleteDialog?.row?.original?.id)
-        
+               
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
@@ -290,7 +267,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
             if(res?.ok) {
                 // Remove estimate from list
                 setJob(prev => ({...prev, estimateSet: prev.estimateSet.filter((estimate: { id: any; }) => estimate.id !== deleteDialog?.row?.original.id)}))
-                // setEstimateSet(estimateSet.filter((estimate: { id: any; }) => estimate.id !== deleteDialog?.row?.original.id))
+                setRowSelection({});
 
                 // Provide feedback to user
                 setSnack({active: true, variant:'success', message: 'Estimate Deleted'})
@@ -553,9 +530,8 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                 }
             </Grid>
 
-            {/* Todo */}
-            {/* <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate}
-                bills={bills} setBills={setBills} contractors={contractors}/> */}
+            <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate}
+                job={job} setJob={setJob} contractors={contractors}/>
 
             {/* { auth.user.role === "DEV" ? 
                 <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
@@ -587,12 +563,14 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
 
         </Grid>
 
-            <DeleteDialog 
-                open={deleteDialog.open} 
-                close={() => setDeleteDialog(prev => ({...prev, open: false}))} 
-                title={deleteDialog.title} message={deleteDialog.message} 
-                action={() => deleteEstimate()} 
-            />
+        <BasicDialog 
+            open={deleteDialog.open} 
+            close={() => setDeleteDialog(prev => ({...prev, open: false}))} 
+            title={deleteDialog.title}
+            action={() => deleteEstimate()} 
+        >
+            <p>{deleteDialog.message}</p>
+        </BasicDialog>
         </>
     );
 }
