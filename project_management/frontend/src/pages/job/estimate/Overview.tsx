@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, Row } from '@tanstack/react-table'
-import { Box, Button, Tooltip, CircularProgress, Portal, IconButton, Grid } from '@mui/material';
-// import useEstimate from './useEstimate';
+import { Box, Button, Tooltip, CircularProgress, IconButton, Grid } from '@mui/material';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import useAuth from '../../auth/useAuth';
 import { produce } from 'immer';
@@ -573,4 +572,3 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
 }
 
 export default EstimateOptionsOverview;
-// export default () => '';

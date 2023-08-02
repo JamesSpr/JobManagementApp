@@ -207,15 +207,16 @@ class CreateBGISEstimate(graphene.Mutation):
             pass
 
         ## Save to new folder
-        shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
+        # shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
 
         xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-        xlApp.Visible = False
-        wb = xlApp.Workbooks.Open(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
+        xlApp.Visible = True
+        wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
         ws = wb.Sheets("Cost Breakdown")
         ws.Range("C5").Value = estimate.name 
 
-        wb.Close(True)
+        wb.SaveAs(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"), 51)
+        wb.Close()
         xlApp.Quit()
         del xlApp
 

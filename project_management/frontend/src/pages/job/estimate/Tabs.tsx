@@ -138,5 +138,3 @@ const EstimateModule = ({ job, setJob, updateRequired, setUpdateRequired, users,
 }
 
 export default EstimateModule;
-
-// export default () => '';

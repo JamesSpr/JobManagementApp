@@ -3,11 +3,9 @@ import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { Button, Grid, Typography, Box, Tooltip, CircularProgress, Portal, IconButton, } from '@mui/material';
 import { useParams, useNavigate } from "react-router-dom";
 import EstimateModule from './estimate/Tabs';
-// import useEstimate from './estimate/useEstimate';
 import useAuth from '../auth/useAuth';
 import useApp from '../../context/useApp';
 import { usePrompt } from '../../hooks/promptBlocker';
-import produce from 'immer';
 import { Footer, InputField, SnackBar } from '../../components/Components';
 
 import Settings from '@mui/icons-material/Settings';
@@ -446,6 +444,11 @@ const JobPage = () => {
         setUpdateRequired(true);
     }
 
+    const handleDateInput = (e: { target: { name?: any; value?: any; }; }) => {
+        setJob(prev => ({...prev, [e.target.name]: e.target.value ?? null}))
+        setUpdateRequired(true);
+    }
+
     const handleSelection = (e: { target: { name?: any; value?: any; }; }) => {
         setJob(prev => ({...prev, [e.target.name]: {id: e.target.value}}))
         setUpdateRequired(true);
@@ -468,8 +471,8 @@ const JobPage = () => {
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))} 
                     </InputField>
-                    <InputField type="date" name="dateIssued" label="Date Issued" value={job.dateIssued} onChange={handleInput} max="9999-12-31"/>
-                    <InputField type="date" name="overdueDate" label="Overdue Date" value={job.overdueDate} onChange={handleInput} max="9999-12-31"/>
+                    <InputField type="date" name="dateIssued" label="Date Issued" value={job.dateIssued ?? null} onChange={handleDateInput} max="9999-12-31"/>
+                    <InputField type="date" name="overdueDate" label="Overdue Date" value={job.overdueDate ?? null} onChange={handleDateInput} max="9999-12-31"/>
                 </Grid>
                 {/* Job Details */}
                 <Grid item xs={12} > 
@@ -524,7 +527,7 @@ const JobPage = () => {
                 </Grid>
                 {/* Priority and Date */}
                 <Grid item xs={12} > 
-                    <InputField type="date" name="inspectionDate" max='9999-12-31' label="Inspection Date" value={job.inspectionDate ?? null} onChange={handleInput}/>
+                    <InputField type="date" name="inspectionDate" max='9999-12-31' label="Inspection Date" value={job.inspectionDate ?? null} onChange={handleDateInput}/>
                     <InputField type="select" name="inspectionBy" label="Inspector" value={job.inspectionBy?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_inspector"} value={""}></option>
                         {employees?.map((emp) => (
@@ -558,8 +561,8 @@ const JobPage = () => {
                             <option key={emp?.id} value={emp?.id}>{emp?.firstName + " " + emp?.lastName}</option>
                         ))}
                     </InputField>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="commencementDate" label="Commencement Date" value={job.commencementDate ?? null} onChange={handleInput}/>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="completionDate" label="Completion Date" value={job.completionDate ?? null} onChange={handleInput}/>
+                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="commencementDate" label="Commencement Date" value={job.commencementDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="completionDate" label="Completion Date" value={job.completionDate ?? null} onChange={handleDateInput}/>
                     <InputField type="number" step={0.1} min={0} style={{width: '146px'}} name="totalHours" label="Hours" value={job.totalHours} onChange={handleInput}/>
                 </Grid>
                 {/* Job Notes */}
@@ -568,10 +571,10 @@ const JobPage = () => {
                 </Grid>
                 {/* Close Out Details */}
                 <Grid item xs={12} > 
-                    <InputField type="date"  style={{width: '150px'}} max='9999-12-31' name="closeOutDate" label="Close Out Date" value={job.closeOutDate ?? null} onChange={handleInput}/>
-                    <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : job.commencementDate === "" || job.completionDate === "" || job.totalHours === 0 ? "Please Fill Out Completion Details" : ""}>
+                    <InputField type="date"  style={{width: '150px'}} max='9999-12-31' name="closeOutDate" label="Close Out Date" value={job.closeOutDate ?? null} onChange={handleDateInput}/>
+                    <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : job.commencementDate === null || job.completionDate === null || job.totalHours === 0 ? "Please Fill Out Completion Details" : ""}>
                         <Box style={{display:'inline-block'}}>
-                            <Button variant='outlined' style={{margin: '10px'}} onClick={handleCloseOut} disabled={!(!updateRequired && job.commencementDate !== "" && job.completionDate !== "" && job.totalHours !== 0 && job.closeOutDate === "")}>Close Out</Button>
+                            <Button variant='outlined' style={{margin: '10px'}} onClick={handleCloseOut} disabled={!(!updateRequired && job.commencementDate !== null && job.completionDate !== null && job.totalHours !== 0 && job.closeOutDate === null)}>Close Out</Button>
                         </Box>
                     </Tooltip>
                 </Grid>

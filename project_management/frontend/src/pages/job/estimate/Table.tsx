@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo, } from 'react';
-import { useReactTable, getCoreRowModel, getExpandedRowModel, flexRender, Row, ColumnDef, TableMeta, RowData, createColumnHelper } from '@tanstack/react-table'
-import { Table, TableHead, TableBody, TableFooter, TableCell, TableRow, TableContainer, Grid,
-    Button, IconButton, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, } from '@mui/material';
+import React, { useState, useEffect, useMemo, } from 'react';
+import { useReactTable, getCoreRowModel, getExpandedRowModel, flexRender, Row, ColumnDef, } from '@tanstack/react-table'
+import { Table, TableHead, TableBody, TableFooter, TableCell, TableRow, Grid, IconButton, } from '@mui/material';
 
-// import useEstimate from './useEstimate';
 import { produce } from 'immer';
 
 // Icons
@@ -11,9 +9,8 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SaveIcon from '@mui/icons-material/Save';
 import { BasicDialog, InputField, useSkipper } from '../../../components/Components';
-import { EstimateHeaderType, EstimateItemType, EstimateType, JobType, SnackType } from '../../../types/types';
+import { EstimateHeaderType, EstimateType, JobType, SnackType } from '../../../types/types';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 
 const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : {

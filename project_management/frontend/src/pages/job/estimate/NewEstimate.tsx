@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Grid, Typography, Button } from '@mui/material';
 
 import { InputField, Tooltip } from '../../../components/Components';
@@ -13,7 +13,6 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
 
-    // const { estimateSet, setEstimateSet } = useEstimate();
     const axiosPrivate = useAxiosPrivate();
     const [copyOption, setCopyOption] = useState(0);
     const [valueError, setValueError] = useState(false)
@@ -178,4 +177,3 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
 }
 
 export default NewEstimate;
-// export default () => ('');

@@ -679,86 +679,6 @@ class DeleteEstimateItem(graphene.Mutation):
         estimate_item.delete()
         
         return self(success=True)
-    
-# class CreateEstimateFromSet(graphene.Mutation):
-#     class Arguments:
-#         estimate_set = graphene.List(EstimateInput)
-#         job_id = graphene.String()
-
-#     success = graphene.Boolean()
-#     job = graphene.Field(JobType)
-#     message = graphene.String()
-
-#     @classmethod
-#     def mutate(self, root, info, estimate_set, job_id):
-#         print("Saving Estimate Set")
-        
-#         job = get_object_or_404(Job, id=job_id)
-#         message = ""
-
-#         for est in estimate_set:
-#             # Get existing estimate for that job `with the same name
-#             print("Saving Estimate:", est.name)
-#             if Estimate.objects.filter(job_id=job, id=est.id).exists():
-#                 estimate = Estimate.objects.get(job_id=job, id=est.id)
-#                 existingId = estimate.id
-#                 estimate.delete()
-#                 estimate.id = existingId
-#             else:
-#                 print("Creating New")
-#                 estimate = Estimate.objects.create(job_id=job, name=est.name, quote_by=CustomUser.objects.get(id=est.quote_by.id))
-#                 try:
-#                     if not os.path.exists(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
-#                         os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
-#                 except Exception as e:
-#                     print("File Name Error for:", str(job).strip())
-#                     message = "Job Saved. There is an error with the folder name, please correct in file system."
-
-#             # If the estimate name is changed, update the existing folder name
-#             if est.name != estimate.name:
-#                 current_estimate_folder = os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())
-#                 new_estimate_folder = os.path.join(main_folder_path, str(job).strip(), "Estimates", str(est.name).strip())
-#                 if os.path.exists(current_estimate_folder):
-#                     os.rename(current_estimate_folder, new_estimate_folder)
-
-
-#             estimate.job_id = job
-#             estimate.name = est.name
-#             estimate.description = est.description
-#             estimate.price = est.price
-#             estimate.quote_by = CustomUser.objects.get(id=est.quote_by.id)
-#             estimate.issue_date = None if not est.issue_date or est.issue_date == "" else est.issue_date
-#             estimate.approval_date = None if not est.approval_date or est.approval_date == "" else est.approval_date
-#             estimate.scope = "" if not est.scope else est.scope
-
-#             # None if input.completion_date == datetime.date(1970, 1, 1) else input.completion_date
-#             estimate.save()
-#             for header in est.estimateheaderSet:
-#                 estimate_header = EstimateHeader()
-#                 estimate_header.estimate_id = estimate
-#                 estimate_header.description = header.description
-#                 estimate_header.markup = header.markup
-#                 estimate_header.gross = header.gross
-#                 estimate_header.save()
-#                 for item in header.estimateitemSet:
-#                     estimate_item = EstimateItem()
-#                     estimate_item.header_id = estimate_header
-#                     estimate_item.description = item.description
-#                     estimate_item.quantity = item.quantity
-#                     estimate_item.item_type = item.itemType
-#                     estimate_item.rate = item.rate
-#                     estimate_item.extension = item.extension
-#                     estimate_item.markup = item.markup
-#                     estimate_item.gross = item.gross
-#                     estimate_item.save()
-
-#         if job: 
-#             job.save()
-#             if message == "":
-#                 message = "Job Uploaded Successfully"
-#             return self(success=True, job=job, message=message)
-        
-#         return self(success=False, message="Job Not Found, Please contact admin.")
 
 class DeleteEstimate(graphene.Mutation):
     ok = graphene.Boolean()
@@ -1716,8 +1636,6 @@ class Mutation(graphene.ObjectType):
     create_bill = CreateBill.Field()
     update_bill = UpdateBill.Field()
     delete_bill = DeleteBill.Field()
-
-    # create_estimate_from_set = CreateEstimateFromSet.Field()
 
     create_estimate = CreateEstimate.Field()
     update_estimate = UpdateEstimate.Field()
