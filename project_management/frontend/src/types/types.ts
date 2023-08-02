@@ -13,9 +13,15 @@ export interface JobType {
     po: string
     sr: string
     otherId: string
-    client: ClientType | string
-    requester: ContactType | string
-    location: LocationType | string
+    client: {
+        id: string
+    }
+    requester: {
+        id: string
+    }
+    location: {
+        id: string
+    }
     building: string
     title: string
     priority: string
@@ -36,11 +42,15 @@ export interface JobType {
     altPocPhone: string
     altPocEmail: string
     specialInstructions: string
-    inspectionBy: string
+    inspectionBy: {
+        id: string
+    }
     inspectionNotes: string
     scope: string
     workNotes: string
-    siteManager: string
+    siteManager: {
+        id: string
+    }
     estimateSet: EstimateType[]
     jobinvoiceSet: {
         invoice: InvoiceType[]
@@ -102,16 +112,46 @@ export interface InvoiceType {
 
 export interface BillType {
     id: string
-    invoiceNumber: string
     myobUid: string
     supplier: ContractorType
+    invoiceNumber: string
+    invoiceDate: string
     amount: number
+    billType: string
+    thumbnailPath: string
+    // Supplier data when extracting the bill
+    abn?: string
+    contractor?: string
+}
+
+export interface BillSummaryType {
+    supplier: ContractorType
+    amount: number
+    invoiceNumber: number
+    subRows: BillSummaryType[]
+}
+
+export interface EstimateSummaryType {
+    id: string
+    description: string
+    quantity: number
+    itemType: string
+    rate: number
+    extension: number
+    gross: number
+    header?: string
+    counter?: number
+    subRows?: EstimateSummaryType[]
 }
 
 export interface ContractorType {
     id: string
     myobUid: string
     name: string
+    bankAccountName: string
+    bankAccountNumber: string
+    bsb: string
+    abn: string
 }
 
 export interface JobStageType {
@@ -132,7 +172,6 @@ export interface EmployeeType {
     myobAccess: boolean
     role: string
     isActive: boolean
-
 }
 
 export interface ClientType {
@@ -149,10 +188,7 @@ export interface ContactType {
     phone: string
     email: string
     client: ClientType
-    region: {
-        id: string
-        shortName: string
-    }
+    region: RegionType
 }
 
 export interface LocationType {

@@ -1746,7 +1746,7 @@ class myobCreateBill(graphene.Mutation):
             checkTokenAuth(uid)
             user = MyobUser.objects.get(id=uid)
             supplier = Contractor.objects.get(id=newBill['contractor'])
-            job = Job.objects.get(po=jobId[2:])
+            job = Job.objects.get(po=jobId)
 
             if not job.myob_uid:
                 return self(success=False, message="Please sync job with MYOB before creating invoice!")
@@ -1839,7 +1839,7 @@ class myobCreateBill(graphene.Mutation):
             # Get the bill uid
             bill_uid = response.headers['Location'].replace(url, "")
 
-            job = Job.objects.get(po=jobId[2:])
+            job = Job.objects.get(po=jobId)
 
             bill = Bill()
             bill.job = job

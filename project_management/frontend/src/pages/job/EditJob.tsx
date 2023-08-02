@@ -15,9 +15,63 @@ import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { openInNewTab } from '../../components/Functions';
-import { jobAllQuery } from './Queries';
+import { jobAllQuery, jobQueryData } from './Queries';
 import SettingsDialog from './SettingsDialog';
 import { ClientType, ContactType, EmployeeType, InvoiceType, JobStageType, JobType, LocationType, SnackType } from '../../types/types';
+
+const blankJob: JobType = {
+    myobUid: '',
+    id: '',
+    po: '',
+    sr: '',
+    otherId: '',
+    client: {
+        id: '',
+    },
+    location: {
+        id: '',
+    },
+    requester: {
+        id: '',
+    },
+    building: '',
+    detailedLocation: '',
+    stage: '',
+    title: '',
+    priority: '',
+    dateIssued: '',
+    pocName: '',
+    pocPhone: '',
+    pocEmail: '',
+    altPocName: '',
+    altPocPhone: '',
+    altPocEmail: '',
+    description: '',
+    specialInstructions: '',
+    inspectionBy: {
+        id: '',
+    },
+    inspectionDate: '',
+    inspectionNotes: '',
+    scope: '',
+    workNotes: '',
+    siteManager: {
+        id: '',
+    },
+    commencementDate: '',
+    completionDate: '',
+    totalHours: 0,
+    bsafeLink: '',
+    overdueDate: '',
+    closeOutDate: '',
+    workType: '',
+    opportunityType: '',
+    cancelled: false,
+    cancelReason: '',
+    estimateSet: [],
+    billSet: [],
+    jobinvoiceSet: {invoice: []},
+}
 
 const JobPage = () => { 
     const axiosPrivate = useAxiosPrivate();
@@ -35,49 +89,25 @@ const JobPage = () => {
     // const [estimateSet, setEstimateSet] = useState();
 
     const [snack, setSnack] = useState<SnackType>({active: false, message:"", variant:'info'})
-    const [job, setJob] = useState<JobType>({
-        myobUid: '',
-        id: '',
-        po: '',
-        sr: '',
-        otherId: '',
-        client: '',
-        location: '',
-        building: '',
-        detailedLocation: '',
-        stage: '',
-        title: '',
-        priority: '',
-        dateIssued: '',
-        requester: '',
-        pocName: '',
-        pocPhone: '',
-        pocEmail: '',
-        altPocName: '',
-        altPocPhone: '',
-        altPocEmail: '',
-        description: '',
-        specialInstructions: '',
-        inspectionBy: '',
-        inspectionDate: '',
-        inspectionNotes: '',
-        scope: '',
-        workNotes: '',
-        siteManager: '',
-        commencementDate: '',
-        completionDate: '',
-        totalHours: 0,
-        bsafeLink: '',
-        overdueDate: '',
-        closeOutDate: '',
-        workType: '',
-        opportunityType: '',
-        cancelled: false,
-        cancelReason: '',
-        estimateSet: [],
-        billSet: [],
-        jobinvoiceSet: {invoice: []},
-    })
+    const [job, setJob] = useState<JobType>(blankJob)
+
+    // const parseJobData = ({job_data}: {job_data: JobType}) => {
+    //     // Flatten objects for field values
+    //     job_data['location'] = job_data?.location?.id ?? "";
+    //     job_data['client'] = job_data?.client?.id ?? "";
+    //     job_data['requester'] = job_data?.requester?.id ?? "";
+    //     job_data['inspectionBy'] = job_data?.inspectionBy?.id ?? "";
+    //     job_data['siteManager'] = job_data?.siteManager?.id ?? "";
+
+    //     // Correct null date values
+    //     job_data['inspectionDate'] = job_data?.inspectionDate ?? "";
+    //     job_data['commencementDate'] = job_data?.commencementDate ?? "";
+    //     job_data['completionDate'] = job_data?.completionDate ?? "";
+    //     job_data['closeOutDate'] = job_data?.closeOutDate ?? "";
+    //     job_data['overdueDate'] = job_data?.overdueDate ?? "";
+
+    //     return job_data
+    // }
 
     const [employees, setEmployees] = useState<EmployeeType[]>([]);
     const [clients, setClients] = useState<ClientType[]>([]);
@@ -192,21 +222,8 @@ const JobPage = () => {
                     navigate('/missing', { replace: true, state: {missing: "job"} });
                 }
 
-                // Flatten objects for field values
-                job_data['location'] = job_data?.location?.id ?? "";
-                job_data['client'] = job_data?.client?.id ?? "";
-                job_data['requester'] = job_data?.requester?.id ?? "";
-                job_data['inspectionBy'] = job_data?.inspectionBy?.id ?? "";
-                job_data['siteManager'] = job_data?.siteManager?.id ?? "";
-
-                // Correct null date values
-                job_data['inspectionDate'] = job_data?.inspectionDate ?? "";
-                job_data['commencementDate'] = job_data?.commencementDate ?? "";
-                job_data['completionDate'] = job_data?.completionDate ?? "";
-                job_data['closeOutDate'] = job_data?.closeOutDate ?? "";
-                job_data['overdueDate'] = job_data?.overdueDate ?? "";
-
                 setJob(job_data);
+                // const jobData = parseJobData(job_Data)
                 // setBills(job_data.billSet);
                 // setInitialEstimate(job_data.estimateSet);
                 // setEstimateSet(job_data.estimateSet);
@@ -244,11 +261,12 @@ const JobPage = () => {
     }, [titleChange])
 
     const handleUploadChanges = async () => {
-        let partialError = false;
         setWaiting(prev => ({...prev, 'save': true}));
 
         // Remove unwanted values from job state for backend
-        let {jobinvoiceSet:_, myobUid:__, estimateSet:___, stage:____, billSet: _____, ...jobInput} = job
+        let {jobinvoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
+
+        console.log(jobInput);
 
         // Define formats before sending to backend
         job['dateIssued'] === "" ? jobInput['dateIssued'] = new Date(0).toISOString().split('T')[0] : null;
@@ -267,6 +285,9 @@ const JobPage = () => {
                 {
                     success
                     message
+                    job {
+                        ${jobQueryData}
+                    }
                 }
             }`,
             variables: {
@@ -274,98 +295,26 @@ const JobPage = () => {
             },
         }),
         }).then((response) => {
-            console.log("upload_job", response);
-            // console.log("Job Upload Complete");
-            setWaiting(prev => ({...prev, 'save': false}));
-            if(response?.data?.errors || !response?.data?.data?.update.success) {
-                partialError = true;
-                setSnack({active: true, variant:'error', message: "Job Upload Error: " + response.data.errors[0].message})
-            }
-        }).catch((err) => {
-            console.log('job upload error', err);
-            partialError = true;
-            setSnack({active: true, variant:'error', message: "Error: " + err.response?.data?.errors[0]?.message})
-            setWaiting(prev => ({...prev, 'save': false}));
-        })
-
-        // If a date is removed from an estimate, make sure it is null before sending to api.
-        const cleanEstimateSet = job?.estimateSet?.map((est: { approvalDate: string; issueDate: string; }) => {
-            const newEstimate = produce(est, (draft: { approvalDate: null; issueDate: null; }) => {
-                est.approvalDate === "" ? draft.approvalDate = null : null;
-                est.issueDate === "" ? draft.issueDate = null : null;
-            })
-            return newEstimate;
-        })
-
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation createEstimateFromSet ( $estimateSet: [EstimateInput]!, $jobId: String! ) { 
-                create_estimate_from_set: createEstimateFromSet( estimateSet: $estimateSet, jobId: $jobId)
-                {
-                    success
-                    message
-                    job {
-                        stage
-                        estimateSet {
-                            id
-                            name
-                            description
-                            price
-                            issueDate
-                            approvalDate
-                            scope
-                            quoteBy {
-                                id
-                            }
-                            estimateheaderSet{
-                                id
-                                description
-                                markup
-                                gross
-                                estimateitemSet {
-                                    id
-                                    description
-                                    quantity
-                                    itemType
-                                    rate
-                                    extension
-                                    markup
-                                    gross
-                                }
-                            }	
-                        }
-                    }
-                }
-            }`,
-            variables: {
-                estimateSet: cleanEstimateSet,
-                jobId: job.id,
-            },
-        }),
-        }).then((response) => {
             // console.log(response);
-            const res = response?.data?.data?.create_estimate_from_set;
+            const res = response?.data?.data?.update;
             if(res.success) {
-                setJob(prev => ({...prev, estimateSet: res.job.estimateSet}))
-                // setEstimateSet(res.job.estimateSet);
-                
+                setJob(res.job)
+
                 // Update Job Stage
                 jobStages.map((values) => {
                     res?.job?.stage === values['name'] ? 
                         setStage(values['description']) : null;
                 })
                 setTitleChange(true);
-
-                if(!partialError) {
-                    setSnack({active: true, variant:'success', message: res.message})
-                    setUpdateRequired(false);
-                }
-                // TODO: Update the id of any new jobs.
+                setSnack({active: true, variant:'success', message: res.message})
+                setUpdateRequired(false);
             } 
             else {
-                setSnack({active: true, variant:'error', message: "Estimate Upload Error: " + res.message})
+                setSnack({active: true, variant:'error', message: "Job Upload Error: " + res.message})
             }
+        }).catch((err) => {
+            console.log("Upload Changes Error", err)
+            setSnack({active: true, variant:'error', message: "Job Upload Error. Contact Developer"})
         }).finally(() => {
             setWaiting(prev => ({...prev, 'save': false}));
         });
@@ -505,7 +454,7 @@ const JobPage = () => {
         }
 
         let loc = locations[locations.findIndex(element => {
-            if(element.id == job.location) {
+            if(element.id == job.location.id) {
                 return true;
             }
             return false;
@@ -585,6 +534,11 @@ const JobPage = () => {
         setJob(prev => ({...prev, [e.target.name]: e.target.value}))
         setUpdateRequired(true);
     }
+
+    const handleSelection = (e: { target: { name?: any; value?: any; }; }) => {
+        setJob(prev => ({...prev, [e.target.name.id]: e.target.value}))
+        setUpdateRequired(true);
+    }
  
     return (
         <>
@@ -597,7 +551,7 @@ const JobPage = () => {
             <Grid container spacing={2} direction={'column'} alignItems={'center'}>
                 {/* Request Details */}
                 <Grid item xs={12} >
-                    <InputField type="select" name="client" label="Client" value={job.client} onChange={handleInput}>
+                    <InputField type="select" name="client" label="Client" value={job.client?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_client"} value={''}></option>
                         {clients?.map((c) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
@@ -614,10 +568,10 @@ const JobPage = () => {
                 </Grid>
                 {/* Location & Title */}
                 <Grid item xs={12} > 
-                    <InputField type="select" name="location" label="Location" value={job.location} onChange={handleInput} onBlur={() => setTitleChange(true)}>
+                    <InputField type="select" name="location" label="Location" value={job.location?.id ?? ''} onChange={handleSelection} onBlur={() => setTitleChange(true)}>
                         <option key="blank_location" value={""}></option>
                         {locations?.map((loc) => (
-                            loc.client.id === job.client ? <option key={loc.id} value={loc.id}>{loc.name} ({loc.region.shortName})</option> : <></>
+                            loc.client.id === job.client.id ? <option key={loc.id} value={loc.id}>{loc.name} ({loc.region.shortName})</option> : <></>
                         ))}
                     </InputField>
                     <InputField type="string" name="building" label="Building" value={job.building} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
@@ -625,10 +579,10 @@ const JobPage = () => {
                 </Grid>
                 {/* Extra Details */}
                 <Grid item xs={12} >
-                    <InputField type="select" label="Requester" name="requester" value={job.requester} onChange={handleInput}>
+                    <InputField type="select" label="Requester" name="requester" value={job.requester?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_requester"} value={""}></option>
                         {clientContacts?.map((contact) => (
-                            contact.client.id === job.client ? <option key={contact.id} value={contact.id}>{contact.firstName + " " + contact.lastName}</option> : /*&& contact.region.shortName === locations[location-1].region.shortName*/ <></>
+                            contact.client.id === job.client.id ? <option key={contact.id} value={contact.id}>{contact.firstName + " " + contact.lastName}</option> : /*&& contact.region.shortName === locations[location-1].region.shortName*/ <></>
                         ))}
                     </InputField>
                     <InputField type="string" name="priority" label="Priority" value={job.priority} onChange={handleInput}/>
@@ -659,8 +613,8 @@ const JobPage = () => {
                 </Grid>
                 {/* Priority and Date */}
                 <Grid item xs={12} > 
-                    <InputField type="date" name="inspectionDate" max='9999-12-31' label="Inspection Date" value={job.inspectionDate} onChange={handleInput}/>
-                    <InputField type="select" name="inspectionBy" label="Inspector" value={job.inspectionBy} onChange={handleInput}>
+                    <InputField type="date" name="inspectionDate" max='9999-12-31' label="Inspection Date" value={job.inspectionDate ?? null} onChange={handleInput}/>
+                    <InputField type="select" name="inspectionBy" label="Inspector" value={job.inspectionBy?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_inspector"} value={""}></option>
                         {employees?.map((emp) => (
                             <option key={emp.id} value={emp.id}>{emp.firstName + " " + emp.lastName}</option>
@@ -687,14 +641,14 @@ const JobPage = () => {
                 </Grid>
                 {/* On Site Details */}
                 <Grid item xs={12} >
-                    <InputField type="select" style={{width: '200px'}} name="siteManager" label="Site Manager" value={job.siteManager} onChange={handleInput}>
+                    <InputField type="select" style={{width: '200px'}} name="siteManager" label="Site Manager" value={job.siteManager?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_sitemanager"} value={""}></option>
                         {employees?.map((emp) => (
                             <option key={emp?.id} value={emp?.id}>{emp?.firstName + " " + emp?.lastName}</option>
                         ))}
                     </InputField>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="commencementDate" label="Commencement Date" value={job.commencementDate} onChange={handleInput}/>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="completionDate" label="Completion Date" value={job.completionDate} onChange={handleInput}/>
+                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="commencementDate" label="Commencement Date" value={job.commencementDate ?? null} onChange={handleInput}/>
+                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="completionDate" label="Completion Date" value={job.completionDate ?? null} onChange={handleInput}/>
                     <InputField type="number" step={0.1} min={0} style={{width: '146px'}} name="totalHours" label="Hours" value={job.totalHours} onChange={handleInput}/>
                 </Grid>
                 {/* Job Notes */}
@@ -703,7 +657,7 @@ const JobPage = () => {
                 </Grid>
                 {/* Close Out Details */}
                 <Grid item xs={12} > 
-                    <InputField type="date"  style={{width: '150px'}} max='9999-12-31' name="closeOutDate" label="Close Out Date" value={job.closeOutDate} onChange={handleInput}/>
+                    <InputField type="date"  style={{width: '150px'}} max='9999-12-31' name="closeOutDate" label="Close Out Date" value={job.closeOutDate ?? null} onChange={handleInput}/>
                     <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : job.commencementDate === "" || job.completionDate === "" || job.totalHours === 0 ? "Please Fill Out Completion Details" : ""}>
                         <Box style={{display:'inline-block'}}>
                             <Button variant='outlined' style={{margin: '10px'}} onClick={handleCloseOut} disabled={!(!updateRequired && job.commencementDate !== "" && job.completionDate !== "" && job.totalHours !== 0 && job.closeOutDate === "")}>Close Out</Button>
@@ -745,7 +699,7 @@ const JobPage = () => {
                     <InputField disabled={true} width={150} type="date" label="Date Invoice Paid" value={invoice?.datePaid}/>
                 </Grid>
                 <Grid item xs={12}  style={{paddingTop: '0px'}}> {/* Accounts */}
-                    {job.client !== "1" ?
+                    {job.client.id !== "1" ?
                         <Tooltip title={updateRequired ? "Please save changes" : ""}>
                             <Box sx={{ m: 1, position: 'relative' }}>
                                 <Button variant="outlined" 

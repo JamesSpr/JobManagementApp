@@ -5,11 +5,11 @@ import { Box, Button, Tooltip, CircularProgress, Portal, IconButton, Grid } from
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import useAuth from '../../auth/useAuth';
 import { produce } from 'immer';
-import Bill from '../../bill/JobBill';
 
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ContractorType, EmployeeType, EstimateType, JobType, SnackType } from '../../../types/types';
 import { BasicDialog } from '../../../components/Components';
+import BillDialog from '../../bill/BillDialog';
 
 const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdateRequired, contractors, setSnack }: {
     users: EmployeeType[]
@@ -135,18 +135,19 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
         { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
         const initialValue = getValue()
         // We need to keep and update the state of the cell normally
-        const [value, setValue] = useState(initialValue ?? "")
+        const [value, setValue] = useState(initialValue ?? null)
     
         // When the input is blurred, we'll call our table meta's updateData function
         const onBlur = () => {
-            table.options.meta?.updateData(index, id, value)
+            const val = (value === "" ? null : value)
+            table.options.meta?.updateData(index, id, val)
 
             // Dont update if the value has not changed
-            if(!(!initialValue && value === '') && !(initialValue === value)) {
+            if(!(!initialValue && val === null) && !(initialValue === val)) {
                 setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((es, i) => {
                     if(i === index) {
                         const newEstimateSet = produce(prev.estimateSet[i], (draft: { [x: string]: { id: any; }; }) => {
-                            draft[id] = value
+                            draft[id] = val
                         })
                         return newEstimateSet;
                     }
@@ -158,7 +159,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
         
         // If the initialValue is changed external, sync it up with our state
         useEffect(() => {
-            setValue(initialValue ?? "")
+            setValue(initialValue ?? null)
         }, [initialValue])
 
         return (
@@ -219,18 +220,16 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
         },
         {
             id: 'deleteButton',
-            minSize: 80,
             size: 90,
-            maxSize: 90,
             header: () => '',
             cell: ({row}: {row:any}) => (
-            <>
-            
-                <IconButton onClick={(e) => {setDeleteDialog(({open: true, row: row, 
-                    title: "Delete Estimate", message: "Are you sure you want to delete this estimate? This action can not be undone."}))}}>
-                    <DeleteIcon />
-                </IconButton>
-            </>
+                row.original.approvalDate ? <></> :
+                <>
+                    <IconButton onClick={(e) => {setDeleteDialog(({open: true, row: row, 
+                        title: "Delete Estimate", message: "Are you sure you want to delete this estimate? This action can not be undone."}))}}>
+                        <DeleteIcon />
+                    </IconButton>
+                </>
             ),
         }
     ], []);
@@ -280,7 +279,6 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
             setSnack({active: true, variant:'error', message: 'Error. Please contact Developer'})
         }).finally(() => {
             setDeleteDialog({open: false, row: undefined, title: '', message: ''})
-            setUpdateRequired(false);
         });
     }
 
@@ -487,7 +485,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                     </Box>
                 </Tooltip> 
                 
-                {job.client == "1" ? 
+                {job.client.id == "1" ? 
                     <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
                         <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
                             <Button 
@@ -514,7 +512,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                     </Tooltip> : <></>
                 }
 
-                {lockedEstimate &&
+                {job.estimateSet.find((estimate) => estimate.approvalDate !== null) &&
                     <Tooltip title={job.myobUid === "" ? "Please Sync with MYOB" : null}>
                         <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
                             <Button 
@@ -530,8 +528,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                 }
             </Grid>
 
-            <Bill open={billsDialog} onClose={handleBillClose} estimate={approvedEstimate}
-                job={job} setJob={setJob} contractors={contractors}/>
+            <BillDialog open={billsDialog} onClose={handleBillClose} job={job} setJob={setJob} contractors={contractors} setSnack={setSnack}/>
 
             {/* { auth.user.role === "DEV" ? 
                 <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>

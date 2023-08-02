@@ -125,6 +125,7 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
             console.log(err);
             setSnack({active: true, variant:'error', message: 'Error. Please contact Developer'})
             
+            setWaiting(false)
         })
     }
 

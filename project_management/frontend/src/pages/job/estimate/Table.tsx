@@ -12,7 +12,7 @@ import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
-import { InputField, useSkipper } from '../../../components/Components';
+import { BasicDialog, InputField, useSkipper } from '../../../components/Components';
 import { EstimateHeaderType, EstimateItemType, EstimateType, JobType, SnackType } from '../../../types/types';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 
@@ -171,6 +171,10 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             useEffect(() => {
                 setValue(initialValue);
             }, [initialValue])
+
+            if(job.estimateSet[accessorId].approvalDate) {
+                return <p className='locked-estimate-line'>{value}</p>
+            }
 
             return (
                 <select value={value} onChange={onChange} className="estimateTableInput"
@@ -344,9 +348,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             columns: [
             {
                 id: 'lineControls',
-                minSize: 80,
                 size: 90,
-                maxSize: 90,
                 cell: ({row}) => (
                     <>
                         {!job.estimateSet[accessorId].approvalDate && (
@@ -462,8 +464,6 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                                         }
                                     }
 
-                                    console.log(extension, markup, gross)
-
                                     // Average markup
                                     gross = isNaN(gross) ? 0 : gross
                                     markup = isNaN(gross / extension) ? 0 : ((gross / extension) - 1) * 100;
@@ -471,7 +471,8 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                                     draft.estimateheaderSet[parentId].markup = markup;
                                     draft.estimateheaderSet[parentId].gross = gross;
                                 }
-                                
+                              
+                                draft.price = draft.estimateheaderSet.reduce((acc, val) => acc + val.gross, 0)
                             })
 
                             return newEstimate;
@@ -737,6 +738,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             }
             return row;
         })}))
+        setUpdateRequired(true);
     }
 
     // Calculate Total Values
@@ -759,89 +761,93 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
 
     return (
         <Grid container direction={'column'} alignItems={'center'}>
-            <InputField type="text" multiline width={1000} name="scope" label="Detailed Scope of Works" value={job.estimateSet[accessorId].scope} onChange={updateScope}/>
-            {/* <TableContainer sx={{paddingBottom: "20px"}}> */}
-                <Table {...{sx: { width: table.getTotalSize(), maxWidth: '100%'},}}>
-                    <TableHead>
-                        {table.getHeaderGroups().map(headerGroup => (
-                            <TableRow key={"header_" + headerGroup.id}>
-                            {headerGroup.headers.map(header => {
-                                return (
-                                    <TableCell key={"header_cell_" + header.id} colSpan={header.colSpan} sx={{ width: header.getSize(), padding: '2px', fontWeight: 'bold', }}>
-                                        {header.isPlaceholder ? null : (
-                                        <>
-                                            {flexRender(
-                                            header.column.columnDef.header,
-                                            header.getContext()
-                                            )}
-                                        </>
-                                        )}
-                                    </TableCell>
-                                );
-                            })}
-                            </TableRow>
-                        ))}
-                    </TableHead>
-                    <TableBody>
-                        {table.getRowModel().rows.map(row => {
+
+            <InputField type="text" disabled={job.estimateSet[accessorId].approvalDate !== null} multiline width={1000} name="scope" label="Detailed Scope of Works" value={job.estimateSet[accessorId].scope} onChange={updateScope}/>
+            <Table {...{sx: { width: table.getTotalSize(), maxWidth: '100%'},}}>
+                <TableHead>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <TableRow key={"header_" + headerGroup.id}>
+                        {headerGroup.headers.map(header => {
                             return (
-                                <TableRow key={"row_" + row.id} selected={row.getIsSelected()} onClick={(e) => {row.getIsSelected() ? null : row.toggleSelected()}} >
-                                    {row.getVisibleCells().map(cell => {
-                                            {
-                                                if(row.depth > 0 || cell.column.id === "markup" || cell.column.id === "gross" || cell.column.id === "expander" || cell.column.id === "lineControls"){
-                                                    return (
-                                                        <TableCell key={"row_cell_" + cell.id} sx={{ background: row.depth === 0 && !row.getIsSelected() ? "#fafafa" : '', padding: '2px', width: cell.column.getSize()}} >
-                                                        {
-                                                            flexRender(
-                                                                cell.column.columnDef.cell,
-                                                                cell.getContext()
-                                                            )
-                                                        }
-                                                        </TableCell>
-                                                    );
-                                                }
-                                                else if(cell.column.id === "description") {
-                                                    return (
-                                                        <TableCell key={"row_cell_" + cell.id} 
-                                                        sx={{ background: row.depth === 0 && !row.getIsSelected() ? "#fafafa" : '', padding: '2px', width: cell.column.getSize()}} 
-                                                        colSpan={row.depth === 0 ? 5 : 1} >
-                                                        {
-                                                            flexRender(
-                                                                cell.column.columnDef.cell,
-                                                                cell.getContext()
-                                                            )
-                                                        }
-                                                        </TableCell>
-                                                    );
-                                                }
-                                                return(null);
-                                            }
-                                    })}
-                                </TableRow>
+                                <TableCell key={"header_cell_" + header.id} colSpan={header.colSpan} sx={{ width: header.getSize(), padding: '2px', fontWeight: 'bold', }}>
+                                    {header.isPlaceholder ? null : (
+                                    <>
+                                        {flexRender(
+                                        header.column.columnDef.header,
+                                        header.getContext()
+                                        )}
+                                    </>
+                                    )}
+                                </TableCell>
                             );
                         })}
-                    </TableBody>
-                    <TableFooter>
-                        <TableRow key={"footer"}>
-                            <TableCell sx={{ height: '36px', padding: '2px'}} key={"footer_0"} colSpan={1}>
-                                {!job.estimateSet[accessorId]['approvalDate'] && 
-                                    <IconButton onClick={handleNewHeader}>
-                                        <AddIcon />
-                                    </IconButton>
-                                }
-                            </TableCell>
-                            <TableCell sx={{ padding: '2px'}} key={"footer_1"} colSpan={4} >Items {totalItems}</TableCell>
-                            <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_2"} colSpan={1} >{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(totalExtension)}</TableCell>
-                            <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_3"} colSpan={1} >{totalAvgMarkup.toFixed(2) }%</TableCell>
-                            <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_4"} colSpan={1} >{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(totalGross)}</TableCell>
-                            <TableCell sx={{ padding: '2px'}} key={"footer_5"} colSpan={1}>ID: {job.estimateSet[accessorId].id}</TableCell>
                         </TableRow>
-                    </TableFooter>
-                </Table>
-            {/* </TableContainer> */}
-            
+                    ))}
+                </TableHead>
+                <TableBody>
+                    {table.getRowModel().rows.map(row => {
+                        return (
+                            <TableRow key={"row_" + row.id} selected={row.getIsSelected()} onClick={(e) => {row.getIsSelected() ? null : row.toggleSelected()}} >
+                                {row.getVisibleCells().map(cell => {
+                                        {
+                                            if(row.depth > 0 || cell.column.id === "markup" || cell.column.id === "gross" || cell.column.id === "expander" || cell.column.id === "lineControls"){
+                                                return (
+                                                    <TableCell key={"row_cell_" + cell.id} sx={{ background: row.depth === 0 && !row.getIsSelected() ? "#fafafa" : '', padding: '2px', width: cell.column.getSize()}} >
+                                                    {
+                                                        flexRender(
+                                                            cell.column.columnDef.cell,
+                                                            cell.getContext()
+                                                        )
+                                                    }
+                                                    </TableCell>
+                                                );
+                                            }
+                                            else if(cell.column.id === "description") {
+                                                return (
+                                                    <TableCell key={"row_cell_" + cell.id} 
+                                                    sx={{ background: row.depth === 0 && !row.getIsSelected() ? "#fafafa" : '', padding: '2px', width: cell.column.getSize()}} 
+                                                    colSpan={row.depth === 0 ? 5 : 1} >
+                                                    {
+                                                        flexRender(
+                                                            cell.column.columnDef.cell,
+                                                            cell.getContext()
+                                                        )
+                                                    }
+                                                    </TableCell>
+                                                );
+                                            }
+                                            return(null);
+                                        }
+                                })}
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+                <TableFooter>
+                    <TableRow key={"footer"}>
+                        <TableCell sx={{ height: '36px', padding: '2px'}} key={"footer_0"} colSpan={1}>
+                            {!job.estimateSet[accessorId]['approvalDate'] && 
+                                <IconButton onClick={handleNewHeader}>
+                                    <AddIcon />
+                                </IconButton>
+                            }
+                        </TableCell>
+                        <TableCell sx={{ padding: '2px'}} key={"footer_1"} colSpan={4} >Items {totalItems}</TableCell>
+                        <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_2"} colSpan={1} >{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(totalExtension)}</TableCell>
+                        <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_3"} colSpan={1} >{totalAvgMarkup.toFixed(2) }%</TableCell>
+                        <TableCell sx={{ padding: '2px', paddingLeft: '5px' }} key={"footer_4"} colSpan={1} >{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(totalGross)}</TableCell>
+                        <TableCell sx={{ padding: '2px'}} key={"footer_5"} colSpan={1}>ID: {job.estimateSet[accessorId].id}</TableCell>
+                    </TableRow>
+                </TableFooter>
+            </Table>
+
             {/* Alert Dialog */}
-            <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
+            <BasicDialog open={openAlert} close={() => setOpenAlert(false)} 
+                title={dialogTitle} okay={dialogOkay} action={() => dialogAction(dialogYesAction)}
+            >
+                <p>{dialogMessage}</p>
+            </BasicDialog>
+            {/* <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
                 <DialogTitle>{dialogTitle}</DialogTitle>
                 <DialogContent>
                     <DialogContentText>{dialogMessage}</DialogContentText>
@@ -857,7 +863,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
                         }
                     </DialogActions>
                 </DialogContent>
-            </Dialog>
+            </Dialog> */}
         </Grid>
     );
 }
