@@ -17,7 +17,6 @@ import MyAccount from "./pages/auth/MyAccount";
 import MyobActivate from "./pages/myob/Myob";
 import Contractors from "./pages/contractors/Contractors";
 import Invoices from "./pages/invoice/Invoices";
-import UpdateInvoices from "./pages/invoice/UpdateInvoices";
 import Dashboard from "./pages/analytics/Dashboard";
 import Bills from "./pages/bill/Bills";
 import Wizard from "./pages/wizard/Wizard";
@@ -60,7 +59,6 @@ const App = () => {
                             <Route path="contractors" element={<Contractors />} />
                             <Route path="invoices" element={<Invoices />} />
                             <Route path="bills" element={<Bills />} />
-                            {/* <Route path="invoices/update/:input" element={<UpdateInvoices />} /> */}
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >
@@ -68,7 +66,6 @@ const App = () => {
                             <Route path="analytics" element={<Dashboard />} />
                             <Route path="timesheets/:endDate" element={<Timesheets />} />                            
                             <Route path="analytics" element={<Dashboard />} />
-                            {/* <Route path="financials" element={<CompanyDashboard />} /> */}
                             <Route path="admin" element={<CompanyAdmin />} />
                         </Route>
 
