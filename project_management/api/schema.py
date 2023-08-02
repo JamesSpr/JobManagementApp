@@ -178,7 +178,6 @@ class CreateJob(graphene.Mutation):
     updated = graphene.Boolean()
     message = graphene.List(graphene.String)
 
-
     @classmethod
     def mutate(self, root, info, input):
         print("Creating Job")
@@ -201,16 +200,16 @@ class CreateJob(graphene.Mutation):
         if [char for char in illegal_characters if char in input.other_id]:
             return self(success=False, message=["Other ID can not contain the characters:"] + illegal_characters)
 
-        if input.client == "":
+        if input.client.id == "":
             missing = True
             missingItems.append(" Client")
         if input.po == "" and input.sr == "" and input.other_id == "":
             missing = True
             missingItems.append(" Job Identifier")
-        if input.location == "":
+        if input.location.id == "":
             missing = True
             missingItems.append(" Location")
-        if input.requester == "":
+        if input.requester.id == "":
             missing = True
             missingItems.append(" Requester")
         if input.title == "":
@@ -225,18 +224,18 @@ class CreateJob(graphene.Mutation):
             input[key] = value.strip() if type(input[key]) == str else value
 
         # Remove letters from po and sr
-        input["po"] = re.sub('\D', "", input["po"]) 
-        input["sr"] = re.sub('\D', "", input["sr"]) 
+        input.po = re.sub('\D', "", input.po) 
+        input.sr = re.sub('\D', "", input.sr) 
 
-        if (input["po"] != "" and Job.objects.filter(po=input["po"]).exists()) or (input["sr"] != "" and Job.objects.filter(sr=input["sr"]).exists()) or (input["other_id"] != "" and Job.objects.filter(other_id=input["other_id"]).exists()):
-            if input["po"] != "" and Job.objects.filter(po=input["po"]).exists():
-                job = Job.objects.get(po=input["po"], client=Client.objects.get(id=input["client"]))
+        if (input.po != "" and Job.objects.filter(po=input.po).exists()) or (input.sr != "" and Job.objects.filter(sr=input.sr).exists()) or (input["other_id"] != "" and Job.objects.filter(other_id=input["other_id"]).exists()):
+            if input.po != "" and Job.objects.filter(po=input.po).exists():
+                job = Job.objects.get(po=input.po, client=Client.objects.get(id=input.client.id))
                 print("PO Found", end=' - ')
-            elif input["sr"] != "" and Job.objects.filter(sr=input["sr"]).exists():
-                job = Job.objects.get(sr=input["sr"], client=Client.objects.get(id=input["client"]))
+            elif input.sr != "" and Job.objects.filter(sr=input.sr).exists():
+                job = Job.objects.get(sr=input.sr, client=Client.objects.get(id=input.client.id))
                 print("SR Found", end=' - ')
-            elif input["other_id"] != "" and Job.objects.filter(other_id=input["other_id"]).exists():
-                job = Job.objects.get(other_id=input["other_id"], client=Client.objects.get(id=input["client"]))
+            elif input.other_id != "" and Job.objects.filter(other_id=input.other_id).exists():
+                job = Job.objects.get(other_id=input.other_id, client=Client.objects.get(id=input.client.id))
                 print("otherID Found", end=' - ')
             
             if job:
@@ -245,15 +244,15 @@ class CreateJob(graphene.Mutation):
                 ## Only update fields that are empty
                 # job.client = Client.objects.get(id=input["client_id"]) if not job.client else job.client
                 job.date_issued = input["date_issued"] if not job.date_issued else job.date_issued
-                job.po = input["po"] if not job.po else job.po
-                job.sr = input["sr"] if not job.sr else job.sr
-                job.other_id = input["other_id"] if not job.other_id else job.other_id
-                job.location = Location.objects.get(id=input["location"]) if not job.location else job.location
-                job.building = input["building"] if not job.building else job.building
-                job.detailed_location = input["detailed_location"] if not job.detailed_location else job.detailed_location
-                job.requester = ClientContact.objects.get(id=input["requester"]) if not job.requester else job.requester
-                job.priority = input["priority"] if not job.priority else job.priority
-                job.special_instructions = input["special_instructions"] if not job.special_instructions else job.special_instructions
+                job.po = input.po if not job.po else job.po
+                job.sr = input.sr if not job.sr else job.sr
+                job.other_id = input.other_id if not job.other_id else job.other_id
+                job.location = Location.objects.get(id=input.location.id) if not job.location else job.location
+                job.building = input.building if not job.building else job.building
+                job.detailed_location = input.detailed_location if not job.detailed_location else job.detailed_location
+                job.requester = ClientContact.objects.get(id=input.requester.id) if not job.requester else job.requester
+                job.priority = input.priority if not job.priority else job.priority
+                job.special_instructions = input.special_instructions if not job.special_instructions else job.special_instructions
                 job.poc_name = input["poc_name"] if not job.poc_name else job.poc_name 
                 job.poc_phone = input["poc_phone"] if not job.poc_phone else job.poc_phone
                 job.poc_email = input["poc_email"] if not job.poc_email else job.poc_email
@@ -282,17 +281,17 @@ class CreateJob(graphene.Mutation):
             message.append("New Job Created")
 
             job = Job()
-            job.client = Client.objects.get(id=input["client"])
+            job.client = Client.objects.get(id=input.client.id)
             job.date_issued = input["date_issued"]
-            job.po = input["po"]
-            job.sr = input["sr"]
-            job.other_id = input["other_id"]
-            job.location = Location.objects.get(id=input["location"])
-            job.building = input["building"]
-            job.detailed_location = input["detailed_location"]
-            job.requester = ClientContact.objects.get(id=input["requester"])
-            job.priority = input["priority"]
-            job.special_instructions = input["special_instructions"]
+            job.po = input.po
+            job.sr = input.sr
+            job.other_id = input.other_id
+            job.location = Location.objects.get(id=input.location.id)
+            job.building = input.building
+            job.detailed_location = input.detailed_location
+            job.requester = ClientContact.objects.get(id=input.requester.id)
+            job.priority = input.priority
+            job.special_instructions = input.special_instructions
             job.poc_name = input["poc_name"]
             job.poc_phone = input["poc_phone"]
             job.poc_email = input["poc_email"]
@@ -523,7 +522,7 @@ class UpdateJob(graphene.Mutation):
 
                 if not header.estimateitemSet:
                     continue
-                
+
                 for item in header.estimateitemSet:
                     estimate_item = EstimateItem.objects.get(id=item.id)
                     estimate_item.header_id = estimate_header
@@ -552,9 +551,11 @@ class CreateEstimate(graphene.Mutation):
     @classmethod
     def mutate(self, root, info, job_id, estimate):
 
+        job = Job.objects.get(id=job_id)
+
         est = Estimate()
         est.quote_by = CustomUser.objects.get(id=estimate.quote_by.id)
-        est.job_id = Job.objects.get(id=job_id)
+        est.job_id = job
         est.name = estimate.name
         est.price = str(estimate.price)
         est.description = estimate.description
@@ -585,7 +586,7 @@ class CreateEstimate(graphene.Mutation):
                     estItem.gross = item.gross
                     estItem.save()
 
-
+        os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
 
         return self(success=True, estimate=est)
 

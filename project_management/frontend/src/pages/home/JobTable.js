@@ -15,7 +15,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 
 import CloseIcon from '@mui/icons-material/Close';
 import fuzzyFilter from '../../components/FuzzyFilter';
-import { InputField, PaginationControls, Tooltip } from '../../components/Components';
+import { InputField, PaginationControls, SnackBar, Tooltip } from '../../components/Components';
 import { fetchArchivedData } from './QueryData';
 import JobAllocator from './JobAllocator';
 import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
@@ -45,9 +45,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
     const [allData, setAllData] = useState(false);
 
     const [waiting, setWaiting] = useState(false);
-    const [snack, setSnack] = useState(false);
-    const [snackMessage, setSnackMessage] = useState('');
-    const [snackVariant, setSnackVariant] = useState('info');
+    const [snack, setSnack] = useState({active: false, variant: 'info', message: ''});
 
     useEffect(() => {
         setData(tableData);
@@ -475,9 +473,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                 return;
             } 
         }
-        setSnack(true);
-        setSnackVariant('error');
-        setSnackMessage('Job does not have a BSAFE Link')
+        setSnack({active: true, variant: 'error', message: 'Job does not have a BSAFE Link'})
     }
 
     const [openSettings, setOpenSettings] = useState(false);
@@ -646,17 +642,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                 : <></>} */}
             </Box>
 
-            <Portal>
-                {/* Notification Snackbar */}
-                <Snackbar
-                    anchorOrigin={{vertical: "bottom", horizontal:"center"}}
-                    open={snack}
-                    autoHideDuration={12000}
-                    onClose={(e) => setSnack(false)}
-                    >
-                    <Alert onClose={(e) => setSnack(false)} severity={snackVariant} sx={{width: '100%'}}>{snackMessage}</Alert>
-                </Snackbar>
-            </Portal>
+            <SnackBar snack={snack} setSnack={setSnack} />
 
             {/* Settings Dialog */}
             <Dialog open={openSettings} onClose={handleCloseSettings} maxWidth='lg'>
@@ -714,7 +700,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                 </DialogContent>
             </Dialog>
 
-            <JobAllocator open={openEmailOptions} onClose={() => setOpenEmailOptions(false)} table={table} rowSelection={rowSelection} users={users} snack={{setSnack, setSnackMessage, setSnackVariant}}/>
+            <JobAllocator open={openEmailOptions} onClose={() => setOpenEmailOptions(false)} table={table} rowSelection={rowSelection} users={users} setSnack={setSnack}/>
         </>
     
     );

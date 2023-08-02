@@ -15,63 +15,9 @@ import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { openInNewTab } from '../../components/Functions';
-import { jobAllQuery, jobQueryData } from './Queries';
+import { blankJob, jobAllQuery, jobQueryData } from './Queries';
 import SettingsDialog from './SettingsDialog';
 import { ClientType, ContactType, EmployeeType, InvoiceType, JobStageType, JobType, LocationType, SnackType } from '../../types/types';
-
-const blankJob: JobType = {
-    myobUid: '',
-    id: '',
-    po: '',
-    sr: '',
-    otherId: '',
-    client: {
-        id: '',
-    },
-    location: {
-        id: '',
-    },
-    requester: {
-        id: '',
-    },
-    building: '',
-    detailedLocation: '',
-    stage: '',
-    title: '',
-    priority: '',
-    dateIssued: '',
-    pocName: '',
-    pocPhone: '',
-    pocEmail: '',
-    altPocName: '',
-    altPocPhone: '',
-    altPocEmail: '',
-    description: '',
-    specialInstructions: '',
-    inspectionBy: {
-        id: '',
-    },
-    inspectionDate: '',
-    inspectionNotes: '',
-    scope: '',
-    workNotes: '',
-    siteManager: {
-        id: '',
-    },
-    commencementDate: '',
-    completionDate: '',
-    totalHours: 0,
-    bsafeLink: '',
-    overdueDate: '',
-    closeOutDate: '',
-    workType: '',
-    opportunityType: '',
-    cancelled: false,
-    cancelReason: '',
-    estimateSet: [],
-    billSet: [],
-    jobinvoiceSet: {invoice: []},
-}
 
 const JobPage = () => { 
     const axiosPrivate = useAxiosPrivate();
@@ -85,37 +31,15 @@ const JobPage = () => {
     
     const { auth } = useAuth();
     const { setApp } = useApp();
-    // const { estimateSet, setEstimateSet } = useEstimate();
-    // const [estimateSet, setEstimateSet] = useState();
 
     const [snack, setSnack] = useState<SnackType>({active: false, message:"", variant:'info'})
     const [job, setJob] = useState<JobType>(blankJob)
-
-    // const parseJobData = ({job_data}: {job_data: JobType}) => {
-    //     // Flatten objects for field values
-    //     job_data['location'] = job_data?.location?.id ?? "";
-    //     job_data['client'] = job_data?.client?.id ?? "";
-    //     job_data['requester'] = job_data?.requester?.id ?? "";
-    //     job_data['inspectionBy'] = job_data?.inspectionBy?.id ?? "";
-    //     job_data['siteManager'] = job_data?.siteManager?.id ?? "";
-
-    //     // Correct null date values
-    //     job_data['inspectionDate'] = job_data?.inspectionDate ?? "";
-    //     job_data['commencementDate'] = job_data?.commencementDate ?? "";
-    //     job_data['completionDate'] = job_data?.completionDate ?? "";
-    //     job_data['closeOutDate'] = job_data?.closeOutDate ?? "";
-    //     job_data['overdueDate'] = job_data?.overdueDate ?? "";
-
-    //     return job_data
-    // }
 
     const [employees, setEmployees] = useState<EmployeeType[]>([]);
     const [clients, setClients] = useState<ClientType[]>([]);
     const [clientContacts, setClientContacts] = useState<ContactType[]>([]);
     const [locations, setLocations] = useState<LocationType[]>([]);
     const [jobStages, setJobStages] = useState<JobStageType[]>([]);
-    // const [bills, setBills] = useState([]);
-    // const [initialEstimate, setInitialEstimate] = useState([]);
     const [invoice, setInvoice] = useState<InvoiceType>({number: '', dateCreated: '', dateIssued:'', datePaid:''});
     const [stage, setStage] = useState<string>('')
 
@@ -124,7 +48,6 @@ const JobPage = () => {
     const [updateRequired, setUpdateRequired] = useState(false);
     const [titleChange, setTitleChange] = useState(false);
     const [settingsDialog, setSettingsDialog] = useState(false);
-
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
@@ -152,12 +75,7 @@ const JobPage = () => {
             document.addEventListener('keydown', handleKeyPress)
         }
     }, [handleKeyPress]);
-
-    // // Update is required when data changes
-    // useEffect(() => {
-    //     setUpdateRequired(true);
-    // }, [job, estimateSet])
-
+    
     let id_po = "";
     let id_sr = "";
     let id_other = "";
@@ -223,10 +141,6 @@ const JobPage = () => {
                 }
 
                 setJob(job_data);
-                // const jobData = parseJobData(job_Data)
-                // setBills(job_data.billSet);
-                // setInitialEstimate(job_data.estimateSet);
-                // setEstimateSet(job_data.estimateSet);
                 
                 setInvoice(job_data?.jobinvoiceSet[0]?.invoice ?? false);
                 jobStages.map((values: JobStageType) => {
@@ -265,9 +179,6 @@ const JobPage = () => {
 
         // Remove unwanted values from job state for backend
         let {jobinvoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
-
-        console.log(jobInput);
-
         // Define formats before sending to backend
         job['dateIssued'] === "" ? jobInput['dateIssued'] = new Date(0).toISOString().split('T')[0] : null;
         job['inspectionDate'] === "" ? jobInput['inspectionDate'] = new Date(0).toISOString().split('T')[0] : null;
@@ -536,7 +447,7 @@ const JobPage = () => {
     }
 
     const handleSelection = (e: { target: { name?: any; value?: any; }; }) => {
-        setJob(prev => ({...prev, [e.target.name.id]: e.target.value}))
+        setJob(prev => ({...prev, [e.target.name]: {id: e.target.value}}))
         setUpdateRequired(true);
     }
  

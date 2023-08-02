@@ -1,3 +1,60 @@
+import { JobType } from "../../types/types"
+
+export const blankJob: JobType = {
+    myobUid: '',
+    id: '',
+    po: '',
+    sr: '',
+    otherId: '',
+    client: {
+        id: '',
+    },
+    location: {
+        id: '',
+    },
+    requester: {
+        id: '',
+    },
+    building: '',
+    detailedLocation: '',
+    stage: '',
+    title: '',
+    priority: '',
+    dateIssued: '',
+    pocName: '',
+    pocPhone: '',
+    pocEmail: '',
+    altPocName: '',
+    altPocPhone: '',
+    altPocEmail: '',
+    description: '',
+    specialInstructions: '',
+    inspectionBy: {
+        id: '',
+    },
+    inspectionDate: '',
+    inspectionNotes: '',
+    scope: '',
+    workNotes: '',
+    siteManager: {
+        id: '',
+    },
+    commencementDate: '',
+    completionDate: '',
+    totalHours: 0,
+    bsafeLink: '',
+    overdueDate: '',
+    closeOutDate: '',
+    workType: '',
+    opportunityType: '',
+    cancelled: false,
+    cancelReason: '',
+    estimateSet: [],
+    billSet: [],
+    jobinvoiceSet: {invoice: []},
+}
+
+
 export const jobQueryData = `
     myobUid
     id

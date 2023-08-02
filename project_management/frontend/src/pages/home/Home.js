@@ -164,7 +164,7 @@ const HomePage = () => {
         }
     }, [, refreshTableData]);
 
-    const handleDialogClose = (event, reason, created, updated) => {
+    const handleDialogClose = (event, reason, updated, created) => {
         if (reason !== 'backdropClick') {
             if(created && Object.keys(created).length !== 0){
                 if(updated) {

@@ -189,6 +189,7 @@ export interface ContactType {
     email: string
     client: ClientType
     region: RegionType
+    active: boolean
 }
 
 export interface LocationType {
@@ -200,6 +201,7 @@ export interface LocationType {
     state: string
     postcode: string
     region: RegionType
+    clientRef: string
 }
 
 export interface RegionType {
