@@ -25,8 +25,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [ 
     path('', include('frontend.urls')),
-    path('admin/', admin.site.urls),
     path('graphql', jwt_cookie(GraphQLView.as_view(graphiql=True, schema=schema))),
+    # path('api/', include('api.urls')),
+    # path('admin/', admin.site.urls),
     # path('myob/', include('myob.urls')),
-    path('api/', include('api.urls')),
 ] + static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)

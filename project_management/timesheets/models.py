@@ -2,7 +2,7 @@ from django.db import models
 
 # Create your models here.
 class Employee(models.Model):
-    PAY_BASIS_CHOICES = [("Salary", "Salary"), ("Hourly", "Hourly")]
+    PAY_BASIS_CHOICES = [("Salary", "Salary"), ("Hourly", "Hourly"),]
 
     id = models.AutoField(primary_key=True, unique=True)
     myob_uid = models.CharField(max_length=38, unique=True)
@@ -23,16 +23,15 @@ class PayrollCategory(models.Model):
     myob_uid = models.CharField(max_length=38, unique=True)
     name = models.CharField(max_length=255)
 
-    # pr_type = models.CharField(max_length=255, choices=PAYROLL_TYPES, default="wage")
-    # PAYROLL_TYPES = [
-    #     ("wage", "Wage"),
-    #     ("entitlement", "Entitlement"),
-    #     ("deduction", "Deduction"),
-    #     ("expense", "Expense"),
-    #     ("superannuation", "Superannuation"),
-    #     ("tax", "Tax"),
-    #     ("taxtable", "Tax Table"),
-    # ]
+class SyncSettings(models.Model):
+    id = models.AutoField(primary_key=True, unique=True)
+    jobs = models.DateField(auto_now=True)
+
+class MyobJob(models.Model):
+    id = models.AutoField(primary_key=True, unique=True)
+    myob_uid = models.CharField(max_length=38, unique=True)
+    number = models.CharField(max_length=32)
+    name = models.CharField(max_length=32)
 
 class WorkDay(models.Model):
     WORK_TYPE_CHOICES = [
@@ -49,7 +48,7 @@ class WorkDay(models.Model):
     date = models.DateField()
     hours = models.DecimalField(max_digits=4, default=0.00, decimal_places=2)
     work_type = models.CharField(max_length=32)
-    job = models.CharField(max_length=32, blank=True)
+    job = models.ForeignKey(MyobJob, null=True, on_delete=models.PROTECT)
     notes = models.CharField(max_length=255, blank=True)
     allow_overtime = models.BooleanField(default=False)
 

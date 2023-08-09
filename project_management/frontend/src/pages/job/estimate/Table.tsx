@@ -345,7 +345,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             columns: [
             {
                 id: 'lineControls',
-                size: 90,
+                size: 95,
                 cell: ({row}) => (
                     <>
                         {!job.estimateSet[accessorId].approvalDate && (

@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import PropTypes from 'prop-types';
 import { Box, Tab, Tabs } from '@mui/material';
 import EstimateTable from './Table';
 import EstimateOptionsOverview from './Overview';
 import NewEstimate from './NewEstimate';
-// import useEstimate from './useEstimate';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
-import { BillType, ClientType, EmployeeType, JobType, SnackType } from '../../../types/types';
+import { EmployeeType, JobType, SnackType } from '../../../types/types';
 
 interface TabPanelProps {
     children: React.ReactNode;

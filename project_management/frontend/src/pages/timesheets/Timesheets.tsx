@@ -106,7 +106,12 @@ const Timesheets = () => {
                                 date
                                 hours
                                 workType
-                                job
+                                job {
+                                    id
+                                    myobUid
+                                    name
+                                    number
+                                }
                                 notes
                                 allowOvertime
                             }
@@ -126,13 +131,6 @@ const Timesheets = () => {
                     let startDate = new Date(endDate)
                     startDate.setDate(startDate.getDate() - 13);
                     setDateFilter([startDate, new Date(endDate)]);
-
-                    // Ensure all timesheet workdays are sorted by date for the columns
-                    for(let i = 0; i < res.timesheets.length; i ++) {
-                        res.timesheets[i].workdaySet.sort((a: WorkdayType, b: WorkdayType) => {
-                            return a.date > b.date ? 1 : -1;
-                        })
-                    }
                 }
                 else {
                     // Reduce timesheets down to group by startDate

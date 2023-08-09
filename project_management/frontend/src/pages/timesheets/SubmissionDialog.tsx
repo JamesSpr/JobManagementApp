@@ -108,18 +108,26 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
                     submit: submitTimesheets(uid:$uid, timesheets:$timesheets, startDate: $startDate, endDate: $endDate) {
                         success
                         message
-                        debug
+                        submissionError
                         timesheets {
                             id
+                            startDate
+                            endDate
                             employee {
                                 name
+                                payBasis
                             }
                             workdaySet {
                                 id
                                 date
                                 hours
                                 workType
-                                job
+                                job {
+                                    id
+                                    myobUid
+                                    name
+                                    number
+                                }
                                 notes
                                 allowOvertime
                             }
@@ -138,16 +146,15 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
             const res = response?.data?.data?.submit;
 
             if(res.success) {
-                // Ensure all timesheet workdays are sorted by date for the columns
-                for(let i = 0; i < res.timesheets.length; i ++) {
-                    res.timesheets[i].workdaySet.sort((a: WorkdayType, b: WorkdayType) => {
-                        return a.date > b.date ? 1 : -1;
-                    })
-                }
                 setTimesheets(res.timesheets)
-                if(res.debug) {console.log(JSON.parse(res.debug))}
+                // if(res.debug) {console.log(JSON.parse(res.debug))}
+                if(res.submissionError) {
+                    setSnack({active: true, message:res.message, variant:'warning'})
+                }
+                else {
+                    setSnack({active: true, message:res.message, variant:'success'})
+                }
                 handleClose()
-                setSnack({active: true, message:res.message, variant:'success'})
             }
             else {
                 // Update if partial submission

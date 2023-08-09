@@ -111,6 +111,26 @@ class updateOrCreateMyobAccount(graphene.Mutation):
 
         return self(success=True, message="Account Updated", user=user)
 
+class DeleteMyobUser(graphene.Mutation):
+    class Arguments:
+        # user_id = graphene.String()
+        myob_uid = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, user_id, myob_uid):
+        myob_user = MyobUser.objects.get(id=myob_uid) if MyobUser.objects.filter(id=myob_uid).exists() else False
+        app_user = CustomUser.objects.get(id=user_id) if CustomUser.objects.filter(id=user_id).exists() else False
+        
+        app_user.myob_user = None
+        app_user.save()
+
+        if myob_user:
+            myob_user.delete()
+
+        return self(success=True)
+
 import inspect
 # Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
 def checkTokenAuth(uid):
@@ -2367,6 +2387,7 @@ class Mutation(graphene.ObjectType):
     myob_initial_connection = myobInitialConnection.Field()
     myob_get_access_token = myobGetAccessToken.Field()
     update_or_create_myob_account = updateOrCreateMyobAccount.Field()
+    delete_myob_user = DeleteMyobUser.Field()
     myob_refresh_token = myobRefreshToken.Field()
 
     myob_get_clients = myobGetClients.Field()
@@ -2404,6 +2425,7 @@ class Mutation(graphene.ObjectType):
     repair_sync = myobRepairJobSync.Field()
     convert_sale = convertSaleOrdertoInvoice.Field()
     myob_custom_function = myobCustomFunction.Field()
+
 
 # 4-1000 Construction Income - 8fa9fc62-8cb0-4cad-9f08-686ffa76c98b
 # 5-1000 Subcontractors - 6c8f22f3-39dc-41f0-9f59-0949f9ee0b76

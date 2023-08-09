@@ -4,7 +4,7 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import useAuth from "../auth/useAuth";
 import { JobType, SnackType } from "../../types/types";
 
-const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWaiting, setSnack}:{
+const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWaiting, setSnack, getJobName}:{
     open: boolean
     setOpen: React.Dispatch<React.SetStateAction<boolean>>
     job: JobType
@@ -13,6 +13,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWa
     waiting: any
     setWaiting: React.Dispatch<React.SetStateAction<any>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
+    getJobName: () => string
 }) => {
 
     const axiosPrivate = useAxiosPrivate();
@@ -209,6 +210,9 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWa
                             )}
                         </Box>
                         <p>ID: {job.id}</p>
+                        <Button onClick={() => navigator.clipboard.writeText(`[${getJobName()}](${window.location.href})`)}>
+                            Obsidian
+                        </Button>
                     </Grid>
                     :   <></>
                 }

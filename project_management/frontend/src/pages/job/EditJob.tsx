@@ -653,6 +653,7 @@ const JobPage = () => {
             waiting={waiting}
             setWaiting={setWaiting}
             setSnack={setSnack}
+            getJobName={getJobName}
         />
 
         <Portal>

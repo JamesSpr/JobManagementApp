@@ -40,7 +40,6 @@ const BillDialog = ({ open, onClose, job, setJob, contractors, setSnack }: {
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
 
-    const { id } = useParams();
     const [newBill, setNewBill] = useState<BillType>(emptyBillState);
     const [billAttchment, setBillAttachment] = useState<BillAttachmentType>({'data':'', 'name':''})
     const [createBill, setCreateBill] = useState(false);

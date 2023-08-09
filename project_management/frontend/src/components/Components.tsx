@@ -230,7 +230,7 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
 
     return (
         <>
-            <table style={{width: table.getTotalSize(), paddingBottom: '10px', margin: '0 auto'}}>
+            <table style={{width: table.getTotalSize(), paddingBottom: '10px', margin: '0 auto', maxWidth: '95%'}}>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>

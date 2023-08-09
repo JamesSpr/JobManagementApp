@@ -18,13 +18,14 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
 
     const axiosPrivate = useAxiosPrivate();
     const [dataChanged, setDataChanged] = useState(false);
+    const [showRealHours, setShowRealHours] = useState(false);
     const [entitlementLimitExceeded, setEntitlementLimitExeeded] = useState<string[]>([])
 
     const updateTimesheets = async () => {
         let newTimesheet = timesheets[parseInt(employeeEntitlements.id)]
         setTimesheets(old => old.map((row, index) => {
             if(index === parseInt(employeeEntitlements.id)) {
-                newTimesheet = {...old[employeeEntitlements.id], workdaySet: employeeEntitlements.work}
+                newTimesheet = {...old[employeeEntitlements.id], workdaySet: employeeEntitlements.work, employee: employeeEntitlements.employee}
                 return newTimesheet
             }
             return row;
@@ -107,6 +108,11 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
 
     }
 
+    const handlePayBasisChange = (e: { target: { value: React.SetStateAction<string> } }) => {
+        setEmployeeEntitlements((prev: any) => ({...prev, employee: {...prev.employee, payBasis: e.target.value}}))
+        setDataChanged(true);
+    }
+
     const handleSelection = (e: { target: { value: React.SetStateAction<string> } }, i: number) => {
         setEmployeeEntitlements((prev: any) => ({...prev, work: prev.work.map((row: any, index: number) => {
             if(index == i) {
@@ -134,11 +140,25 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
         >
         {open &&
             <Grid container spacing={1} textAlign={'center'} justifyContent={'center'}>
+                <Grid item xs={4} sm={2.5}>
+                    <h2>Employee Details</h2>
+                    <InputField type="select" label="Pay Basis" width={175} value={employeeEntitlements?.employee?.payBasis} onChange={handlePayBasisChange}>
+                        <option key={0} value={"Hourly"}>Hourly</option>
+                        <option key={1} value={"Salary"}>Salary</option>
+                    </InputField>
+                    {employeeEntitlements?.employee?.payBasis === "Salary" ? 
+                        <div style={{margin: '16px 0'}}>
+                            <input type="checkbox" id="hours" checked={showRealHours} onChange={() => setShowRealHours(!showRealHours)} /> 
+                            <label htmlFor="hours" style={{userSelect: 'none'}}>Show Inputted Hours</label>
+                        </div>
+                    :<></>}
+
+                </Grid>
                 {employeeEntitlements?.accrued?.map((ent: any) => {
                     const entitlementCalc = parseFloat(ent['Total']) - parseFloat(employeeEntitlements?.requested[ent['EntitlementCategory']['Name']])
 
                     return(
-                        <Grid item xs={6} sm={2.5}>
+                        <Grid item xs={4} sm={2.5}>
                             <h2>{ent['EntitlementCategory']['Name']}</h2>
                             <p><b>Remaining:</b> {ent['Total']}</p>
                             <p><b>Requested:</b> {employeeEntitlements?.requested[ent['EntitlementCategory']['Name']]}</p>
@@ -150,10 +170,19 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
                     <Divider variant='middle'/>
                 </Grid>
                 {employeeEntitlements?.work?.map((work: any, i: number) => {
+                    const date = new Date(work.date)
+                    const isWeekend = (date.getDay() === 6) || (date.getDay() === 0)
                     return (
                         <Grid item xs={12/2} sm={12/7}>
-                            <p><b>{new Date(work.date).toLocaleDateString('en-AU', { weekday: 'long', day: '2-digit', month: '2-digit', year:'numeric' })}</b></p>
-                            <InputField type='number' label='Hours' width={150} step={0.01} min={0} value={work.hours} onChange={e => handleChange(e, i)} />
+                            <p><b>{date.toLocaleDateString('en-AU', { weekday: 'long', day: '2-digit', month: '2-digit', year:'numeric' })}</b></p>
+                            <InputField type='number' label='Hours' width={150} step={0.01} min={0} 
+                                value={employeeEntitlements?.employee?.payBasis === "Hourly" ? work.hours 
+                                    : employeeEntitlements?.employee?.payBasis === "Salary" && (showRealHours || work.allowOvertime) ? work.hours 
+                                    : isWeekend ? work.hours
+                                    : "8.00"
+                                } 
+                                onChange={e => handleChange(e, i)} 
+                            />
                             <Tooltip title="Allow Overtime" arrow="right">
                                 <input type="checkbox" checked={work.allowOvertime} onChange={e => handleCheck(e, i)} style={{marginLeft: '10px'}}/>
                             </Tooltip>
@@ -163,6 +192,7 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
                                     <option key={i} value={key} style={{backgroundColor: entitlementLimitExceeded?.includes(key) ? "red" : "white"}}>{(workDayOptions as any)[key].name}</option>
                                 ))}
                             </InputField>
+                            <p>{work?.job?.number ?? "No Job Allocated"}</p>
                         </Grid>
                     )
                 })}
