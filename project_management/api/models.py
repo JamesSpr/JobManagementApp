@@ -40,7 +40,7 @@ ESTIMATE_ITEM_TYPE = [
 class Client(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     name = models.CharField(max_length=100)
-    display_name = models.CharField(max_length=50)
+    display_name = models.CharField(max_length=50, blank=True, null=True)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
 
     @classmethod

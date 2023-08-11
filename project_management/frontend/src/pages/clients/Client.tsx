@@ -167,8 +167,8 @@ const Client = () => {
             }).then((response) => {
                 const res = response?.data?.data;
                 // Flatten region ojects
-                const contacts = res?.clientContacts.map((obj: any) => ({...obj, region: obj?.region?.id}))
-                const locations = res?.locations.map((obj: any) => ({...obj, region: obj?.region?.id}))
+                const contacts = res?.clientContacts?.map((obj: any) => ({...obj, region: obj?.region?.id}))
+                const locations = res?.locations?.map((obj: any) => ({...obj, region: obj?.region?.id}))
                 setDetails(res?.clients[0]);
                 setContacts(contacts);
                 setLocations(locations);

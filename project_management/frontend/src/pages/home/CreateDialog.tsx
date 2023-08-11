@@ -26,7 +26,7 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
     const [checkJob, setCheckJob] = useState(false);
     const [duplicate, setDuplicate] = useState<JobType | null>(null);
     const [newJob, setNewJob] = useState<JobType>(blankJob)
-    const [createdJob, setCreatedJob] = useState<JobType>();
+    const [createdJob, setCreatedJob] = useState<JobType>(blankJob);
 
     useEffect(() => {
 
@@ -107,9 +107,10 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
     }
     const handleClose = (event?: any, reason?: string) => {
         if (reason !== 'backdropClick') {
-            if(createdJob) {
+            if(createdJob != blankJob) {
                 setNewJob(blankJob)
             }
+            setCreatedJob(blankJob)
             onClose(event, reason ?? '', updated, createdJob)
         }
     }
@@ -204,7 +205,7 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
             </DialogContent>
             <DialogActions sx={{justifyContent: "center"}}>
                 <Button variant="outlined" onClick={handleClose}>Close</Button>
-                {createdJob && Object.keys(createdJob).length > 0 ?   
+                {createdJob && createdJob !== blankJob?   
                     <Button variant="outlined" onClick={(e) => navigate('/job/edit/' + defineJobIdentifier(createdJob))}>Go To Job</Button>
                     :
                     <Box sx={{ m: 1, position: 'relative', display: 'inline-block' }}>

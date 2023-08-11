@@ -2205,25 +2205,27 @@ class generateInvoice(graphene.Mutation):
                         if "Approval" in files:
                             found['approval'] = True
                             paths['approval'] = os.path.join(estimate_folder, files)
-                        if "BGIS Estimate" in files:
+                        if "BGIS Estimate" in files and not found["estimate"]:
                             if files.endswith(".pdf"):
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files)
                             else:
                                 # Convert excel sheet to pdf
                                 xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                                books = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
-                                ws = books.Worksheets[0]
-                                ws.Visible = 1
+                                xlApp.Visible = True
+                                wb = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
+                                ws = wb.Sheets("Cost Breakdown")
                                 ws.ExportAsFixedFormat(0, estimate_folder + "/" + files.strip(".xlsm") + ".pdf")
-                                xlApp.ActiveWorkbook.Close()
+                                
+                                wb.Close(False)
+                                xlApp.Quit()
 
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files.strip(".xlsm") + ".pdf")
                 else:
                     found['approval'] = True
                     found['estimate'] = True
-
+                
             else:
                 ## Check the required invoice files that are stored in the relevant estimate folder
                 found = {"invoice": False, "purchaseOrder": False}

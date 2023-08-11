@@ -177,7 +177,6 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
     setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex, pagination}: TableType<T>) => {
 
     const [aRPI, skipARPI] = autoResetPageIndex === undefined || skipAutoResetPageIndex === undefined ? useSkipper() : [autoResetPageIndex, skipAutoResetPageIndex]
-    
 
     const table = useReactTable({
         data,
@@ -227,6 +226,56 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
     })
 
     useEffect(()=> {if(pagination){table.setPageSize(15)}},[])
+
+    if(!data || data.length === 0 ) {
+        return (
+            <table style={{width: table.getTotalSize(), paddingBottom: '10px', margin: '0 auto', maxWidth: '95%'}}>
+            <thead>
+                {table.getHeaderGroups().map(headerGroup => (
+                    <tr key={headerGroup.id}>
+                    {headerGroup.headers.map(header => {
+                        return (
+                            <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
+                                {header.isPlaceholder ? null : (
+                                <>
+                                    <div {...{
+                                        className: header.column.getCanSort()
+                                        ? 'cursor-pointer select-none'
+                                        : '',
+                                        onClick: header.column.getToggleSortingHandler(),
+                                    }}>
+                                        {flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext()
+                                        )}
+                                        {{
+                                            asc: ' ▲',
+                                            desc: ' ▼',
+                                        }[header.column.getIsSorted() as string] ?? null}
+                                    </div>
+                                    {header.column.getCanFilter() && columnFilters ? (
+                                        <div>
+                                            <TableFilter column={header.column} table={table} />
+                                        </div>
+                                    ) : null}
+                                </>
+                                )}
+                            </th>
+                        );
+                    })}
+                    </tr>
+                ))}
+            </thead>
+            <tbody>
+                <tr>
+                    <td colSpan={100}>
+                        <p>No Data</p>
+                    </td>
+                </tr>
+            </tbody>
+            </table>
+        )
+    }
 
     return (
         <>
@@ -348,7 +397,8 @@ export const FileUploadSection = ({onSubmit, waiting, id, type, button}: {onSubm
     </>
 )
 
-export const ProgressButton = ({name, waiting, onClick, centerButton=false, buttonVariant}: {name: string, waiting?: {}, onClick?: () => {}, centerButton?: boolean, buttonVariant?: "text" | "outlined" | "contained" }) => {
+export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=false, buttonVariant}: 
+{name: string, waiting?: boolean, onClick?: () => void, disabled?: boolean, centerButton?: boolean, buttonVariant?: "text" | "outlined" | "contained" }) => {
     let buttonStyle = "progressButton";
     if(centerButton) {
         buttonStyle += " centered";
@@ -356,7 +406,7 @@ export const ProgressButton = ({name, waiting, onClick, centerButton=false, butt
 
     return (
         <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
-            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick}>{name}</Button>
+            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled : waiting}>{name}</Button>
             {waiting && (
                 <CircularProgress size={24} 
                     sx={{

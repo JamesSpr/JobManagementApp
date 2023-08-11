@@ -211,7 +211,7 @@ const ClientList = () => {
 
             {/* Footer AppBar with Controls */}
             <Footer>
-                <ProgressButton name="Create New Client" waiting={createWait} />
+                <ProgressButton name="Create New Client" waiting={createWait} onClick={() => setCreateClient(true)} />
             </Footer>
     
              {/* Create Client Contact Dialog Box */}

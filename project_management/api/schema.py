@@ -748,7 +748,9 @@ class UpdateClient(graphene.Mutation):
             return self(success=False, message="Client Not Found")
         
         client = Client.objects.get(id=details.id)
-        client.display_name = details.display_name
+        if details.name: client.name = details.name
+        if details.display_name: client.display_name = details.display_name
+        if details.myob_uid: client.myob_uid = details.myob_uid
         client.save()
 
         return self(success=True, message="Client Successfully Updated", client=client)
@@ -960,6 +962,7 @@ class CreateContact(graphene.Mutation):
         client_contact.last_name = contact.last_name.strip()
         client_contact.position = contact.position.strip()
         client_contact.client = Client.objects.get(name=client)
+        client_contact.active = True
 
         # Format Phone Input
         contact.phone = contact.phone.replace("+61", "0").strip() 
@@ -1286,6 +1289,9 @@ class UpdateInvoice(graphene.Mutation):
         if invoice.date_paid: inv.date_paid = invoice.date_paid
         if invoice.myob_uid: inv.myob_uid = invoice.myob_uid
         inv.save()
+
+        jobinv = JobInvoice.objects.get(invoice=inv)
+        jobinv.job.save() ## save job to update stage
 
         return self(success=True)
 

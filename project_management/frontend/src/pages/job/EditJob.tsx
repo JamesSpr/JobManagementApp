@@ -140,7 +140,7 @@ const JobPage = () => {
 
                 setJob(job_data);
                 
-                setInvoice(job_data?.jobinvoiceSet[0]?.invoice ?? false);
+                setInvoice(job_data?.jobinvoiceSet[0]?.invoice ?? null);
                 jobStages.map((values: JobStageType) => {
                     if(job_data.stage === values['name']){
                         setStage(values['description'])
@@ -581,14 +581,14 @@ const JobPage = () => {
                 <Grid item xs={12} >
                     <Typography variant='body1'>Accounts Details</Typography>
                 </Grid>
-                <Grid item xs={12}  style={{paddingTop: '0px'}}> {/* Accounts */}
-                    <Tooltip title={updateRequired ? "Please save changes" : job.closeOutDate === "" ? "Job Requires Close Out" : ""}>
-                        <Box style={{position: 'relative', display: 'block', padding: '5px'}}>
+                <Grid item xs={12} style={{paddingTop: '0px'}}> {/* Accounts */}
+                    <Tooltip title={updateRequired ? "Please save changes" : job.closeOutDate === null ? "Job Requires Close Out" : ""}>
+                        <Box style={{position: 'relative', display: 'flex', justifyContent: 'center', padding: '5px'}}>
                             <Button variant="outlined" 
                                 style={{margin: '5px'}}
-                                onClick={(() => handleCreateInvoice())}
-                                disabled={invoice !== null|| job.closeOutDate === "" || updateRequired}
-                                >
+                                onClick={handleCreateInvoice}
+                                disabled={invoice !== null || job.closeOutDate === null || updateRequired}
+                            >
                                 Create Invoice
                             </Button>
                             {waiting.invoice && (

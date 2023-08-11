@@ -1,10 +1,9 @@
 // Imports
 import React, { useState, useEffect }  from 'react';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
-import axios from 'axios';
 import JobTable from './JobTable';
 import CreateDialog from './CreateDialog';
-import { Button, Grid, Box, AppBar, Toolbar, setRef} from '@mui/material';
+import { Button, Grid, Box, AppBar, Toolbar} from '@mui/material';
 import { fetchData, fetchResources } from './QueryData';
 
 
@@ -79,7 +78,6 @@ const HomePage = () => {
                 data: fetchData(120, next),
             }).then((response) => {
                 const res = response?.data?.data?.jobPage;
-                // console.log("res", response);
                 if(res) {
                     next = res.pageInfo.startCursor;
                     nextPage = res.pageInfo.hasPreviousPage;
