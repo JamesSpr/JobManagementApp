@@ -121,10 +121,10 @@ const JobPage = () => {
                     const nameA = a.firstName.toUpperCase(); 
                     const nameB = b.firstName.toUpperCase();
                     if (nameA > nameB) {
-                    return 1;
+                        return 1;
                     }
                     if (nameA < nameB) {
-                    return -1;
+                        return -1;
                     }
                 
                     // names must be equal
@@ -146,7 +146,7 @@ const JobPage = () => {
                         setStage(values['description'])
                     }
                 })
-
+                
                 setLoading(false);
                 setUpdateRequired(false);
                 setTitleChange(true);

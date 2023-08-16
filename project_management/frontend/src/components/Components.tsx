@@ -423,8 +423,6 @@ export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=f
     )
 }
 
-
-
 export const Tooltip = ({children, title, arrow}: {children?: ReactNode, title?: string, arrow?: string}) => {
     if(title !== "") {
         return(

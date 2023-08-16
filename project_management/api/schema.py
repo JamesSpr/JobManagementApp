@@ -535,6 +535,8 @@ class UpdateJob(graphene.Mutation):
                     estimate_item.gross = item.gross
                     estimate_item.save()
 
+        job.save() # Save again to update the status
+
         if message == "":
             message = "Job Updated Successfully"
 

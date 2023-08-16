@@ -152,6 +152,7 @@ class Job(models.Model):
     alt_poc_email = models.EmailField(blank=True)
     date_issued = models.DateField(blank=True, null=True)
     inspection_date = models.DateField(blank=True, null=True)
+    inspection_time = models.TimeField(blank=True, null=True)
     inspection_by = models.ForeignKey(CustomUser, on_delete=PROTECT, blank=True, null=True, related_name="inspector")
     inspection_notes = models.TextField(max_length=500, blank=True)    
     commencement_date = models.DateField(blank=True, null=True)

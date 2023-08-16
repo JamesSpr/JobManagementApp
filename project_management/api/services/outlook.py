@@ -10,10 +10,11 @@ import environ
 import requests
 import json
 from ..models import Job, Estimate, Invoice, JobInvoice
-from ..schema import InvoiceUpdateInput
+from ..schema import InvoiceUpdateInput, JobType
 sys.path.append("...")
 from myob.models import MyobUser
 from myob.schema import checkTokenAuth
+from accounts.models import CustomUser
 
 EMAIL_STYLE="""<body style="font-size:11pt; font-family:'Calibri'; color: rgb(0,0,0)">"""
 
@@ -27,19 +28,47 @@ class CheckJobExists(graphene.Mutation):
 
     exists = graphene.Boolean()
     name = graphene.String()
+    job = graphene.Field(JobType)
 
     @classmethod
     def mutate(self, root, info, job):
         print(job)
         if Job.objects.filter(po = job):
-            return self(exists=True, name=str(Job.objects.get(po = job)))
+            found_job = Job.objects.get(po = job)
+            return self(exists=True, name=str(found_job), job=found_job)
         if Job.objects.filter(sr = job):
-            return self(exists=True, name=str(Job.objects.get(sr = job)))
+            found_job = Job.objects.get(sr = job)
+            return self(exists=True, name=str(found_job), job=found_job)
         if Job.objects.filter(other_id = job):
-            return self(exists=True, name=str(Job.objects.get(other_id = job)))
+            found_job = Job.objects.get(other_id = job)
+            return self(exists=True, name=str(found_job), job=found_job)
 
         return self(exists=False, name='')
 
+class UpdateInspectionDetails(graphene.Mutation):
+    class Arguments:
+        jobId = graphene.String()
+        updatedBy = graphene.String()
+        inspectionDate = graphene.String()
+        inspectionTime = graphene.String()
+        inspectionNotes = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    def mutate(self, root, info, jobId, updatedBy, inspectionDate, inspectionTime, inspectionNotes):
+        if not Job.objects.filter(id=jobId).exists():
+            return self(Success=False)
+        
+        job = Job.objects.get(id=jobId)
+
+        job.inspection_by = CustomUser.objects.get(email=updatedBy)
+        job.inspection_date = inspectionDate
+        job.inspection_time = inspectionTime
+        job.inspection_notes = inspectionNotes
+        job.save()
+
+        return self(success=True)
 
 class QuoteType(DjangoObjectType):
     class Meta:
@@ -385,4 +414,5 @@ class Mutation(graphene.ObjectType):
     get_quotes = GetQuotes.Field()
     process_approval = ProcessApproval.Field()
     process_invoices = ProcessInvoices.Field()
+    update_inspection_details = UpdateInspectionDetails.Field()
     # send_invoices = SendInvoices.Field()

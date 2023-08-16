@@ -261,7 +261,7 @@ class myobCreateClient(graphene.Mutation):
             checkTokenAuth(uid)
             user = MyobUser.objects.get(id=uid)
 
-            name = urllib.parse.quote(name)
+            # html_name = urllib.parse.quote(name)
             client_filter = "" if name == "" else f"?$filter=CompanyName eq'{name}'"
             link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer{client_filter}"
             headers = {                

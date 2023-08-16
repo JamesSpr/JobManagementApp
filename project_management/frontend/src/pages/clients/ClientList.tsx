@@ -237,7 +237,7 @@ const ClientList = () => {
                 </DialogContent>
             </Dialog>
     
-            <SnackBar {...{snack, setSnack}} />
+            <SnackBar snack={snack} setSnack={setSnack} />
         </>
     )
 
