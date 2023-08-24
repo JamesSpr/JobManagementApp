@@ -1,4 +1,5 @@
-export const fetchData = (number, next="") => (JSON.stringify({
+export const fetchData = (number: number, next: String) => (
+    JSON.stringify({
     query:`{ 
         jobPage (last:${number}, before:"${next}") {
             pageInfo {

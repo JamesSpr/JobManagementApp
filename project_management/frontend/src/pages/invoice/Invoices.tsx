@@ -4,7 +4,7 @@ import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPag
     getFacetedRowModel,getFacetedUniqueValues,getFacetedMinMaxValues,
     Column, Table, ColumnDef, ColumnFiltersState  } from '@tanstack/react-table'
 import { Grid, Box, AppBar, Toolbar, CircularProgress, Button } from '@mui/material';
-import fuzzyFilter from '../../components/FuzzyFilter';
+import { fuzzyFilter } from '../../components/TableHelpers';
 import DebouncedInput from '../../components/DebouncedInput';
 import useAuth from '../auth/useAuth';
 import RemittanceAdvice from './RemittanceAdvice'

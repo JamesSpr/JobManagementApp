@@ -10,7 +10,7 @@ import { ClientType, ContactType, JobType, LocationType, SnackType } from '../..
 
 const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations }: {
     open: boolean,
-    onClose: (event: {}, reason: string, updated: boolean, createdJob?: JobType) => void,
+    onClose: (event: any, reason: string, updated: boolean, createdJob?: JobType) => void,
     jobs: JobType[],
     clients: ClientType[],
     clientContacts: ContactType[],

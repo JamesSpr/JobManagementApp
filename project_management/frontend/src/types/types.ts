@@ -13,15 +13,9 @@ export interface JobType {
     po: string
     sr: string
     otherId: string
-    client: {
-        id: string
-    }
-    requester: {
-        id: string
-    }
-    location: {
-        id: string
-    }
+    client: ClientType
+    requester: ContactType
+    location: LocationType
     building: string
     title: string
     priority: string
@@ -52,9 +46,9 @@ export interface JobType {
         id: string
     }
     estimateSet: EstimateType[]
-    jobinvoiceSet: {
-        invoice: InvoiceType[]
-    }
+    jobinvoiceSet: [{
+        invoice: InvoiceType
+    }]
     billSet: BillType[]
     opportunityType: string
     bsafeLink: string

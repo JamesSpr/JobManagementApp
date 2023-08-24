@@ -1,34 +1,39 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, 
-    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender } from '@tanstack/react-table'
+    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, 
+    ColumnDef, Column, ColumnFiltersState, Table as ReactTable, Row, Cell } from '@tanstack/react-table'
 
 import DebouncedInput from "../../components/DebouncedInput";
 
-import { Button, CircularProgress, Box, Portal, Snackbar, Alert, Grid, IconButton, FormGroup, FormControlLabel, Checkbox, 
+import { Button, CircularProgress, Box, Grid, IconButton, FormGroup, FormControlLabel, Checkbox, 
     Dialog, DialogTitle, DialogContent, Typography } from '@mui/material';
-import useAuth from '../auth/useAuth';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 import CloseIcon from '@mui/icons-material/Close';
-import fuzzyFilter from '../../components/FuzzyFilter';
-import { InputField, PaginationControls, SnackBar, Tooltip } from '../../components/Components';
+import { fuzzyFilter, dateSort, inDateRange } from '../../components/TableHelpers';
+import { SnackBar, Table, Tooltip } from '../../components/Components';
 import { fetchArchivedData } from './QueryData';
 import JobAllocator from './JobAllocator';
 import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
+import { EmployeeType, JobStageType, JobType, SnackType } from '../../types/types';
 
-const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
+const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
+    tableData: JobType[],
+    setRefreshTableData: React.Dispatch<React.SetStateAction<boolean>>,
+    users: EmployeeType[],
+    jobStages: JobStageType[]
+}) => {
 
-    const { auth } = useAuth();
     const axiosPrivate = useAxiosPrivate();
     const navigate = useNavigate();
     
-    const [data, setData] = useState([]);
+    const [data, setData] = useState<JobType[]>([]);
     const [rowSelection, setRowSelection] = useState({});
-    const [columnFilters, setColumnFilters] = useState([]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [globalFilter, setGlobalFilter] = useState('');
     const [sorting, setSorting] = useState([{"id": "id", "desc": true}]);
     const [columnVisibility, setColumnVisibility] = useState({
@@ -45,7 +50,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
     const [allData, setAllData] = useState(false);
 
     const [waiting, setWaiting] = useState(false);
-    const [snack, setSnack] = useState({active: false, variant: 'info', message: ''});
+    const [snack, setSnack] = useState<SnackType>({active: false, variant: 'info', message: ''});
 
     useEffect(() => {
         setData(tableData);
@@ -87,7 +92,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                     }
 
                     setAllData(true);
-                    setData(prev => ([...prev, ...res?.edges?.map(job => job.node)]));
+                    setData(prev => ([...prev, ...res?.edges?.map((job: { node: JobType; }) => job.node)]));
                 }
             }).catch((err) => {
                 // todo: handle error
@@ -96,47 +101,21 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
         }
     }
 
-    const inDateRange = (row, columnId, filterValue) => {
-        let [min, max] = filterValue
-        min = isNaN(Date.parse(min)) ? 0 : Date.parse(min)
-        max = isNaN(Date.parse(max)) ? 9007199254740992 : Date.parse(max)
-        
-        const rowValue = row.getValue(columnId) ? Date.parse(row.getValue(columnId).split('/').reverse().join('-')) : 0
-        return rowValue >= min && rowValue <= max
-    }
-
-    const dateSort = (rowA, rowB, columnId) => {
-        
-        let valA = new Date(0)
-        let valB = new Date(0)
-
-        if(rowA.getValue(columnId) !== "") {
-            var dateAParts = rowA.getValue(columnId).split("/");
-            valA = new Date(+dateAParts[2], dateAParts[1] - 1, +dateAParts[0]); 
-        }
-
-        if(rowB.getValue(columnId) !== "") {
-            var dateBParts = rowB.getValue(columnId).split("/");
-            valB = new Date(+dateBParts[2], dateBParts[1] - 1, +dateBParts[0]);
-        }
-
-        return valA < valB ? 1 : -1;
-    }
-
-    const footerCounts = (column) => {
+    const footerCounts = (column: Column<JobType>) => {
         return column.getFacetedUniqueValues().size
     }
-    const footerSum = (props) => {
-        let sum = 0.0
 
-        for(var i = 0; i < props.table.getFilteredRowModel().flatRows.length; i++) {
-            sum += Number(props.table.getFilteredRowModel().flatRows[i].getValue(props.column.id))
+    const footerSum = (table: ReactTable<JobType>, column: Column<JobType>) => {
+        let sum = 0.0
+      
+        for(var i = 0; i < table.getFilteredRowModel().flatRows.length; i++) {
+            sum += Number(table.getFilteredRowModel().flatRows[i].getValue(column.id))
         }
         return sum
     }
 
     // Table Columns
-    const columns = useMemo(() => [
+    const columns = useMemo<ColumnDef<JobType>[]>(() => [
         {
             accessorKey: 'id',
             header: () => 'ID',
@@ -166,7 +145,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
             id: 'jobNumber',
             header: () => 'Job Number',
             cell: info => info.getValue(),
-            footer: props => footerCounts(props.column),
+            footer: ({column}) => footerCounts(column),
             size: 120,
         },
         {
@@ -217,7 +196,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
             filterFn: inDateRange,
             sortingFn: dateSort,
             // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na", //{day: '2-digit', month: 'short', year:'numeric'}
-            footer: props => footerCounts(props.column),
+            footer: ({column}) => footerCounts(column),
             size: 100,
         },
         {
@@ -252,7 +231,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
             accessorKey: 'stage',
             header: () => 'Status',
             cell: info => (
-                <Tooltip title={(table.options.meta).getStageDescription(info.getValue())}>{info.getValue()}</Tooltip>
+                <Tooltip title={table?.options?.meta?.getStageDescription?.(info.getValue() as string) ?? ""}>{info.getValue() as string}</Tooltip>
             ), 
             footer: '',
             size: 80,
@@ -278,8 +257,8 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
             })]?.price ?? "" : "",
             id: 'quotedPrice',
             header: () => 'Quoted Price',
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
-            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 140,
         },
         {
@@ -317,8 +296,8 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
             })]?.price ?? "" : "",
             id: 'approvedPrice',
             header: () => 'Approved Price',
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
-            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 140,
         },
         {
@@ -354,21 +333,21 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
             size: 120,
         },
         {
-            accessorFn: row => (row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount), 0) / 1.1) ?? 0,
+            accessorFn: row => (row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) / 1.1) ?? 0,
             id: 'billSum',
             header: () => 'Bill Amount',
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
-            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 120,
         },
         {
             accessorFn: row => ['FIN', 'INV', 'PAY', 'BSA'].includes(row?.stage) ? 
-                (row?.estimateSet[row?.estimateSet?.findIndex(element => element?.approvalDate)]?.price ?? 0) - ((row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount), 0) / 1.1) ?? 0) 
+                (row?.estimateSet[row?.estimateSet?.findIndex(element => element?.approvalDate)]?.price ?? 0) - ((row?.billSet?.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) / 1.1) ?? 0) 
                 : 0,
             id: 'grossProfit',
             header: () => 'Gross Profit',
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue()),
-            footer: props => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(props)),
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 120,
         },
         {
@@ -409,10 +388,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
         },
     ], []);
 
-    const defaultColumn = {
-        width: "auto",
-    }
-
     const table = useReactTable({
         data,
         columns,
@@ -437,24 +412,18 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
         globalFilterFn: fuzzyFilter,
         enableMultiRowSelection: false,  
         enableMultiSort: true,
-        meta: {
-            getStageDescription: (value) => (
-                jobStages.map(stage => (
-                    stage['name'] === value ? stage['description'] : ""
-                ))
-            )
-        },
-        // sortingFns: {
-        //     dateSort: (rowA, rowB, columnId) => {
-        //         const valA = new Date(rowA.getValue(columnId).value) 
-        //         const valB = new Date(rowB.getValue(columnId).value) 
-        //         return valA < valB ? 1 : -1;
-        //     },
-        // },
-        // debugTable: true,
-        // debugHeaders: true,
-        // debugColumns: true,
+        
     });
+
+    const tableMeta = {
+        getStageDescription: (value: string) => {
+            let description = ""
+            jobStages.map(stage => (
+                stage['name'] === value ? description = stage['description'] : ""
+            ))
+            return description;
+        }
+    }
 
     const handleOpenSelected = () => {
         for(var row in rowSelection) {
@@ -487,12 +456,11 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
 
     return (
         <>
-            <Grid container spacing={1}>
-                <Grid item xs={12}>
-                    <span style={{maxWidth: table.getTotalSize()}}>
+            <Grid container spacing={1} direction={'column'} alignItems="center">
+                <Grid item xs={12} style={{width: table.getTotalSize()}} textAlign={'center'}>
                         <DebouncedInput 
                             value={globalFilter ?? ''}
-                            onChange={value => setGlobalFilter(String(value))}
+                            onChange={(value: any) => setGlobalFilter(String(value))}
                             placeholder="Search All Jobs"
                             style={{display:'inline-block', width: '80%', maxWidth: '1200px'}}
                         />
@@ -504,143 +472,153 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                         <IconButton onClick={() => setRefreshTableData(true)}>
                             <RefreshIcon />
                         </IconButton>
-                    </span>
                 </Grid>
                 {data && data.length > 0 ? 
                     <Grid item xs={12} style={{overflowX: 'auto', overflowY: 'hidden'}}>
-                        <table style={{width: table.getTotalSize(0), paddingBottom: '10px'}}>
-                            <thead>
-                                {table.getHeaderGroups().map(headerGroup => (
-                                    <tr key={headerGroup.id}>
-                                    {headerGroup.headers.map(header => {
-                                        return (
-                                            <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
-                                                {header.isPlaceholder ? null : (
-                                                <>
-                                                    <div {...{
-                                                        className: header.column.getCanSort()
-                                                        ? 'cursor-pointer select-none'
-                                                        : '',
-                                                        onClick: header.column.getToggleSortingHandler(),
-                                                    }}>
-                                                        {flexRender(
-                                                            header.column.columnDef.header,
-                                                            header.getContext()
-                                                        )}
-                                                        {{
-                                                            asc: ' ▲',
-                                                            desc: ' ▼',
-                                                        }[header.column.getIsSorted()] ?? null}
-                                                    </div>
-                                                    {header.column.getCanFilter() ? (
-                                                        <div>
-                                                            <Filter column={header.column} table={table} />
-                                                        </div>
-                                                    ) : null}
-                                                </>
-                                                )}
-                                            </th>
-                                        );
-                                    })}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody>
-                                {table.getRowModel().rows.map(row => {
-                                    return (
-                                        <tr key={row.id} 
-                                            className={row.getIsSelected() ? "selectedRow" : ""}
-                                            style={{height: '20px'}}
-                                            onClick={(e) => {row.toggleSelected()}}
-                                            onDoubleClick = {(e) => {navigate("/job/edit/" + defineJobIdentifier(row.original));}}
-                                        >
-                                            {row.getVisibleCells().map(cell => {
-                                                return (
-                                                    <td key={cell.id} style={{padding: '4px 5px'}}>
-                                                    {
-                                                        flexRender(
-                                                            cell.column.columnDef.cell,
-                                                            cell.getContext()
-                                                        )
-                                                    }
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                            {showFooter &&
-                            <tfoot>
-                                {table.getFooterGroups().map(footerGroup => (
-                                    <tr key={footerGroup.id}>
-                                    {footerGroup.headers.map(header => (
-                                        <th key={header.id}>
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.footer,
-                                                header.getContext()
-                                            )}
-                                        </th>
-                                    ))}
-                                    </tr>
-                                ))}
-                            </tfoot>}
-                        </table>
-                        <PaginationControls table={table} />
+                        <Table data={data} columns={columns} tableMeta={tableMeta} 
+                            rowOnDoubleClick={(row) => navigate("/job/edit/" + defineJobIdentifier(row.original))}
+                            rowSelection={rowSelection} setRowSelection={setRowSelection}
+                            columnFilters={columnFilters} setColumnFilters={setColumnFilters}
+                            globalFilter={globalFilter} setGlobalFilter={setGlobalFilter}
+                            sorting={sorting} setSorting={setSorting}
+                            columnVisibility={columnVisibility}
+                            pagination={true}
+                            showFooter={showFooter}
+                        />
+                         {/* <table style={{width: table.getTotalSize(0), paddingBottom: '10px'}}>
+                             <thead>
+                                 {table.getHeaderGroups().map(headerGroup => (
+                                     <tr key={headerGroup.id}>
+                                     {headerGroup.headers.map(header => {
+                                         return (
+                                             <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
+                                                 {header.isPlaceholder ? null : (
+                                                 <>
+                                                     <div {...{
+                                                         className: header.column.getCanSort()
+                                                         ? 'cursor-pointer select-none'
+                                                         : '',
+                                                         onClick: header.column.getToggleSortingHandler(),
+                                                     }}>
+                                                         {flexRender(
+                                                             header.column.columnDef.header,
+                                                             header.getContext()
+                                                         )}
+                                                         {{
+                                                             asc: ' ▲',
+                                                             desc: ' ▼',
+                                                         }[header.column.getIsSorted()] ?? null}
+                                                     </div>
+                                                     {header.column.getCanFilter() ? (
+                                                         <div>
+                                                             <Filter column={header.column} table={table} />
+                                                         </div>
+                                                     ) : null}
+                                                 </>
+                                                 )}
+                                             </th>
+                                         );
+                                     })}
+                                     </tr>
+                                 ))}
+                             </thead>
+                             <tbody>
+                                 {table.getRowModel().rows.map(row => {
+                                     return (
+                                         <tr key={row.id} 
+                                             className={row.getIsSelected() ? "selectedRow" : ""}
+                                             style={{height: '20px'}}
+                                             onClick={(e) => {row.toggleSelected()}}
+                                             onDoubleClick = {(e) => {navigate("/job/edit/" + defineJobIdentifier(row.original));}}
+                                         >
+                                             {row.getVisibleCells().map(cell => {
+                                                 return (
+                                                     <td key={cell.id} style={{padding: '4px 5px'}}>
+                                                     {
+                                                         flexRender(
+                                                             cell.column.columnDef.cell,
+                                                             cell.getContext()
+                                                         )
+                                                     }
+                                                     </td>
+                                                 );
+                                             })}
+                                         </tr>
+                                     );
+                                 })}
+                             </tbody>
+                             {showFooter &&
+                             <tfoot>
+                                 {table.getFooterGroups().map(footerGroup => (
+                                     <tr key={footerGroup.id}>
+                                     {footerGroup.headers.map(header => (
+                                         <th key={header.id}>
+                                         {header.isPlaceholder
+                                             ? null
+                                             : flexRender(
+                                                 header.column.columnDef.footer,
+                                                 header.getContext()
+                                             )}
+                                         </th>
+                                     ))}
+                                     </tr>
+                                 ))}
+                             </tfoot>}
+                         </table>
+                         <PaginationControls table={table} /> */}
                     </Grid>
                 
                 : 
-                    <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingBottom:'10px'}} align="center">
+                    <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingBottom:'10px'}}>
                         <CircularProgress />
                     </Box>
             }
 
-            </Grid>
-
-            <Box>
-                <Button
-                    variant='outlined'
-                    onClick={() => setSorting([{"id": "id", "desc": true}])}
-                >
-                    Reset Sort
-                </Button>
-
-                <Button 
-                    variant="outlined"
-                    sx={{margin: '0px 5px 0px 5px'}}
-                    onClick={() => setOpenEmailOptions(true)}
-                >
-                    Email Job Details
-                </Button>
-
-                <Button 
-                    variant="outlined"
-                    sx={{margin: '0px 5px 0px 5px'}}
-                    onClick={handleOpenSelectedBSAFE}
-                >
-                    Open BSAFE
-                </Button>
-
-                <Button
-                    variant='outlined'
-                    onClick={handleOpenSelected}
-                >
-                    Open Selected Jobs
-                </Button>
-                
-                {/* {auth?.user.role === "DEV" ? 
-                <Box>
+                <Grid item xs={12}>
                     <Button
                         variant='outlined'
-                        onClick={() => setColumnFilters([{"id": "location", "value": ["RAAF Richmond", "RAAF Glenbrook"]}])}
+                        onClick={() => setSorting([{"id": "id", "desc": true}])}
                     >
-                        Filter Test
+                        Reset Sort
                     </Button>
-                </Box>
-                : <></>} */}
-            </Box>
+
+                    <Button 
+                        variant="outlined"
+                        sx={{margin: '0px 5px 0px 5px'}}
+                        onClick={() => setOpenEmailOptions(true)}
+                    >
+                        Email Job Details
+                    </Button>
+
+                    <Button 
+                        variant="outlined"
+                        sx={{margin: '0px 5px 0px 5px'}}
+                        onClick={handleOpenSelectedBSAFE}
+                    >
+                        Open BSAFE
+                    </Button>
+
+                    <Button
+                        variant='outlined'
+                        onClick={handleOpenSelected}
+                    >
+                        Open Selected Jobs
+                    </Button>
+                    
+                    {/* {auth?.user.role === "DEV" ? 
+                    <Box>
+                        <Button
+                            variant='outlined'
+                            onClick={() => setColumnFilters([{"id": "location", "value": ["RAAF Richmond", "RAAF Glenbrook"]}])}
+                        >
+                            Filter Test
+                        </Button>
+                    </Box>
+                    : <></>} */}
+                </Grid>
+            
+
+            </Grid>
 
             <SnackBar snack={snack} setSnack={setSnack} />
 
@@ -685,7 +663,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
                             </Grid>
                         </Grid>
                     </FormGroup>
-                    <Typography variant='p1'>Visible Columns</Typography>
+                    <p>Visible Columns</p>
                     <FormGroup sx={{marginTop: '5px'}}>
                         <Grid container>
                             {
@@ -706,104 +684,95 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}) => {
     );
 }
 
-const Filter = ({column, table, ...props}) => {
-    const firstValue = table.getPreFilteredRowModel().flatRows[0]?.getValue(column.id)
+// const Filter = ({column, table, ...props}) => {
+//     const firstValue = table.getPreFilteredRowModel().flatRows[0]?.getValue(column.id)
 
-    const columnFilterValue = column.getFilterValue()
+//     const columnFilterValue = column.getFilterValue()
     
-    const sortedUniqueValues = useMemo(
-      () =>
-        typeof firstValue === 'number'
-          ? [] 
-          : Array.from(column.getFacetedUniqueValues().keys()).sort(),
-      [column.getFacetedUniqueValues()]
-    )
+//     const sortedUniqueValues = useMemo(
+//       () =>
+//         typeof firstValue === 'number'
+//           ? [] 
+//           : Array.from(column.getFacetedUniqueValues().keys()).sort(),
+//       [column.getFacetedUniqueValues()]
+//     )
   
-    const dateColumns = [
-        'dateIssued',
-        'overdueDate',
-        'inspectionDate',
-        'commencementDate',
-        'completionDate',
-        'closeOutDate',
-    ]
-    
-    if(column?.columnDef?.sortingFn?.name === "dateSort") { //dateColumns.includes(column.id)
-        return (
-            <>
-                <DebouncedInput
-                    type="date"
-                    value={(columnFilterValue)?.[0] ?? ''}
-                    onChange={value => {
-                        column.setFilterValue((old) => [value, old?.[1]])
-                    }}
-                />
-                <DebouncedInput
-                    type="date"
-                    value={(columnFilterValue)?.[1] ?? ''}
-                    onChange={value => {
-                        column.setFilterValue((old) => [old?.[0], value])
-                    }}
-                />
-            </>
-          )
-    }
+//     if(column?.columnDef?.sortingFn?.name === "dateSort") { //dateColumns.includes(column.id)
+//         return (
+//             <>
+//                 <DebouncedInput
+//                     type="date"
+//                     value={(columnFilterValue)?.[0] ?? ''}
+//                     onChange={(value: any) => {
+//                         column.setFilterValue((old: any[]) => [value, old?.[1]])
+//                     }}
+//                 />
+//                 <DebouncedInput
+//                     type="date"
+//                     value={(columnFilterValue)?.[1] ?? ''}
+//                     onChange={(value: any) => {
+//                         column.setFilterValue((old: any[]) => [old?.[0], value])
+//                     }}
+//                 />
+//             </>
+//           )
+//     }
 
-    if(typeof firstValue === 'number') {
-        return (
-            <>
-                <DebouncedInput
-                    type="number"
-                    min={Number(column.getFacetedMinMaxValues()?.[0] ?? '')}
-                    max={Number(column.getFacetedMinMaxValues()?.[1] ?? '')}
-                    value={(columnFilterValue)?.[0] ?? ''}
-                    onChange={value =>
-                        column.setFilterValue((old) => [value, old?.[1]])
-                    }
-                    placeholder={`Min ${
-                        column.getFacetedMinMaxValues()?.[0]
-                        ? `(${column.getFacetedMinMaxValues()?.[0]})`
-                        : ''
-                    }`}
-                />
+//     if(typeof firstValue === 'number') {
+//         return (
+//             <>
+//                 <DebouncedInput
+//                     type="number"
+//                     min={Number(column.getFacetedMinMaxValues()?.[0] ?? '')}
+//                     max={Number(column.getFacetedMinMaxValues()?.[1] ?? '')}
+//                     value={(columnFilterValue)?.[0] ?? ''}
+//                     onChange={(value: any) =>
+//                         column.setFilterValue((old: any[]) => [value, old?.[1]])
+//                     }
+//                     placeholder={`Min ${
+//                         column.getFacetedMinMaxValues()?.[0]
+//                         ? `(${column.getFacetedMinMaxValues()?.[0]})`
+//                         : ''
+//                     }`}
+//                 />
 
-                <DebouncedInput
-                    type="number"
-                    min={Number(column.getFacetedMinMaxValues()?.[0] ?? '')}
-                    max={Number(column.getFacetedMinMaxValues()?.[1] ?? '')}
-                    value={(columnFilterValue)?.[1] ?? ''}
-                    onChange={value =>
-                        column.setFilterValue((old) => [old?.[0], value])
-                    }
-                    placeholder={`Max ${
-                        column.getFacetedMinMaxValues()?.[1]
-                        ? `(${column.getFacetedMinMaxValues()?.[1]})`
-                        : ''
-                    }`}
-                />
-            </>
-        )
-    }
+//                 <DebouncedInput
+//                     type="number"
+//                     min={Number(column.getFacetedMinMaxValues()?.[0] ?? '')}
+//                     max={Number(column.getFacetedMinMaxValues()?.[1] ?? '')}
+//                     value={(columnFilterValue)?.[1] ?? ''}
+//                     onChange={(value: any) =>
+//                         column.setFilterValue((old: any[]) => [old?.[0], value])
+//                     }
+//                     placeholder={`Max ${
+//                         column.getFacetedMinMaxValues()?.[1]
+//                         ? `(${column.getFacetedMinMaxValues()?.[1]})`
+//                         : ''
+//                     }`}
+//                 />
+//             </>
+//         )
+//     }
 
-    return (
-      <>
-        <datalist id={column.id + 'list'}>
-          {sortedUniqueValues.slice(0, 5000).map((value, index) => (
-            <option value={value?.name ?? value} key={index + '_' + value} />
-          ))}
-        </datalist>
+//     return (
+//       <>
+//         <datalist id={column.id + 'list'}>
+//           {sortedUniqueValues.slice(0, 5000).map((value, index) => (
+//             <option value={value?.name ?? value} key={index + '_' + value} />
+//           ))}
+//         </datalist>
 
-        <DebouncedInput
-          type="text"
-          value={(columnFilterValue ?? '')}
-          onChange={value => column.setFilterValue(value)}
-          placeholder={`${column.getFacetedUniqueValues().size} Items`}
-          list={column?.id?.name ?? column.id + 'list'}
-          {...props}
-        />
-      </>
-    )
-  }
+//         <DebouncedInput
+//           type="text"
+//           value={(columnFilterValue ?? '')}
+//           onChange={(value: any) => column.setFilterValue(value)}
+//           placeholder={`${column.getFacetedUniqueValues().size} Items`}
+//           list={column?.id?.name ?? column.id + 'list'}
+//           {...props}
+//         />
+//       </>
+//     )
+//   }
 
 
 export default JobTable;

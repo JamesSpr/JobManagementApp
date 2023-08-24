@@ -2,14 +2,15 @@
 import React, { FC, ReactNode, useState, useEffect, useRef } from "react"; 
 import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table as ReactTable, RowData, ColumnDef,
-    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState } from '@tanstack/react-table'
+    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState, ColumnFiltersState } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType, RegionType, SnackBarType } from "../types/types";
-import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
+import { fuzzyFilter, TableFilter } from "./TableHelpers";
 
 declare module '@tanstack/react-table' {
     interface TableMeta<TData extends RowData> {
-      updateData: (rowIndex: string, columnId: keyof TData, value: any, row: Row<TData>) => void
+      updateData?: (rowIndex: string, columnId: keyof TData, value: any, row: Row<TData>) => void
       getRegions?: () => RegionType[]
+      getStageDescription?: (value: string) => string
     }
 }
 
@@ -142,18 +143,20 @@ interface TableType <T extends object> {
     columns: ColumnDef<T>[]
     rowSelection?: {}
     setRowSelection?: React.Dispatch<React.SetStateAction<any>>
-    columnFilters?: []
+    columnFilters?: ColumnFiltersState
     setColumnFilters?: React.Dispatch<React.SetStateAction<any>>
-    globalFilter?: ''
-    setGlobalFilter?: React.Dispatch<React.SetStateAction<any>>
+    globalFilter?: {}
+    setGlobalFilter?: React.Dispatch<React.SetStateAction<string>>
     sorting?: SortingState
     setSorting?: React.Dispatch<React.SetStateAction<any>>
+    columnVisibility?: {}
     rowStyles?: {}
     rowOnDoubleClick?: (row: any) => void
     autoResetPageIndex?: boolean
     skipAutoResetPageIndex?: () => void
     setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>>
     pagination?: boolean
+    showFooter?: boolean
 }
 
 export const useSkipper = () => {
@@ -172,23 +175,27 @@ export const useSkipper = () => {
     return [shouldSkip, skip] as const
 }
 
-export const Table = <T extends object>({data, setData, tableMeta, columns, columnFilters, 
-    setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles, rowOnDoubleClick,
-    setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex, pagination}: TableType<T>) => {
+export const Table = <T extends object>({data, setData, tableMeta, columns, columnFilters, setColumnFilters, 
+    rowSelection, setRowSelection, columnVisibility,
+    globalFilter, setGlobalFilter, sorting, setSorting, rowOnDoubleClick,
+    setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex, pagination, showFooter
+}: TableType<T>) => {
 
     const [aRPI, skipARPI] = autoResetPageIndex === undefined || skipAutoResetPageIndex === undefined ? useSkipper() : [autoResetPageIndex, skipAutoResetPageIndex]
 
     const table = useReactTable({
         data,
         columns,
-        // Pipeline
         state: {
+            rowSelection,
             columnFilters,
             globalFilter,
             sorting,
+            columnVisibility,
         },
         onColumnFiltersChange: setColumnFilters,
         onGlobalFilterChange: setGlobalFilter,
+        onRowSelectionChange: setRowSelection,
         onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
@@ -199,6 +206,7 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
         getFacetedMinMaxValues: getFacetedMinMaxValues(),
         globalFilterFn: fuzzyFilter,
         autoResetPageIndex: aRPI,
+        enableMultiRowSelection: false,  
         enableMultiSort: true,
         // Provide our updateData function to our table meta
         meta: tableMeta ?? {
@@ -320,7 +328,9 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
                     {table.getRowModel().rows.map(row => {
                         return (
                             <tr key={row.id} 
+                                className={row.getIsSelected() ? "selectedRow" : ""}
                                 style={{height: '20px'}}
+                                onClick={(e) => {row.toggleSelected()}}
                                 onDoubleClick={rowOnDoubleClick ? () => rowOnDoubleClick(row) : () => null}
                             >
                                 {row.getVisibleCells().map(cell => {
@@ -339,6 +349,23 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
                         );
                     })}
                 </tbody>
+                {showFooter &&
+                    <tfoot>
+                        {table.getFooterGroups().map(footerGroup => (
+                            <tr key={footerGroup.id}>
+                            {footerGroup.headers.map(header => (
+                                <th key={header.id}>
+                                {header.isPlaceholder
+                                    ? null
+                                    : flexRender(
+                                        header.column.columnDef.footer,
+                                        header.getContext()
+                                    )}
+                                </th>
+                            ))}
+                            </tr>
+                        ))}
+                    </tfoot>}
             </table>
             
             { pagination && <PaginationControls table={table} /> }

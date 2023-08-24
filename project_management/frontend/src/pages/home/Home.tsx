@@ -5,25 +5,23 @@ import JobTable from './JobTable';
 import CreateDialog from './CreateDialog';
 import { Button, Grid, Box, AppBar, Toolbar} from '@mui/material';
 import { fetchData, fetchResources } from './QueryData';
+import { ClientType, ContactType, EmployeeType, JobStageType, JobType, LocationType } from '../../types/types';
 
 
 const HomePage = () => {
     const axiosPrivate = useAxiosPrivate();
 
     // Data
-    const [jobs, setJobs] = useState([]);
-    const [users, setUsers] = useState([])
+    const [jobs, setJobs] = useState<JobType[]>([]);
+    const [users, setUsers] = useState<EmployeeType[]>([])
 
     // Textfield Select Options
-    const [clients, setClients] = useState([]);
-    const [clientContacts, setClientContacts] = useState([]);
-    const [locations, setLocations] = useState([]);
-    const [jobStages, setJobStages] = useState([]);
+    const [clients, setClients] = useState<ClientType[]>([]);
+    const [clientContacts, setClientContacts] = useState<ContactType[]>([]);
+    const [locations, setLocations] = useState<LocationType[]>([]);
+    const [jobStages, setJobStages] = useState<JobStageType[]>([]);
 
-    
     const [refreshTableData, setRefreshTableData] = useState(false)
-    
-    // Dialog States
     const [createJob, setCreateJob] = useState(false);
 
     useEffect(() => {
@@ -42,9 +40,9 @@ const HomePage = () => {
                 setLocations(res?.locations);
                 setClients(res?.clients)
                 setClientContacts(res?.clientContacts)
-                const users = res?.users.edges.map((user) => {return user.node})
+                const users = res?.users.edges.map((user: { node: any; }) => {return user.node})
                 // Sort users
-                users.sort((a, b) => {
+                users.sort((a: { firstName: string; }, b: { firstName: string; }) => {
                     // ignore case
                     const nameA = a.firstName.toUpperCase(); 
                     const nameB = b.firstName.toUpperCase();
@@ -99,7 +97,7 @@ const HomePage = () => {
                         }
                     }
     
-                    setJobs(prev => [...prev, ...res?.edges.map(job => job.node)]);
+                    setJobs(prev => [...prev, ...res?.edges.map((job: { node: any; }) => job.node)]);
                 } else {
                     nextPage = false; 
                 }
@@ -140,7 +138,7 @@ const HomePage = () => {
                             }
                         }
     
-                        setJobs(prev => [...prev, ...res?.edges.map(job => job.node)]);
+                        setJobs(prev => [...prev, ...res?.edges.map((job: { node: any; }) => job.node)]);
                     } else {
                         nextPage = false; 
                     }
@@ -162,30 +160,33 @@ const HomePage = () => {
         }
     }, [, refreshTableData]);
 
-    const handleDialogClose = (event, reason, updated, created) => {
+    const handleDialogClose = ({event, reason, updated, createdJob}: {
+        event: any, reason: string, updated: boolean, createdJob: JobType
+    }) => {
         if (reason !== 'backdropClick') {
-            if(created && Object.keys(created).length !== 0){
+            if(createdJob && Object.keys(createdJob).length !== 0){
                 if(updated) {
                     // Update the job table row with the new data
                     setJobs(old => old.map((row, index) => {
-                        if(row.id === created.id) {
-                            return created
+                        if(row.id === createdJob.id) {
+                            return createdJob
                         }
                         return row
                     }))
                 }
                 else {
-                    setJobs(prev => [...prev, created])
+                    setJobs(prev => [...prev, createdJob])
                 }
             }
             setCreateJob(false);
         }
     }
+
     return (
     <>
         <Grid>
-            <Grid item xs={12} align="center">
-                <JobTable setRefreshTableData={setRefreshTableData} tableData={jobs} users={users} jobStages={jobStages}/>
+            <Grid item xs={12} direction={'column'} alignItems={'center'}>
+                <JobTable tableData={jobs} setRefreshTableData={setRefreshTableData} users={users} jobStages={jobStages}/>
             </Grid>
         </Grid>
 

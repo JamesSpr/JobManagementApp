@@ -8,7 +8,7 @@ import { Chart as ChartJS, LinearScale, CategoryScale, BarElement, PointElement,
 import { Chart } from 'react-chartjs-2';
 import { Button, Grid } from "@mui/material";
 import { InputField, PaginationControls } from "../../components/Components";
-import { TableFilter } from "../../components/FuzzyFilter";
+import { TableFilter } from "../../components/TableHelpers";
 import { HTMLElementChange } from "../../types/types";
 
 interface chartData {

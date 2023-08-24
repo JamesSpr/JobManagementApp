@@ -7,7 +7,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import PersonIcon from '@mui/icons-material/Person';
 import { usePrompt } from '../../hooks/promptBlocker';
 import AddIcon from '@mui/icons-material/Add';
-import fuzzyFilter from '../../components/FuzzyFilter';
+import { fuzzyFilter } from '../../components/TableHelpers';
 import DebouncedInput from '../../components/DebouncedInput';
 import useAuth from '../auth/useAuth';
 import { Footer, InputField, PaginationControls, SnackBar, useSkipper } from '../../components/Components';

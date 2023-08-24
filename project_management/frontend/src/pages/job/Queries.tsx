@@ -1,4 +1,49 @@
-import { JobType } from "../../types/types"
+import { ClientType, ContactType, InvoiceType, JobType, LocationType, RegionType } from "../../types/types"
+
+export const blankClient: ClientType = {
+    id: '',
+    name: '',
+    displayName: ''
+}
+
+export const blankRegion: RegionType = {
+    id: '',
+    shortName: '',
+    name: '',
+    email: '',
+    billToAddress: '',
+}
+
+export const blankContact: ContactType = {
+    id: '',
+    firstName: '',
+    lastName: '',
+    position: '',
+    phone: '',
+    email: '',
+    client: blankClient,
+    region: blankRegion,
+    active: true
+}
+
+export const blankLocation: LocationType = {
+    id: '',
+    client: blankClient,
+    name: '',
+    address: '',
+    locality: '',
+    state: '',
+    postcode: '',
+    region: blankRegion,
+    clientRef: '',
+}
+
+export const blankInvoice: InvoiceType = {
+    number: '',
+    dateCreated: '',
+    dateIssued: '',
+    datePaid: '',
+}
 
 export const blankJob: JobType = {
     myobUid: '',
@@ -6,15 +51,9 @@ export const blankJob: JobType = {
     po: '',
     sr: '',
     otherId: '',
-    client: {
-        id: '',
-    },
-    location: {
-        id: '',
-    },
-    requester: {
-        id: '',
-    },
+    client: blankClient,
+    location: blankLocation,
+    requester: blankContact,
     building: '',
     detailedLocation: '',
     stage: '',
@@ -51,9 +90,8 @@ export const blankJob: JobType = {
     cancelReason: '',
     estimateSet: [],
     billSet: [],
-    jobinvoiceSet: {invoice: []},
+    jobinvoiceSet: [{invoice: blankInvoice}],
 }
-
 
 export const jobQueryData = `
     myobUid

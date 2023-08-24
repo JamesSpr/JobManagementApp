@@ -7,7 +7,7 @@ import axios from 'axios';
 import { InputField, ProgressButton, SnackBar } from "../../components/Components";
 import JobAllocator from "../home/JobAllocator";
 import { defineJobIdentifier, openInNewTab } from "../../components/Functions";
-import { blankJob, jobQueryData } from "./Queries";
+import { blankClient, blankJob, blankLocation, jobQueryData } from "./Queries";
 import { ClientType, ContactType, EmployeeType, JobType, LocationType, SnackType } from "../../types/types";
 
 const CreateJob = () => {
@@ -109,8 +109,8 @@ const CreateJob = () => {
                     setNewJob(prev => ({...prev,
                         po: inputObj.po,
                         sr: inputObj.sr,
-                        client: {id: res.clients.find((item: ClientType) => item.name === inputObj.client)?.id ?? ''},
-                        location: {id: res.locations.find((item: LocationType) => item.clientRef === inputObj.location)?.id ?? ''},
+                        client: {...blankClient, id: res.clients.find((item: ClientType) => item.name === inputObj.client)?.id ?? ''},
+                        location: {...blankLocation, id: res.locations.find((item: LocationType) => item.clientRef === inputObj.location)?.id ?? ''},
                         building: inputObj.building,
                         priority: inputObj.priority,
                         dateIssued: inputObj.dateIssued ?? null,
