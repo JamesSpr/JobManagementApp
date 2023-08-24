@@ -1,8 +1,9 @@
 import os
 import shutil
 import re
-import datetime
+import pytz
 import graphene
+from datetime import datetime
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene import relay
@@ -96,7 +97,38 @@ class JobType(DjangoObjectType):
     @classmethod
     def resolve_estimate_set(self, instance, info):
         return Estimate.objects.filter(job_id=instance.id).order_by('approval_date', 'id')
+    
+    date_issued = graphene.String()
+    overdue_date = graphene.String()
+    inspection_date = graphene.String()
+    commencement_date = graphene.String()
+    completion_date = graphene.String()
+    close_out_date = graphene.String()
 
+    def resolve_date_issued(self, info):
+        if not self.date_issued:
+            return None
+        return self.date_issued.strftime('%Y-%m-%dT%H:%M')
+    def resolve_overdue_date(self, info):
+        if not self.overdue_date:
+            return None
+        return self.overdue_date.strftime('%Y-%m-%dT%H:%M')
+    def resolve_inspection_date(self, info):
+        if not self.inspection_date:
+            return None
+        return self.inspection_date.strftime('%Y-%m-%dT%H:%M')
+    def resolve_commencement_date(self, info):
+        if not self.commencement_date:
+            return None
+        return self.commencement_date.strftime('%Y-%m-%dT%H:%M')
+    def resolve_completion_date(self, info):
+        if not self.completion_date:
+            return None
+        return self.completion_date.strftime('%Y-%m-%dT%H:%M')
+    def resolve_close_out_date(self, info):
+        if not self.close_out_date:
+            return None
+        return self.close_out_date.strftime('%Y-%m-%dT%H:%M')
     
 class EstimateLineInput(graphene.InputObjectType):
     id = graphene.String()
@@ -140,7 +172,7 @@ class JobInput(graphene.InputObjectType):
     detailed_location = graphene.String()
     title = graphene.String()
     priority = graphene.String()
-    date_issued = graphene.Date()
+    date_issued = graphene.DateTime()
     requester = graphene.Field(IDInput)
     poc_name = graphene.String()
     poc_phone = graphene.String()
@@ -151,17 +183,17 @@ class JobInput(graphene.InputObjectType):
     description = graphene.String()
     special_instructions = graphene.String()
     inspection_by = graphene.Field(IDInput)
-    inspection_date = graphene.Date()
+    inspection_date = graphene.DateTime()
     inspection_notes = graphene.String()
     scope = graphene.String()
     work_notes = graphene.String()
     site_manager = graphene.Field(IDInput)
-    commencement_date = graphene.Date()
-    completion_date = graphene.Date()
+    commencement_date = graphene.DateTime()
+    completion_date = graphene.DateTime()
     total_hours = graphene.Float()
     bsafe_link = graphene.String()
-    overdue_date = graphene.Date()
-    close_out_date = graphene.Date()
+    overdue_date = graphene.DateTime()
+    close_out_date = graphene.DateTime()
     work_type = graphene.String()
     opportunity_type = graphene.String()
     cancelled = graphene.Boolean()
@@ -243,7 +275,7 @@ class CreateJob(graphene.Mutation):
                 old_folder_name = str(job)
                 ## Only update fields that are empty
                 # job.client = Client.objects.get(id=input["client_id"]) if not job.client else job.client
-                job.date_issued = input["date_issued"] if not job.date_issued else job.date_issued
+                job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC) if not job.date_issued else job.date_issued
                 job.po = input.po if not job.po else job.po
                 job.sr = input.sr if not job.sr else job.sr
                 job.other_id = input.other_id if not job.other_id else job.other_id
@@ -261,8 +293,8 @@ class CreateJob(graphene.Mutation):
                 job.alt_poc_email = input["alt_poc_email"] if not job.alt_poc_email else job.alt_poc_email
                 job.title = input["title"] if not job.title else job.title
                 job.description = input["description"] if not job.description else job.description
-                job.overdue_date = job.overdue_date if job.overdue_date else None if input["overdue_date"] == datetime.date(1970, 1, 1) else input["overdue_date"] 
-                job.bsafe_link = input["bsafe_link"] if not job.bsafe_link else job.bsafe_link
+                job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC) if not input["overdue_date"] == None else job.overdue_date
+                job.bsafe_link = input["bsafe_link"] if not input["bsafe_link"] == "" else job.bsafe_link
                 job.save()
 
                 # Check folder name and rename if they're different
@@ -282,7 +314,7 @@ class CreateJob(graphene.Mutation):
 
             job = Job()
             job.client = Client.objects.get(id=input.client.id)
-            job.date_issued = input["date_issued"]
+            job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC)
             job.po = input.po
             job.sr = input.sr
             job.other_id = input.other_id
@@ -300,7 +332,7 @@ class CreateJob(graphene.Mutation):
             job.alt_poc_email = input["alt_poc_email"]
             job.title = input["title"]
             job.description = input["description"]
-            job.overdue_date = None if input["overdue_date"] == datetime.date(1970, 1, 1) else input["overdue_date"]
+            job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC)
             job.bsafe_link = input["bsafe_link"]
             job.save()
 
@@ -432,7 +464,7 @@ class UpdateJob(graphene.Mutation):
         job = Job.objects.get(id=input['id'])
         old_folder_name = str(job)
         job.client = None if input.client == None else Client.objects.get(id=input.client.id)
-        job.date_issued = None if input['date_issued'] == datetime.date(1970, 1, 1) else input['date_issued']
+        job.date_issued = None if input['date_issued'] == None else input['date_issued'].replace(tzinfo=pytz.UTC)
         job.po = input['po']
         job.sr = input['sr']
         job.other_id = input['other_id']
@@ -451,16 +483,16 @@ class UpdateJob(graphene.Mutation):
         job.title = input['title']
         job.description = input['description']
         job.inspection_by = None if input.inspection_by == None else CustomUser.objects.get(id=input.inspection_by.id)
-        job.inspection_date = None if input['inspection_date'] == datetime.date(1970, 1, 1) else input['inspection_date']
+        job.inspection_date = None if input['inspection_date'] == None else input['inspection_date'].replace(tzinfo=pytz.UTC)
         job.inspection_notes = input['inspection_notes']
         job.scope = input['scope']
         job.site_manager = None if input.site_manager == None else CustomUser.objects.get(id=input.site_manager.id)
-        job.commencement_date = None if input['commencement_date'] == datetime.date(1970, 1, 1) else input['commencement_date']
-        job.completion_date = None if input['completion_date'] == datetime.date(1970, 1, 1) else input['completion_date']
+        job.commencement_date = None if input['commencement_date'] == None else input['commencement_date'].replace(tzinfo=pytz.UTC)
+        job.completion_date = None if input['completion_date'] == None else input['completion_date'].replace(tzinfo=pytz.UTC)
         job.total_hours = input['total_hours']
         job.work_notes = input['work_notes']
-        job.overdue_date = None if input['overdue_date'] == datetime.date(1970, 1, 1) else input['overdue_date']
-        job.close_out_date = None if input['close_out_date'] == datetime.date(1970, 1, 1) else input['close_out_date']
+        job.overdue_date = None if input['overdue_date'] == None else input['overdue_date'].replace(tzinfo=pytz.UTC)
+        job.close_out_date = None if input['close_out_date'] == None else input['close_out_date'].replace(tzinfo=pytz.UTC)
         job.work_type = input['work_type']
         job.opportunity_type = input['opportunity_type']
         job.cancelled = input['cancelled']

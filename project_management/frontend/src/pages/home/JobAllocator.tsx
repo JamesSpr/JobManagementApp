@@ -4,7 +4,6 @@ import { EmployeeType, SnackType, User } from "../../types/types";
 import { RowModel, Table } from "@tanstack/react-table";
 import CloseIcon from '@mui/icons-material/Close';
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
-import { ProgressButton } from "../../components/Components";
 
 interface JobAllocatorProps {
     open: boolean,
@@ -24,7 +23,6 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
 
     const axiosPrivate = useAxiosPrivate();
     const [emailRecipients, setEmailRecipients] = useState<emailRecipientType>({})
-    const [waiting, setWaiting] = useState(false);
 
     const handleJobAllocation = async () => {
         // Gather all the selected rows
@@ -50,7 +48,6 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
             }
         })
 
-        setWaiting(true);
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
@@ -71,7 +68,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
         }),
         }).then((response) => {
             const res = response?.data?.data?.allocate_job_email;
-            setWaiting(false);
+            
 
             if(res.success) {
                 setSnack({active: true, variant:'success', message:res.message})
@@ -123,12 +120,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                             }
                         </Grid>
                     </FormGroup>
-                    <ProgressButton 
-                        disabled={Object.values(emailRecipients).every(value => value === false) || waiting} 
-                        onClick={handleJobAllocation}
-                        name="Send Email"
-                        waiting={waiting}
-                    />
+                    <Button disabled={Object.values(emailRecipients).every(value => value === false)} onClick={handleJobAllocation}>Send Email</Button>
                 </DialogContent>
                     
             </Dialog>

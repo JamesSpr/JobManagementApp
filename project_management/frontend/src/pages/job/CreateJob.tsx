@@ -113,8 +113,8 @@ const CreateJob = () => {
                         location: {id: res.locations.find((item: LocationType) => item.clientRef === inputObj.location)?.id ?? ''},
                         building: inputObj.building,
                         priority: inputObj.priority,
-                        dateIssued: new Date(+inputObj.dateIssued.split("-")[2], inputObj.dateIssued.split("-")[1] - 1, ++inputObj.dateIssued.split("-")[0]).toISOString().split('T')[0] ?? null,
-                        overdueDate: new Date(+inputObj.overdueDate.split("-")[2], inputObj.overdueDate.split("-")[1] - 1, ++inputObj.overdueDate.split("-")[0]).toISOString().split('T')[0] ?? null,
+                        dateIssued: inputObj.dateIssued ?? null,
+                        overdueDate: inputObj.overdueDate ?? null,
                         bsafeLink: inputObj.bsafeLink.replace(new RegExp("_", 'g'), "/") ?? "" ,
                     }));
                     setCheckJob(true);
@@ -138,12 +138,11 @@ const CreateJob = () => {
         // Remove unwanted values from job state for backend
         let {jobinvoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = newJob
         // Define formats before sending to backend
-        newJob['dateIssued'] === "" ? jobInput['dateIssued'] = new Date(0).toISOString().split('T')[0] : null;
-        newJob['inspectionDate'] === "" ? jobInput['inspectionDate'] = new Date(0).toISOString().split('T')[0] : null;
-        newJob['commencementDate'] === "" ? jobInput['commencementDate'] = new Date(0).toISOString().split('T')[0] : null;
-        newJob['completionDate'] === "" ? jobInput['completionDate'] = new Date(0).toISOString().split('T')[0] : null;
-        newJob['overdueDate'] === "" ? jobInput['overdueDate'] = new Date(0).toISOString().split('T')[0] : null;
-        newJob['closeOutDate'] === "" ? jobInput['closeOutDate'] = new Date(0).toISOString().split('T')[0] : null;
+        newJob['inspectionDate'] === "" ? jobInput['inspectionDate'] = null : null;
+        newJob['commencementDate'] === "" ? jobInput['commencementDate'] = null : null;
+        newJob['completionDate'] === "" ? jobInput['completionDate'] = null : null;
+        newJob['overdueDate'] === "" ? jobInput['overdueDate'] = null : null;
+        newJob['closeOutDate'] === "" ? jobInput['closeOutDate'] = null : null;
         newJob['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
 
         await axiosPrivate({
@@ -211,8 +210,14 @@ const CreateJob = () => {
         setNewJob(prev => ({...prev, [e.target.name]: e.target.value}))
     }
 
+    const handleDateInput = (e: { target: { name?: any; value?: any; }; }) => {
+        const val = e.target.value === "" ? null : e.target.value
+        setNewJob(prev => ({...prev, [e.target.name]: val}))
+    }
+
     const handleSelection = (e: { target: { name: any; value: any; }; }) => {
-        setNewJob(prev => ({...prev, [e.target.name]: {id: e.target.value}}))
+        const val = e.target.value === "" ? null : {id: e.target.value}
+        setNewJob(prev => ({...prev, [e.target.name]: val}))
     }
 
     return (
@@ -232,8 +237,8 @@ const CreateJob = () => {
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))} 
                     </InputField>
-                    <InputField name="dateIssued" type="date" label="Date Issued" value={newJob.dateIssued} onChange={handleInput} max="9999-12-31"/>
-                    <InputField name="overdueDate" type="date" label="Overdue Date" value={newJob.overdueDate} onChange={handleInput} max="9999-12-31"/>
+                    <InputField name="dateIssued" type="datetime-local" max='9999-12-31T23:59:59' label="Date Issued" value={newJob.dateIssued} onChange={handleDateInput} />
+                    <InputField name="overdueDate" type="datetime-local" max='9999-12-31T23:59:59' label="Overdue Date" value={newJob.overdueDate} onChange={handleDateInput} />
                 </Grid>
                 {/* newJob Details */}
                 <Grid item xs={12}> 

@@ -3,6 +3,7 @@ from graphene_django import DjangoObjectType
 import win32com.client as win32
 import pythoncom
 from datetime import datetime
+import pytz
 import re
 import os
 import sys
@@ -63,8 +64,7 @@ class UpdateInspectionDetails(graphene.Mutation):
         job = Job.objects.get(id=jobId)
 
         job.inspection_by = CustomUser.objects.get(email=updatedBy)
-        job.inspection_date = inspectionDate
-        job.inspection_time = inspectionTime
+        job.inspection_date = datetime.strptime(inspectionDate + " " + inspectionTime, '%Y-%m-%d %H:%M').replace(tzinfo=pytz.UTC)
         job.inspection_notes = inspectionNotes
         job.save()
 

@@ -25,15 +25,15 @@ export interface JobType {
     building: string
     title: string
     priority: string
-    dateIssued: string
-    overdueDate: string
+    dateIssued: string | null
+    overdueDate: string | null
     stage: string
     description: string
     detailedLocation: string
-    inspectionDate: string
-    commencementDate: string
-    completionDate: string
-    closeOutDate: string
+    inspectionDate: string | null
+    commencementDate: string | null
+    completionDate: string | null
+    closeOutDate: string | null
     totalHours: number
     pocName: string
     pocPhone: string

@@ -178,12 +178,6 @@ const JobPage = () => {
         // Remove unwanted values from job state for backend
         let {jobinvoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
         // Define formats before sending to backend
-        job['dateIssued'] === "" ? jobInput['dateIssued'] = new Date(0).toISOString().split('T')[0] : null;
-        job['inspectionDate'] === "" ? jobInput['inspectionDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['commencementDate'] === "" ? jobInput['commencementDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['completionDate'] === "" ? jobInput['completionDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['overdueDate'] === "" ? jobInput['overdueDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['closeOutDate'] === "" ? jobInput['closeOutDate'] = new Date(0).toISOString().split('T')[0] : null;
         job['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
 
         await axiosPrivate({
@@ -236,10 +230,11 @@ const JobPage = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `mutation closeOutEmail ($jobid: String!) { 
-                    close_out_email: closeOutEmail(jobid: $jobid)
+                close_out_email: closeOutEmail(jobid: $jobid)
                 {
                     success
                     message
+                    time
                 }
             }`,
             variables: {
@@ -252,7 +247,7 @@ const JobPage = () => {
             setTitleChange(true);
             
             if(res.success) {
-                setJob(prev => ({...prev, 'closeOutDate': new Date().toISOString().slice(0, 10)}));
+                setJob(prev => ({...prev, 'closeOutDate': res.time}));
                 setSnack({active: true, variant:'success', message: res.message});
                 setUpdateRequired(false);
             }
@@ -445,12 +440,14 @@ const JobPage = () => {
     }
 
     const handleDateInput = (e: { target: { name?: any; value?: any; }; }) => {
-        setJob(prev => ({...prev, [e.target.name]: e.target.value ?? null}))
+        const val = e.target.value === "" ? null : e.target.value
+        setJob(prev => ({...prev, [e.target.name]: val}))
         setUpdateRequired(true);
     }
 
     const handleSelection = (e: { target: { name?: any; value?: any; }; }) => {
-        setJob(prev => ({...prev, [e.target.name]: {id: e.target.value}}))
+        const val = e.target.value === "" ? null : {id: e.target.value}
+        setJob(prev => ({...prev, [e.target.name]: val}))
         setUpdateRequired(true);
     }
  
@@ -471,8 +468,8 @@ const JobPage = () => {
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))} 
                     </InputField>
-                    <InputField type="date" name="dateIssued" label="Date Issued" value={job.dateIssued ?? null} onChange={handleDateInput} max="9999-12-31"/>
-                    <InputField type="date" name="overdueDate" label="Overdue Date" value={job.overdueDate ?? null} onChange={handleDateInput} max="9999-12-31"/>
+                    <InputField type="datetime-local" name="dateIssued" label="Date Issued" max='9999-12-31T23:59:59' value={job.dateIssued ?? null} onChange={handleDateInput}/>
+                    <InputField type="datetime-local" name="overdueDate" label="Overdue Date" max='9999-12-31T23:59:59' value={job.overdueDate ?? null} onChange={handleDateInput}/>
                 </Grid>
                 {/* Job Details */}
                 <Grid item xs={12} > 
@@ -527,7 +524,7 @@ const JobPage = () => {
                 </Grid>
                 {/* Priority and Date */}
                 <Grid item xs={12} > 
-                    <InputField type="date" name="inspectionDate" max='9999-12-31' label="Inspection Date" value={job.inspectionDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="datetime-local" name="inspectionDate" max='9999-12-31T23:59:59' label="Inspection Date" value={job.inspectionDate ?? null} onChange={handleDateInput}/>
                     <InputField type="select" name="inspectionBy" label="Inspector" value={job.inspectionBy?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_inspector"} value={""}></option>
                         {employees?.map((emp) => (
@@ -561,8 +558,8 @@ const JobPage = () => {
                             <option key={emp?.id} value={emp?.id}>{emp?.firstName + " " + emp?.lastName}</option>
                         ))}
                     </InputField>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="commencementDate" label="Commencement Date" value={job.commencementDate ?? null} onChange={handleDateInput}/>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="completionDate" label="Completion Date" value={job.completionDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="commencementDate" label="Commencement Date" value={job.commencementDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="completionDate" label="Completion Date" value={job.completionDate ?? null} onChange={handleDateInput}/>
                     <InputField type="number" step={0.1} min={0} style={{width: '146px'}} name="totalHours" label="Hours" value={job.totalHours} onChange={handleInput}/>
                 </Grid>
                 {/* Job Notes */}
@@ -571,7 +568,7 @@ const JobPage = () => {
                 </Grid>
                 {/* Close Out Details */}
                 <Grid item xs={12} > 
-                    <InputField type="date"  style={{width: '150px'}} max='9999-12-31' name="closeOutDate" label="Close Out Date" value={job.closeOutDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="closeOutDate" label="Close Out Date" value={job.closeOutDate ?? null} onChange={handleDateInput}/>
                     <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : job.commencementDate === null || job.completionDate === null || job.totalHours === 0 ? "Please Fill Out Completion Details" : ""}>
                         <Box style={{display:'inline-block'}}>
                             <Button variant='outlined' style={{margin: '10px'}} onClick={handleCloseOut} disabled={!(!updateRequired && job.commencementDate !== null && job.completionDate !== null && job.totalHours !== 0 && job.closeOutDate === null)}>Close Out</Button>

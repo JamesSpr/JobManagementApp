@@ -2,6 +2,7 @@ import graphene
 import win32com.client as win32
 import pythoncom
 import os
+import pytz
 import math
 from datetime import date, datetime
 from ..models import Job, Estimate, EstimateHeader
@@ -17,6 +18,7 @@ class AllocateJobEmail(graphene.Mutation):
     class Arguments:
         jobs = graphene.List(graphene.String)
         recipient = graphene.List(graphene.String)
+        attachments = graphene.List(graphene.String)
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -106,6 +108,7 @@ class CloseOutEmail(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
+    time = graphene.String()
 
     @classmethod
     def mutate(cls, root, info, jobid):
@@ -167,10 +170,11 @@ class CloseOutEmail(graphene.Mutation):
 
         mail.Send()
 
-        job.close_out_date = datetime.today()
+        closeout_datetime = datetime.today().replace(tzinfo=pytz.UTC)
+        job.close_out_date = closeout_datetime
         job.save()
 
-        return cls(success=True, message=f"Close Out Email Sent")
+        return cls(success=True, message=f"Close Out Email Sent", time=closeout_datetime.strftime('%Y-%m-%dT%H:%M'))
 
 class EmailQuote(graphene.Mutation):
     class Arguments:
