@@ -161,13 +161,30 @@ class EstimateInput(graphene.InputObjectType):
     quote_by = graphene.Field(IDInput)
     estimateheaderSet = graphene.List(EstimateHeaderInput)
 
+class ClientInputType(graphene.InputObjectType):
+    id = graphene.String()
+    myob_uid = graphene.String()
+    name = graphene.String()
+    display_name = graphene.String()
+
+class LocationInputType(graphene.InputObjectType):
+    id = graphene.String()
+    client = graphene.String()
+    client_ref = graphene.String()
+    region = graphene.String()
+    name = graphene.String()
+    address = graphene.String()
+    locality = graphene.String()
+    state = graphene.String()
+    postcode = graphene.String()    
+
 class JobInput(graphene.InputObjectType):
     id = graphene.String()
     po = graphene.String()
     sr = graphene.String()
     other_id = graphene.String()
-    client = graphene.Field(IDInput)
-    location = graphene.Field(IDInput)
+    client = ClientInputType()
+    location = LocationInputType()
     building = graphene.String()
     detailed_location = graphene.String()
     title = graphene.String()
@@ -275,7 +292,7 @@ class CreateJob(graphene.Mutation):
                 old_folder_name = str(job)
                 ## Only update fields that are empty
                 # job.client = Client.objects.get(id=input["client_id"]) if not job.client else job.client
-                job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC) if not job.date_issued else job.date_issued
+                if input["date_issued"]: job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC) if not job.date_issued else job.date_issued
                 job.po = input.po if not job.po else job.po
                 job.sr = input.sr if not job.sr else job.sr
                 job.other_id = input.other_id if not job.other_id else job.other_id
@@ -293,7 +310,7 @@ class CreateJob(graphene.Mutation):
                 job.alt_poc_email = input["alt_poc_email"] if not job.alt_poc_email else job.alt_poc_email
                 job.title = input["title"] if not job.title else job.title
                 job.description = input["description"] if not job.description else job.description
-                job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC) if not input["overdue_date"] == None else job.overdue_date
+                if input["overdue_date"]: job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC) if not input["overdue_date"] == None else job.overdue_date
                 job.bsafe_link = input["bsafe_link"] if not input["bsafe_link"] == "" else job.bsafe_link
                 job.save()
 
@@ -314,7 +331,7 @@ class CreateJob(graphene.Mutation):
 
             job = Job()
             job.client = Client.objects.get(id=input.client.id)
-            job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC)
+            if input["date_issued"]: job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC)
             job.po = input.po
             job.sr = input.sr
             job.other_id = input.other_id
@@ -332,7 +349,7 @@ class CreateJob(graphene.Mutation):
             job.alt_poc_email = input["alt_poc_email"]
             job.title = input["title"]
             job.description = input["description"]
-            job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC)
+            if input["overdue_date"]: job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC)
             job.bsafe_link = input["bsafe_link"]
             job.save()
 
@@ -439,7 +456,7 @@ class UpdateJob(graphene.Mutation):
         for (key, value) in input.items():
             input[key] = value.strip() if type(input[key]) == str else input[key]
 
-        # Error Checking
+        # Name Checking
         illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         if [char for char in illegal_characters if char in input['title']]:
             return self(success=False, message=["Title can not contain the characters:"] + illegal_characters)
@@ -451,7 +468,6 @@ class UpdateJob(graphene.Mutation):
             return self(success=False, message=["SR can not contain the characters:"] + illegal_characters)
         if [char for char in illegal_characters if char in input['other_id']]:
             return self(success=False, message=["Other ID can not contain the characters:"] + illegal_characters)
-
         # if Job.objects.filter(po = input['po']).exists():
         #     return self(success=False)
  
@@ -489,7 +505,7 @@ class UpdateJob(graphene.Mutation):
         job.site_manager = None if input.site_manager == None else CustomUser.objects.get(id=input.site_manager.id)
         job.commencement_date = None if input['commencement_date'] == None else input['commencement_date'].replace(tzinfo=pytz.UTC)
         job.completion_date = None if input['completion_date'] == None else input['completion_date'].replace(tzinfo=pytz.UTC)
-        job.total_hours = input['total_hours']
+        job.total_hours = str(input['total_hours'])
         job.work_notes = input['work_notes']
         job.overdue_date = None if input['overdue_date'] == None else input['overdue_date'].replace(tzinfo=pytz.UTC)
         job.close_out_date = None if input['close_out_date'] == None else input['close_out_date'].replace(tzinfo=pytz.UTC)
@@ -511,6 +527,11 @@ class UpdateJob(graphene.Mutation):
         message = ""
         # Update the Job Estimate
         for est in input.estimate_set:
+
+            if [char for char in illegal_characters if char in est.name]:
+                return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
+
+
             # Get existing estimate for that job with the same name
             print("Saving Estimate:", est.name)
             if Estimate.objects.filter(job_id=job, id=est.id).exists():
@@ -580,12 +601,18 @@ class CreateEstimate(graphene.Mutation):
         estimate = EstimateInput()
 
     success = graphene.Boolean()
+    message = graphene.String()
     estimate = graphene.Field(EstimateType)
 
     @classmethod
     def mutate(self, root, info, job_id, estimate):
 
         job = Job.objects.get(id=job_id)
+
+        # Name Checking
+        illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        if [char for char in illegal_characters if char in estimate.name]:
+            return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
 
         est = Estimate()
         est.quote_by = CustomUser.objects.get(id=estimate.quote_by.id)
@@ -639,6 +666,12 @@ class UpdateEstimate(graphene.Mutation):
 
     @classmethod
     def mutate(self, root, info, id, name, description, price, issue_date, approval_date, quote_by):
+
+        # Name Checking
+        illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        if [char for char in illegal_characters if char in estimate.name]:
+            return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
+
         estimate = Estimate.objects.get(id=id)
         estimate.name = name
         estimate.description = description
@@ -741,11 +774,6 @@ class ClientType(DjangoObjectType):
         model = Client
         fields = '__all__'
 
-class ClientInputType(graphene.InputObjectType):
-    id = graphene.String()
-    myob_uid = graphene.String()
-    name = graphene.String()
-    display_name = graphene.String()
 
 class CreateClient(graphene.Mutation):
     class Arguments:
@@ -794,15 +822,7 @@ class LocationType(DjangoObjectType):
         model = Location
         fields = '__all__'
 
-class LocationInputType(graphene.InputObjectType):
-    id = graphene.String()
-    client_ref = graphene.String()
-    region = graphene.String()
-    name = graphene.String()
-    address = graphene.String()
-    locality = graphene.String()
-    state = graphene.String()
-    postcode = graphene.String()    
+
 
 class CreateLocation(graphene.Mutation):
     class Arguments:

@@ -156,13 +156,13 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
         {
             accessorKey: 'invoiceDate',
             header: () => 'Invoice Date',
-            cell: ({getValue}: {getValue: () => any}) => getValue() ? new Date(getValue()).toLocaleDateString('en-AU') : "",
+            cell: ({getValue}: {getValue: () => any}) => getValue() ? new Date(getValue()).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : "",
             size: 100,
         },
         {
             accessorKey: 'processDate',
             header: () => 'Processed',
-            cell: ({getValue}: {getValue: () => any}) => getValue() ? new Date(getValue()).toLocaleDateString('en-AU') : "",
+            cell: ({getValue}: {getValue: () => any}) => getValue() ? new Date(getValue()).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : "",
             minSize: 80,
             size: 80,
             maxSize: 80,

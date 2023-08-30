@@ -69,25 +69,23 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                 data: fetchArchivedData(),
             }).then((response) => {
                 const res = response?.data?.data?.archivedJobs;
-                // console.log(res);
                 setWaiting(false);
-                // TODO: Add Snackbar
-                if(res.edges.length > 0) {
 
+                if(res.edges.length > 0) {
                     for(let i = 0; i < res.edges.length; i++) {
-                        res.edges[i].node['dateIssued'] = res.edges[i].node['dateIssued'] ? new Date(res.edges[i].node['dateIssued']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['overdueDate'] = res.edges[i].node['overdueDate'] ? new Date(res.edges[i].node['overdueDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['commencementDate'] = res.edges[i].node['commencementDate'] ? new Date(res.edges[i].node['commencementDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['dateIssued'] = res.edges[i].node['dateIssued'] ? new Date(res.edges[i].node['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['overdueDate'] = res.edges[i].node['overdueDate'] ? new Date(res.edges[i].node['overdueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['commencementDate'] = res.edges[i].node['commencementDate'] ? new Date(res.edges[i].node['commencementDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                        
                         if(res.edges[i].node['jobinvoiceSet'].length > 0) {
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU') : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         }
                     }
 
@@ -95,8 +93,8 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                     setData(prev => ([...prev, ...res?.edges?.map((job: { node: JobType; }) => job.node)]));
                 }
             }).catch((err) => {
-                // todo: handle error
                 console.log("Error:", err);
+                setSnack({active: true, variant: 'error', message: "Error fetching archived data. Try again or Contact Developer."})
             });
         }
     }
@@ -195,7 +193,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             header: () => 'Issue Date',
             filterFn: inDateRange,
             sortingFn: dateSort,
-            // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na", //{day: '2-digit', month: 'short', year:'numeric'}
             footer: ({column}) => footerCounts(column),
             size: 100,
         },
@@ -211,7 +208,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             header: () => 'Overdue Date',
             filterFn: inDateRange,
             sortingFn: dateSort,
-            // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "na",  //{day: '2-digit', month: 'short', year:'numeric'}
             footer: props => footerCounts(props.column),
             size: 125,
         },
@@ -364,7 +360,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             header: () => 'Invoice Created',
             filterFn: inDateRange,
             sortingFn: dateSort,
-            // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
             footer: props => footerCounts(props.column),
             size: 130,
         },
@@ -374,7 +369,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             header: () => 'Invoice Sent',
             filterFn: inDateRange,
             sortingFn: dateSort,
-            // cell: info => info.getValue() ? new Date(info.getValue()).toLocaleDateString('en-AU') : "",
             footer: props => footerCounts(props.column),
             size: 115,
         },
@@ -427,7 +421,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
 
     const handleOpenSelected = () => {
         for(var row in rowSelection) {
-            // console.log(table.getRowModel().rowsById[row].original)
             const rowData = table.getRowModel().rowsById[row].original;
             openInNewTab("/job/edit/" + defineJobIdentifier(rowData));
         }
@@ -435,7 +428,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
 
     const handleOpenSelectedBSAFE = () => {
         for(var row in rowSelection) {
-            // console.log(table.getRowModel().rowsById[row].original)
             const rowData = table.getRowModel().rowsById[row].original;
             if(rowData.bsafeLink) {
                 openInNewTab(rowData.bsafeLink);
@@ -485,87 +477,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                             pagination={true}
                             showFooter={showFooter}
                         />
-                         {/* <table style={{width: table.getTotalSize(0), paddingBottom: '10px'}}>
-                             <thead>
-                                 {table.getHeaderGroups().map(headerGroup => (
-                                     <tr key={headerGroup.id}>
-                                     {headerGroup.headers.map(header => {
-                                         return (
-                                             <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
-                                                 {header.isPlaceholder ? null : (
-                                                 <>
-                                                     <div {...{
-                                                         className: header.column.getCanSort()
-                                                         ? 'cursor-pointer select-none'
-                                                         : '',
-                                                         onClick: header.column.getToggleSortingHandler(),
-                                                     }}>
-                                                         {flexRender(
-                                                             header.column.columnDef.header,
-                                                             header.getContext()
-                                                         )}
-                                                         {{
-                                                             asc: ' ▲',
-                                                             desc: ' ▼',
-                                                         }[header.column.getIsSorted()] ?? null}
-                                                     </div>
-                                                     {header.column.getCanFilter() ? (
-                                                         <div>
-                                                             <Filter column={header.column} table={table} />
-                                                         </div>
-                                                     ) : null}
-                                                 </>
-                                                 )}
-                                             </th>
-                                         );
-                                     })}
-                                     </tr>
-                                 ))}
-                             </thead>
-                             <tbody>
-                                 {table.getRowModel().rows.map(row => {
-                                     return (
-                                         <tr key={row.id} 
-                                             className={row.getIsSelected() ? "selectedRow" : ""}
-                                             style={{height: '20px'}}
-                                             onClick={(e) => {row.toggleSelected()}}
-                                             onDoubleClick = {(e) => {navigate("/job/edit/" + defineJobIdentifier(row.original));}}
-                                         >
-                                             {row.getVisibleCells().map(cell => {
-                                                 return (
-                                                     <td key={cell.id} style={{padding: '4px 5px'}}>
-                                                     {
-                                                         flexRender(
-                                                             cell.column.columnDef.cell,
-                                                             cell.getContext()
-                                                         )
-                                                     }
-                                                     </td>
-                                                 );
-                                             })}
-                                         </tr>
-                                     );
-                                 })}
-                             </tbody>
-                             {showFooter &&
-                             <tfoot>
-                                 {table.getFooterGroups().map(footerGroup => (
-                                     <tr key={footerGroup.id}>
-                                     {footerGroup.headers.map(header => (
-                                         <th key={header.id}>
-                                         {header.isPlaceholder
-                                             ? null
-                                             : flexRender(
-                                                 header.column.columnDef.footer,
-                                                 header.getContext()
-                                             )}
-                                         </th>
-                                     ))}
-                                     </tr>
-                                 ))}
-                             </tfoot>}
-                         </table>
-                         <PaginationControls table={table} /> */}
                     </Grid>
                 
                 : 

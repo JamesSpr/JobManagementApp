@@ -58,7 +58,7 @@ export const TableFilter = ({column, table} : {column: Column<any>, table: React
     [column.getFacetedUniqueValues()]
   )
 
-  if(column?.columnDef?.sortingFn?.toString() === "dateSort") { //dateColumns.includes(column.id)
+  if(column?.columnDef?.sortingFn === dateSort) { //dateColumns.includes(column.id)
     return (
       <>
         <DebouncedInput
@@ -126,7 +126,7 @@ export const TableFilter = ({column, table} : {column: Column<any>, table: React
       <DebouncedInput
         type="text"
         value={(columnFilterValue ?? '')}
-        onChange={(value: any) => column.setFilterValue(value)}
+        onChange={(value: any) => column.setFilterValue(value.trim())}
         placeholder={`${column.getFacetedUniqueValues().size} Items`}
         list={column.id + 'list'}
       />

@@ -121,7 +121,7 @@ const Approved = () => {
             <Grid item xs={12} align="center">
                 <Typography variant="h6" sx={{padding: '10px'}}>Estimates</Typography>
                 {job?.estimateSet?.map(est => (
-                    <Typography variant="p1" sx={{padding: '10px'}}>{est.name} - ${est.price} - Submitted on {new Date(est.issueDate).toLocaleDateString('en-AU')}</Typography>
+                    <Typography variant="p1" sx={{padding: '10px'}}>{est.name} - ${est.price} - Submitted on {new Date(est.issueDate).toLocaleDateString('en-AU', {timeZone: 'UTC'})}</Typography>
                 ))}
             </Grid>
         </Grid>

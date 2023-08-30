@@ -5,13 +5,14 @@ import { Button, Grid, Box, Dialog, DialogTitle, DialogContent, DialogActions, C
 import { useNavigate } from 'react-router-dom';
 import {InputField, SnackBar} from '../../components/Components';
 import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
-import { blankJob, jobQueryData } from '../job/Queries';
+import { blankJob } from '../job/Queries';
 import { ClientType, ContactType, JobType, LocationType, SnackType } from '../../types/types';
 
-const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations }: {
+const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, locations }: {
     open: boolean,
-    onClose: (event: any, reason: string, updated: boolean, createdJob?: JobType) => void,
+    onClose: (event: any, reason: string) => void,
     jobs: JobType[],
+    setJobs: React.Dispatch<React.SetStateAction<JobType[]>>,
     clients: ClientType[],
     clientContacts: ContactType[],
     locations: LocationType[],
@@ -22,7 +23,6 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
 
     const [waiting, setWaiting] = useState(false);    
     const [snack, setSnack] = useState<SnackType>({active: false, variant: 'info', message: ''});
-    const [updated, setUpdated] = useState(false);
     const [checkJob, setCheckJob] = useState(false);
     const [duplicate, setDuplicate] = useState<JobType | null>(null);
     const [newJob, setNewJob] = useState<JobType>(blankJob)
@@ -70,7 +70,55 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
                         message
                         updated
                         job {
-                            ${jobQueryData}                    
+                            id
+                            po
+                            sr
+                            otherId
+                            client {
+                                name
+                                displayName
+                            }
+                            location {
+                                name
+                                region {
+                                    shortName
+                                }
+                            }
+                            building
+                            title
+                            priority
+                            dateIssued
+                            overdueDate
+                            inspectionDate
+                            commencementDate
+                            completionDate
+                            closeOutDate
+                            stage
+                            description
+                            detailedLocation
+                            estimateSet {
+                                id
+                                name
+                                description
+                                price
+                                issueDate
+                                approvalDate
+                                quoteBy {
+                                    id
+                                }
+                            }
+                            jobinvoiceSet {
+                                invoice {
+                                    number
+                                    dateCreated
+                                    dateIssued
+                                    datePaid
+                                }
+                            }
+                            billSet {
+                                amount
+                            }
+                            bsafeLink             
                         }
                     } 
                 }`,
@@ -83,7 +131,25 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
 
             if(res.success) {
                 setSnack({active: true, variant: 'success', message: 'Job Created Successfully'})
+
+                console.log( res.job)
+                res.job['dateIssued'] = res.job['dateIssued'] ? new Date(res.job['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                res.job['overdueDate'] = res.job['overdueDate'] ? new Date(res.job['overdueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+
+                if(res.updated) {
+                    // Update the job table row with the new data
+                    setJobs(old => old.map((row, index) => {
+                        if(row.id === res.job.id) {
+                            return res.job
+                        }
+                        return row
+                    }))
+                }
+                else {
+                    setJobs(prev => [...prev, res.job])
+                }
                 setCreatedJob(res.job);
+                
             }
             else {
                 setSnack({active: true, variant: 'error', message: 'Upload Error: ' + res.message})
@@ -115,9 +181,9 @@ const CreateDialog = ({ open, onClose, jobs, clients, clientContacts, locations 
         if (reason !== 'backdropClick') {
             if(createdJob != blankJob) {
                 setNewJob(blankJob)
+                setCreatedJob(blankJob);
             }
-            setCreatedJob(blankJob)
-            onClose(event, reason ?? '', updated, createdJob)
+            onClose(event, reason ?? '')
         }
     }
 

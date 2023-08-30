@@ -156,7 +156,7 @@ class Job(models.Model):
     inspection_notes = models.TextField(max_length=500, blank=True)    
     commencement_date = models.DateTimeField(blank=True, null=True)
     completion_date = models.DateTimeField(blank=True, null=True)
-    total_hours = models.IntegerField(blank=True, default=0)
+    total_hours = models.DecimalField(blank=True, max_digits=10, decimal_places=2, default=0.0)
     site_manager = models.ForeignKey(CustomUser, on_delete=PROTECT, blank=True, null=True, related_name="site_manager")
     work_notes = models.TextField(blank=True, max_length=500)
     close_out_date = models.DateTimeField(blank=True, null=True)
@@ -180,7 +180,7 @@ class Job(models.Model):
                 identifier = self.other_id
         
         building = self.building + " "
-        if not self.building == "" and str(self.building).isdigit():
+        if not self.building == "" and str(self.building)[0].isdigit():
             building = "B" + self.building + " "
         if self.building == "":
             building = ""

@@ -1419,7 +1419,7 @@ class myobImportContractorFromABN(graphene.Mutation):
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
 
-            if res['Items'] and not len(res['Items']) > 0:
+            if len(res['Items']) == 0:
                 return self(success=False, message="Contractor not found with the provided details")
             
             contractorDetails = res['Items'][0]
@@ -1940,7 +1940,6 @@ class myobProcessPayment(graphene.Mutation):
             if len(external_invoices) > 1:
                 # Get the details of the invoices that are not saved in the system
                 return self(success=False, message="Get Dev to finish this function")
-                pass
 
 
             if len(paid_invoices) < 1:

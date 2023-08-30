@@ -75,8 +75,8 @@ const Bills = () => {
 
                 for(let i = 0; i < res.length; i++) {
                     res[i]['invoiceNumber'] = res[i]['invoiceNumber'] ? res[i]['invoiceNumber'] : ""
-                    res[i]['invoiceDate'] = res[i]['invoiceDate'] ? new Date(res[i]['invoiceDate']).toLocaleDateString('en-AU') : ""
-                    res[i]['processDate'] = res[i]['processDate'] ? new Date(res[i]['processDate']).toLocaleDateString('en-AU') : ""
+                    res[i]['invoiceDate'] = res[i]['invoiceDate'] ? new Date(res[i]['invoiceDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                    res[i]['processDate'] = res[i]['processDate'] ? new Date(res[i]['processDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                 }
 
                 setData(res);

@@ -39,7 +39,8 @@ class AllocateJobEmail(graphene.Mutation):
                 job_string = f"<b>Job</b>: {str(job)}<br>"
                 description = f"<b>Description</b>: {job.description}<br>".replace('\n', '<br>') if job.description else ""
                 priority = f"<b>Priority</b>: {job.priority} <br>" if job.priority else ""
-                overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y')} <br>" if job.overdue_date else ""
+                received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} <br>" if job.date_issued else ""
+                overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y @ %H:%M')} <br>" if job.overdue_date else ""
                 special_instructions = f"<b>Special Instructions</b>: {job.special_instructions}<br>" if job.special_instructions else ""
                 detailed_locaton = f"<b>Detailed Location</b>: {job.detailed_location}<br>" if job.detailed_location else ""
                 requester = f"<b>Requestor</b>: {job.requester.first_name} {job.requester.last_name} - {job.requester.phone}<br>" if job.requester.first_name else ""
@@ -73,6 +74,7 @@ class AllocateJobEmail(graphene.Mutation):
 
                                 {job_string}
                                 {priority}
+                                {received_date}
                                 {overdue_date}
                                 {detailed_locaton}
                                 {description}

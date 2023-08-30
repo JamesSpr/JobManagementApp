@@ -679,11 +679,11 @@ const MyobActivate = () => {
             const res = response.data?.data?.contractor;
             if(res.success) {
                 // console.log(res.message)
-                const contractors = JSON.parse(res.message);
-                console.log("Contractors:", contractors)
+                // const contractors = JSON.parse(res.message);
+                console.log("Contractors:", res.message)
             }
             else {
-                console.log("error!", JSON.parse(res.message) ?? "");
+                console.log("error!", res.message ?? "");
             }
         })
     }

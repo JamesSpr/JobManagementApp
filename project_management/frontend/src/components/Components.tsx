@@ -187,7 +187,7 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
         data,
         columns,
         state: {
-            rowSelection,
+            rowSelection: rowSelection ? rowSelection : '',
             columnFilters,
             globalFilter,
             sorting,
@@ -195,7 +195,7 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
         },
         onColumnFiltersChange: setColumnFilters,
         onGlobalFilterChange: setGlobalFilter,
-        onRowSelectionChange: setRowSelection,
+        onRowSelectionChange: setRowSelection ? setRowSelection : undefined,
         onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),

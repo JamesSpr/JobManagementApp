@@ -243,13 +243,13 @@ const JobPage = () => {
         }),
         }).then((response) => {
             const res = response?.data?.data?.close_out_email;
-            setStage("Invoicing");
-            setTitleChange(true);
             
             if(res.success) {
                 setJob(prev => ({...prev, 'closeOutDate': res.time}));
                 setSnack({active: true, variant:'success', message: res.message});
                 setUpdateRequired(false);
+                setStage("Invoicing");
+                setTitleChange(true);
             }
             else {
                 setSnack({active: true, variant:'error', message: "Email Error: " + res.message})
@@ -646,6 +646,7 @@ const JobPage = () => {
             setOpen={setSettingsDialog} 
             job={job}
             setJob={setJob}
+            setUpdateRequired={setUpdateRequired}
             handleInput={handleInput}
             waiting={waiting}
             setWaiting={setWaiting}

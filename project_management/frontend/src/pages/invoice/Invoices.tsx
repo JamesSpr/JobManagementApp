@@ -79,9 +79,9 @@ const Invoices = () => {
                 const res = response?.data?.data;
 
                 for(let i = 0; i < res.length; i++) {
-                    res.invoices[i]['dateIssued'] = res.invoices[i]['dateIssued'] ? new Date(res.invoices[i]['dateIssued']).toLocaleDateString('en-AU') : ""
-                    res.invoices[i]['dateCreated'] = res.invoices[i]['dateCreated'] ? new Date(res.invoices[i]['dateCreated']).toLocaleDateString('en-AU') : ""
-                    res.invoices[i]['datePaid'] = res.invoices[i]['datePaid'] ? new Date(res.invoices[i]['datePaid']).toLocaleDateString('en-AU') : ""
+                    res.invoices[i]['dateIssued'] = res.invoices[i]['dateIssued'] ? new Date(res.invoices[i]['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                    res.invoices[i]['dateCreated'] = res.invoices[i]['dateCreated'] ? new Date(res.invoices[i]['dateCreated']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                    res.invoices[i]['datePaid'] = res.invoices[i]['datePaid'] ? new Date(res.invoices[i]['datePaid']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                 }
 
                 setData(res.invoices);

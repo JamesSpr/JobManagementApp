@@ -81,19 +81,19 @@ const HomePage = () => {
                     nextPage = res.pageInfo.hasPreviousPage;
                     
                     for(let i = 0; i < res.edges.length; i++) {
-                        res.edges[i].node['dateIssued'] = res.edges[i].node['dateIssued'] ? new Date(res.edges[i].node['dateIssued']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['overdueDate'] = res.edges[i].node['overdueDate'] ? new Date(res.edges[i].node['overdueDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['commencementDate'] = res.edges[i].node['commencementDate'] ? new Date(res.edges[i].node['commencementDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU') : ""
-                        res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU') : ""
+                        res.edges[i].node['dateIssued'] = res.edges[i].node['dateIssued'] ? new Date(res.edges[i].node['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['overdueDate'] = res.edges[i].node['overdueDate'] ? new Date(res.edges[i].node['overdueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['commencementDate'] = res.edges[i].node['commencementDate'] ? new Date(res.edges[i].node['commencementDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         
                         if(res.edges[i].node['jobinvoiceSet'].length > 0) {
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU') : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         }
                     }
     
@@ -122,19 +122,19 @@ const HomePage = () => {
                         nextPage = res.pageInfo.hasPreviousPage;
                         
                         for(let i = 0; i < res.edges.length; i++) {
-                            res.edges[i].node['dateIssued'] = res.edges[i].node['dateIssued'] ? new Date(res.edges[i].node['dateIssued']).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['overdueDate'] = res.edges[i].node['overdueDate'] ? new Date(res.edges[i].node['overdueDate']).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['commencementDate'] = res.edges[i].node['commencementDate'] ? new Date(res.edges[i].node['commencementDate']).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU') : ""
-                            res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU') : ""
+                            res.edges[i].node['dateIssued'] = res.edges[i].node['dateIssued'] ? new Date(res.edges[i].node['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['overdueDate'] = res.edges[i].node['overdueDate'] ? new Date(res.edges[i].node['overdueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['commencementDate'] = res.edges[i].node['commencementDate'] ? new Date(res.edges[i].node['commencementDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
 
                             if(res.edges[i].node['jobinvoiceSet'].length > 0) {
-                                res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU') : ""
-                                res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU') : ""
-                                res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU') : ""
+                                res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                                res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                                res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                             }
                         }
     
@@ -160,24 +160,8 @@ const HomePage = () => {
         }
     }, [, refreshTableData]);
 
-    const handleDialogClose = ({event, reason, updated, createdJob}: {
-        event: any, reason: string, updated: boolean, createdJob: JobType
-    }) => {
+    const handleDialogClose = ({event, reason}: {event: any, reason: string}) => {
         if (reason !== 'backdropClick') {
-            if(createdJob && Object.keys(createdJob).length !== 0){
-                if(updated) {
-                    // Update the job table row with the new data
-                    setJobs(old => old.map((row, index) => {
-                        if(row.id === createdJob.id) {
-                            return createdJob
-                        }
-                        return row
-                    }))
-                }
-                else {
-                    setJobs(prev => [...prev, createdJob])
-                }
-            }
             setCreateJob(false);
         }
     }
@@ -191,7 +175,7 @@ const HomePage = () => {
         </Grid>
 
         {/* Create new Dialog */}
-        <CreateDialog open={createJob} onClose={handleDialogClose} jobs={jobs} clients={clients} clientContacts={clientContacts} locations={locations}/>
+        <CreateDialog open={createJob} onClose={handleDialogClose} jobs={jobs} setJobs={setJobs} clients={clients} clientContacts={clientContacts} locations={locations}/>
 
         {/* Footer AppBar with Controls */}
         <Box sx={{ flexGrow: 1}}>

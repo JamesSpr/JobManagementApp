@@ -4,13 +4,14 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import useAuth from "../auth/useAuth";
 import { JobType, SnackType } from "../../types/types";
 
-const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWaiting, setSnack, getJobName}:{
+const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequired, waiting, setWaiting, setSnack, getJobName}:{
     open: boolean
     setOpen: React.Dispatch<React.SetStateAction<boolean>>
     job: JobType
     setJob: React.Dispatch<React.SetStateAction<JobType>>
     handleInput: (e: { target: { name?: any; value?: any; }; }) => void
     waiting: any
+    setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
     setWaiting: React.Dispatch<React.SetStateAction<any>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
     getJobName: () => string
@@ -130,7 +131,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWa
             <Grid container spacing={1} textAlign={'center'} justifyContent={'center'}>
                 <Grid item xs={12}> {/* Accounts */}
                     <Typography variant='body1' style={{display:'inline-block', verticalAlign: 'bottom'}}> Cancelled? </Typography>
-                    <Checkbox checked={job.cancelled} onChange={(e: { target: { checked: any; }; }) => {setJob((prev: any) => ({...prev, 'cancelled': e.target.checked}))}} style={{paddingBottom: '0px', verticalAlign: 'bottom'}}/>
+                    <Checkbox checked={job.cancelled} onChange={(e: { target: { checked: any; }; }) => {setJob((prev: any) => ({...prev, 'cancelled': e.target.checked})); setUpdateRequired(true)}} style={{paddingBottom: '0px', verticalAlign: 'bottom'}}/>
                     <InputField type="text" name="cancelReason" label="Reason" value={job.cancelReason} onChange={handleInput}/>
                 </Grid>
                 <Grid item xs={12}> {/* Settings */}
