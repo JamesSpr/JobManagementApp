@@ -1585,10 +1585,10 @@ class myobCreateInvoice(graphene.Mutation):
                         return self(success=False, message="Jobs Estimate Folder does not exist!")
 
                     for files in os.listdir(estimate_folder):
-                        if "Approval" in files:
+                        if "Approval" in files and not found['approval']:
                             found['approval'] = True
                             paths['approval'] = os.path.join(estimate_folder, files)
-                        if "BGIS Estimate" in files:
+                        if "BGIS Estimate" in files and not found["estimate"]:
                             if files.endswith(".pdf"):
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files)
@@ -1629,6 +1629,8 @@ class myobCreateInvoice(graphene.Mutation):
                 shipToAddress = f"{job.client} {job.location}\n{job.location.getFullAddress()}"
             else:
                 shipToAddress = job.location.region.bill_to_address
+
+            print("Posting Sale Order")
 
             # 4-3000 Maintenance Income - e5495a96-41a3-4e65-b56d-43e585f2742d
             # POST Invoice to MYOB
