@@ -136,7 +136,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             header: () => 'Client',
             cell: info => info.getValue(),
             footer: '',
-            size: 120,
+            size: 125,
         },
         {                
             accessorFn: row => defineJobIdentifier(row),

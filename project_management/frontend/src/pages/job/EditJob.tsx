@@ -6,7 +6,7 @@ import EstimateModule from './estimate/Tabs';
 import useAuth from '../auth/useAuth';
 import useApp from '../../context/useApp';
 import { usePrompt } from '../../hooks/promptBlocker';
-import { Footer, InputField, SnackBar } from '../../components/Components';
+import { Footer, InputField, ProgressButton, SnackBar } from '../../components/Components';
 
 import Settings from '@mui/icons-material/Settings';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
@@ -571,7 +571,9 @@ const JobPage = () => {
                     <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="closeOutDate" label="Close Out Date" value={job.closeOutDate ?? null} onChange={handleDateInput}/>
                     <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : job.commencementDate === null || job.completionDate === null || job.totalHours === 0 ? "Please Fill Out Completion Details" : ""}>
                         <Box style={{display:'inline-block'}}>
-                            <Button variant='outlined' style={{margin: '10px'}} onClick={handleCloseOut} disabled={!(!updateRequired && job.commencementDate !== null && job.completionDate !== null && job.totalHours !== 0 && job.closeOutDate === null)}>Close Out</Button>
+                            <ProgressButton name="Close Out" buttonVariant='outlined' onClick={handleCloseOut} 
+                            waiting={waiting.closeout}
+                            disabled={!(!updateRequired && job.commencementDate !== null && job.completionDate !== null && job.totalHours !== 0 && job.closeOutDate === null)} />
                         </Box>
                     </Tooltip>
                 </Grid>
