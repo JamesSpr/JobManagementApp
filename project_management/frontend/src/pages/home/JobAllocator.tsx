@@ -4,6 +4,7 @@ import { EmployeeType, SnackType, User } from "../../types/types";
 import { RowModel, Table } from "@tanstack/react-table";
 import CloseIcon from '@mui/icons-material/Close';
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import { ProgressButton } from "../../components/Components";
 
 interface JobAllocatorProps {
     open: boolean,
@@ -23,8 +24,11 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
 
     const axiosPrivate = useAxiosPrivate();
     const [emailRecipients, setEmailRecipients] = useState<emailRecipientType>({})
+    const [waiting, setWaiting] = useState(false);
 
     const handleJobAllocation = async () => {
+        setWaiting(true);
+
         // Gather all the selected rows
         const selectedRows: String[] = []
         if(table && rowSelection) {
@@ -78,6 +82,8 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                 setSnack({active: true, variant:'error', message:"Email Error: " + response.data.errors[0].message})
             }
 
+        }).finally(() => {
+            setWaiting(false);
         });
     }
 
@@ -120,7 +126,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                             }
                         </Grid>
                     </FormGroup>
-                    <Button disabled={Object.values(emailRecipients).every(value => value === false)} onClick={handleJobAllocation}>Send Email</Button>
+                    <ProgressButton name="Send Email" waiting={waiting} disabled={Object.values(emailRecipients).every(value => value === false)} onClick={handleJobAllocation} />
                 </DialogContent>
                     
             </Dialog>

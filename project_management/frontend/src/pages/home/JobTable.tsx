@@ -82,10 +82,10 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                         res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                        
-                        if(res.edges[i].node['jobinvoiceSet'].length > 0) {
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateCreated'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['dateIssued'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
-                            res.edges[i].node['jobinvoiceSet'][0]['invoice']['datePaid'] = res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid ? new Date(res.edges[i].node['jobinvoiceSet'][0]?.invoice?.datePaid).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        if(res.edges[i].node['invoiceSet'].length > 0) {
+                            res.edges[i].node['invoiceSet'][0]['dateCreated'] = res.edges[i].node['invoiceSet'][0]?.dateCreated ? new Date(res.edges[i].node['invoiceSet'][0]?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['invoiceSet'][0]['dateIssued'] = res.edges[i].node['invoiceSet'][0]?.dateIssued ? new Date(res.edges[i].node['invoiceSet'][0]?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['invoiceSet'][0]['datePaid'] = res.edges[i].node['invoiceSet'][0]?.datePaid ? new Date(res.edges[i].node['invoiceSet'][0]?.datePaid).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         }
                     }
 
@@ -347,7 +347,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             size: 120,
         },
         {
-            accessorFn: row => row?.jobinvoiceSet?.[0]?.invoice?.number ?? "",
+            accessorFn: row => row?.invoiceSet?.[0]?.number ?? "",
             id: 'invoice',
             header: () => 'Invoice #',
             cell: info => info.getValue(),
@@ -355,7 +355,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             size: 90,
         },
         {
-            accessorFn: row => row.jobinvoiceSet?.[0]?.invoice?.dateCreated ?? "",
+            accessorFn: row => row.invoiceSet?.[0]?.dateCreated ?? "",
             id: 'invoiceCreatedDate',
             header: () => 'Invoice Created',
             filterFn: inDateRange,
@@ -364,7 +364,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             size: 130,
         },
         {
-            accessorFn: row => row.jobinvoiceSet?.[0]?.invoice?.dateIssued ?? "",
+            accessorFn: row => row.invoiceSet?.[0]?.dateIssued ?? "",
             id: 'invoiceDate',
             header: () => 'Invoice Sent',
             filterFn: inDateRange,
@@ -479,10 +479,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                         />
                     </Grid>
                 
-                : 
-                    <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingBottom:'10px'}}>
-                        <CircularProgress />
-                    </Box>
+                : <CircularProgress />
             }
 
                 <Grid item xs={12}>
@@ -589,7 +586,8 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                 </DialogContent>
             </Dialog>
 
-            <JobAllocator open={openEmailOptions} onClose={() => setOpenEmailOptions(false)} table={table} rowSelection={rowSelection} users={users} setSnack={setSnack}/>
+            <JobAllocator open={openEmailOptions} onClose={() => setOpenEmailOptions(false)} 
+            table={table} rowSelection={rowSelection} users={users} setSnack={setSnack}/>
         </>
     
     );

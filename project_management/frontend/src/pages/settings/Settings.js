@@ -49,13 +49,11 @@ export default function Setting() {
                                 id
                             }
                         }
-                        jobinvoiceSet {
-                            invoice {
-                                number
-                                dateCreated
-                                dateIssued
-                                datePaid
-                            }
+                        invoiceSet {
+                            number
+                            dateCreated
+                            dateIssued
+                            datePaid
                         }
                     }
                 }
@@ -202,7 +200,7 @@ export default function Setting() {
             <Grid item xs={12} >
                 <Accordion title={"Features"}>
                     <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
-                        <Button variant="outlined" onClick={handleTestFeature} disabled={true}>Test Feature</Button>
+                        <Button variant="outlined" onClick={handleTestFeature} disabled={false}>Test Feature</Button>
                         {waiting.test && (
                             <CircularProgress size={24} 
                             sx={{

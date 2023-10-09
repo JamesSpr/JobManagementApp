@@ -90,7 +90,7 @@ export const blankJob: JobType = {
     cancelReason: '',
     estimateSet: [],
     billSet: [],
-    jobinvoiceSet: [{invoice: blankInvoice}],
+    invoiceSet: [],
 }
 
 export const jobQueryData = `
@@ -172,6 +172,7 @@ export const jobQueryData = `
         }	
     }
     billSet {
+        id
         myobUid
         supplier {
             name
@@ -180,16 +181,17 @@ export const jobQueryData = `
         invoiceDate
         amount
         processDate
-        imgPath
-    }
-    jobinvoiceSet {
-        id
-        invoice {
-            number
-            dateCreated
-            dateIssued
-            datePaid
+        thumbnailPath
+        billType
+        job {
+            id
         }
+    }
+    invoiceSet {
+        number
+        dateCreated
+        dateIssued
+        datePaid
     }
 `
 

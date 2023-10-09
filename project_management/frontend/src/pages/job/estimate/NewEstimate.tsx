@@ -146,7 +146,7 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
                     </Tooltip>
                 </Grid>
                 <Grid item xs={12} style={{paddingBottom: '20px'}}>
-                    <InputField type="text" label="Description" name="description" value={newEstimate.description} onChange={handleInput}/>
+                    <InputField type="text" label="Notes" name="description" value={newEstimate.description} onChange={handleInput}/>
                 </Grid>
                 <Grid item xs={12} style={{paddingBottom: '20px'}}>
                     <InputField type="select" label="Quote By" name='quoteBy' value={newEstimate.quoteBy.id} onChange={handleSelection}>

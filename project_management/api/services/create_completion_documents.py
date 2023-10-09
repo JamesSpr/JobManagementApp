@@ -1,5 +1,6 @@
 import shutil
 import graphene
+from graphql_jwt.decorators import login_required
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -30,6 +31,7 @@ class CreateBGISEstimate(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, job_id, selected_estimate):
         
         job = Job.objects.get(id=job_id)
@@ -71,6 +73,7 @@ class CreateCompletionDocuments(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, job_id):
 
         job = Job.objects.get(id=job_id)
@@ -92,7 +95,7 @@ class CreateCompletionDocuments(graphene.Mutation):
             return self(success=False, message="File System Folders are not correct. Please check Documentation Folder Exists")
 
         word = win32.DispatchEx("Word.Application", pythoncom.CoInitialize())
-        word.Visible = True
+        word.Visible = False
 
         document = None
 

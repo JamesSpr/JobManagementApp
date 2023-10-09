@@ -7,6 +7,7 @@ import fitz
 from PIL import Image
 from io import BytesIO
 import numpy as np
+from graphql_jwt.decorators import login_required
 
 INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Insurances"
 
@@ -20,6 +21,7 @@ class PDFToImage(graphene.Mutation):
     file_path = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, file, filename):
         if not file: 
             return self(success=False)

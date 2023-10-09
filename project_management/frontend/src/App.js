@@ -27,6 +27,7 @@ import Timesheets from "./pages/timesheets/Timesheets";
 
 import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
+import EditBill from "./pages/bill/EditBill";
 
 const App = () => {
     return ( 
@@ -45,7 +46,7 @@ const App = () => {
                         <Route element={<RequireAuth allowedRoles={['GUS', 'PMU', 'SMU', 'ADM', 'DEV']} />}>
                             <Route path="/" element={<HomePage />} />
                             <Route path="job/edit/:id" element={<EditJobPage />} />
-                            <Route path="job/approved/:input" element={<Approved />} />
+                            {/* <Route path="job/approved/:input" element={<Approved />} /> */}
                             <Route path="job/create/:input" element={<CreateJob />} />
                             <Route path="clients" element={<ClientList />} />
                             <Route path="client/:client" element={<Client />} />
@@ -59,6 +60,7 @@ const App = () => {
                             <Route path="contractors" element={<Contractors />} />
                             <Route path="invoices" element={<Invoices />} />
                             <Route path="bills" element={<Bills />} />
+                            <Route path="bills/:id" element={<EditBill />} />
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >

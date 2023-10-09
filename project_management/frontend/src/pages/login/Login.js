@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from '../../hooks/axios';
 import useAuth from '../auth/useAuth';
 import { Button, Grid, Typography } from '@mui/material';
-import { InputField } from '../../components/Components'
+import { InputField, ProgressButton } from '../../components/Components'
 import Register from './Register';
 // import Register from './Register';
 
@@ -34,7 +34,10 @@ function LoginPage() {
         }
     }
 
+    const [waiting, setWaiting] = useState(false);
+
     const handleLogin = async () => {
+        setWaiting(true);
         try {
             await axios({
                 method: 'post',
@@ -67,6 +70,7 @@ function LoginPage() {
             }).then((response) => {
                 console.log(response);
                 const TA = response?.data?.data?.tokenAuth;
+                setWaiting(false);
                 if(!TA?.success) {
                     setPassword('');
 
@@ -93,6 +97,7 @@ function LoginPage() {
             else {
                 setErrorMessage('Login Failed');
             }
+            setWaiting(false);
         }
     }
 
@@ -236,13 +241,14 @@ function LoginPage() {
                     <Typography aria-live="assertive" color="error" >{errorMessage}</Typography>
                 </Grid>
                 <Grid item xs={12} align="center">
-                    <Button variant="outlined" onClick={handleLogin}>Login</Button>
+                    <ProgressButton name='Login' buttonVariant='outlined' centerButton onClick={handleLogin} waiting={waiting} />
+                    {/* <Button variant="outlined" onClick={handleLogin}>Login</Button> */}
                 </Grid>
                 <Grid item xs={12} align="center">
-                    <Button variant="outlined" onClick={(e) => {setRegistering(true)}}>Sign Up</Button>
+                    <Button variant="outlined" disabled={waiting} onClick={(e) => {setRegistering(true)}}>Sign Up</Button>
                 </Grid>
                 <Grid item xs={12} align="center">
-                    <Button variant="outlined" onClick={(e) => {setForgottenPassword(true); setErrorMessage('')}}>Forgot Password</Button>
+                    <Button variant="outlined" disabled={waiting} onClick={(e) => {setForgottenPassword(true); setErrorMessage('')}}>Forgot Password</Button>
                 </Grid>
             </Grid>
         </React.Fragment>

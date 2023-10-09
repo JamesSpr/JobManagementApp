@@ -52,7 +52,7 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
         setWaiting(true);
 
         // Remove unwanted values from job state for backend
-        let {jobinvoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = newJob
+        let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = newJob
         // Define formats before sending to backend
         newJob['inspectionDate'] === "" ? jobInput['inspectionDate'] = null : null;
         newJob['commencementDate'] === "" ? jobInput['commencementDate'] = null : null;
@@ -107,13 +107,11 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
                                     id
                                 }
                             }
-                            jobinvoiceSet {
-                                invoice {
-                                    number
-                                    dateCreated
-                                    dateIssued
-                                    datePaid
-                                }
+                            invoiceSet {
+                                number
+                                dateCreated
+                                dateIssued
+                                datePaid
                             }
                             billSet {
                                 amount

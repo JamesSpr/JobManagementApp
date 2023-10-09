@@ -45,13 +45,11 @@ export const fetchData = (number: number, next: String) => (
                             id
                         }
                     }
-                    jobinvoiceSet {
-                        invoice {
-                            number
-                            dateCreated
-                            dateIssued
-                            datePaid
-                        }
+                    invoiceSet {
+                        number
+                        dateCreated
+                        dateIssued
+                        datePaid
                     }
                     billSet {
                         amount
@@ -106,13 +104,11 @@ export const fetchArchivedData = () => (JSON.stringify({
                             id
                         }
                     }
-                    jobinvoiceSet {
-                        invoice {
-                            number
-                            dateCreated
-                            dateIssued
-                            datePaid
-                        }
+                    invoiceSet {
+                        number
+                        dateCreated
+                        dateIssued
+                        datePaid
                     }
                     billSet {
                         amount

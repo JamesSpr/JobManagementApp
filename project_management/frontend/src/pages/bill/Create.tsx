@@ -86,9 +86,7 @@ const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, ne
             return;
         }
         
-        const {abn, thumbnailPath, ...bill} = newBill
-
-        console.log(id)
+        const {abn, ...bill} = newBill
 
         // Post bill details to MYOB
         await axiosPrivate({
@@ -101,6 +99,7 @@ const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, ne
                         message
                         error
                         bill {
+                            id
                             myobUid
                             supplier {
                                 name
@@ -109,7 +108,11 @@ const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, ne
                             invoiceDate
                             amount
                             processDate
-                            imgPath
+                            thumbnailPath
+                            billType
+                            job {
+                                id
+                            }
                         }
                     }
                 }`,

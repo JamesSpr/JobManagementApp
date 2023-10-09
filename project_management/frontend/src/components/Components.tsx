@@ -1,6 +1,6 @@
 
 import React, { FC, ReactNode, useState, useEffect, useRef } from "react"; 
-import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions } from "@mui/material";
+import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions, IconButton } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table as ReactTable, RowData, ColumnDef,
     getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState, ColumnFiltersState } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType, RegionType, SnackBarType } from "../types/types";
@@ -15,8 +15,6 @@ declare module '@tanstack/react-table' {
 }
 
 export const InputField:FC<InputFieldType> = ({type="text", label, children, multiline=false, rows=0, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
-
-    
     let boxStyle = "inputBox"
     let styleClass = "inputField";
     error ? styleClass += " inputFieldError" : '';
@@ -450,6 +448,47 @@ export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=f
     )
 }
 
+export const ProgressIconButton = ({waiting, onClick, children, disabled, style}: 
+{waiting: boolean, onClick?: () => void, children: ReactNode, disabled?: boolean, style?: {} }) => {
+    return (
+        <Box sx={{display: 'inline-block'}}>
+            <IconButton disabled={disabled ? disabled : waiting} onClick={onClick} style={style}>
+                <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
+                    {children}
+                    {waiting && (
+                        <CircularProgress size={24} 
+                            sx={{
+                                colour: 'primary', 
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                marginTop: '-12px',
+                                marginLeft: '-12px',
+                            }}
+                        />
+                    )}
+                </Box>
+            </IconButton>
+        </Box>
+
+        // <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
+        //     <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled : waiting}>{name}</Button>
+        //     {waiting && (
+        //         <CircularProgress size={24} 
+        //             sx={{
+        //                 colour: 'primary', 
+        //                 position: 'absolute',
+        //                 top: '50%',
+        //                 left: '50%',
+        //                 marginTop: '-12px',
+        //                 marginLeft: '-12px',
+        //             }}
+        //         />
+        //     )}
+        // </Box>
+    )
+}
+
 export const Tooltip = ({children, title, arrow}: {children?: ReactNode, title?: string, arrow?: string}) => {
     if(title !== "") {
         return(
@@ -493,6 +532,10 @@ export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, cen
                 </DialogActions>
             </Dialog>
     </>)
+
+}
+
+export const DraggableDiv = ({children}: {children: ReactNode}) => {
 
 }
 

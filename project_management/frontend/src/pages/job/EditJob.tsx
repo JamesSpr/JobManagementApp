@@ -140,7 +140,7 @@ const JobPage = () => {
 
                 setJob(job_data);
                 
-                setInvoice(job_data?.jobinvoiceSet[0]?.invoice ?? null);
+                setInvoice(job_data?.invoiceSet[0] ?? null);
                 jobStages.map((values: JobStageType) => {
                     if(job_data.stage === values['name']){
                         setStage(values['description'])
@@ -176,7 +176,7 @@ const JobPage = () => {
         setWaiting(prev => ({...prev, 'save': true}));
 
         // Remove unwanted values from job state for backend
-        let {jobinvoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
+        let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
         // Define formats before sending to backend
         job['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
 
@@ -439,6 +439,12 @@ const JobPage = () => {
         setUpdateRequired(true);
     }
 
+    const handleNumberInput = (e: { target: { name?: any; value?: any; }; }) => {
+        const val = e.target.value === "" ? 0 : e.target.value
+        setJob(prev => ({...prev, [e.target.name]: val}))
+        setUpdateRequired(true);
+    }
+
     const handleDateInput = (e: { target: { name?: any; value?: any; }; }) => {
         const val = e.target.value === "" ? null : e.target.value
         setJob(prev => ({...prev, [e.target.name]: val}))
@@ -560,7 +566,7 @@ const JobPage = () => {
                     </InputField>
                     <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="commencementDate" label="Commencement Date" value={job.commencementDate ?? null} onChange={handleDateInput}/>
                     <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="completionDate" label="Completion Date" value={job.completionDate ?? null} onChange={handleDateInput}/>
-                    <InputField type="number" step={0.1} min={0} style={{width: '146px'}} name="totalHours" label="Hours" value={job.totalHours} onChange={handleInput}/>
+                    <InputField type="number" step={0.1} min={0} style={{width: '146px'}} name="totalHours" label="Hours" value={job.totalHours ?? 0} onChange={handleNumberInput}/>
                 </Grid>
                 {/* Job Notes */}
                 <Grid item xs={12} > 
@@ -582,26 +588,15 @@ const JobPage = () => {
                 </Grid>
                 <Grid item xs={12} style={{paddingTop: '0px'}}> {/* Accounts */}
                     <Tooltip title={updateRequired ? "Please save changes" : job.closeOutDate === null ? "Job Requires Close Out" : ""}>
+                        
                         <Box style={{position: 'relative', display: 'flex', justifyContent: 'center', padding: '5px'}}>
-                            <Button variant="outlined" 
-                                style={{margin: '5px'}}
-                                onClick={handleCreateInvoice}
-                                disabled={invoice !== null || job.closeOutDate === null || updateRequired}
-                            >
-                                Create Invoice
-                            </Button>
-                            {waiting.invoice && (
-                                <CircularProgress size={24} 
-                                    sx={{
-                                        colour: 'primary', 
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: '50%',
-                                        marginTop: '-12px',
-                                        marginLeft: '-12px',
-                                    }}
-                                />
-                            )}
+                            <ProgressButton name='Create Invoice'
+                                buttonVariant='outlined' 
+                                waiting={waiting.invoice} 
+                                onClick={handleCreateInvoice} 
+                                disabled={invoice !== null || job.closeOutDate === null || updateRequired || waiting.invoice} 
+                            />
+                            
                         </Box>
                     </Tooltip>
                     <InputField disabled={true} width={150} type="text" label="MYOB Invoice" value={invoice?.number}/>

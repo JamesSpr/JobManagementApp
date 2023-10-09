@@ -187,7 +187,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
         },
         {                
             accessorKey: 'description',
-            header: () => 'Description',
+            header: () => 'Notes',
             cell: editableCell,
             minSize: 200,
             size: 300,

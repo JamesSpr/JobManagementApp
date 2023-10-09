@@ -2,8 +2,8 @@ from datetime import date, datetime, timedelta
 from genericpath import exists
 import shutil
 from accounts.models import CustomUser
-from api.models import Client, Contractor, Estimate, Job, Invoice, JobInvoice, Bill
-from api.schema import InvoiceUpdateInput, JobInvoiceType, ClientType
+from api.models import Client, Contractor, Estimate, Job, Invoice, Bill
+from api.schema import InvoiceUpdateInput, ClientType, InvoiceType, JobInput, JobType
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
@@ -34,6 +34,7 @@ class myobInitialConnection(graphene.Mutation):
     auth_link = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info): 
         env = environ.Env()
         environ.Env.read_env()
@@ -52,6 +53,7 @@ class myobGetAccessToken(graphene.Mutation):
     response = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, code):
         env = environ.Env()
         environ.Env.read_env()
@@ -85,6 +87,7 @@ class updateOrCreateMyobAccount(graphene.Mutation):
     user = graphene.Field(MyobUserType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, access_token, expires_in, refresh_token, uid, user_id, username=None):
 
         user = MyobUser.objects.get(id=uid) if MyobUser.objects.filter(id=uid).exists() else False
@@ -119,6 +122,7 @@ class DeleteMyobUser(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, user_id, myob_uid):
         myob_user = MyobUser.objects.get(id=myob_uid) if MyobUser.objects.filter(id=myob_uid).exists() else False
         app_user = CustomUser.objects.get(id=user_id) if CustomUser.objects.filter(id=user_id).exists() else False
@@ -185,6 +189,7 @@ class myobRefreshToken(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -218,6 +223,7 @@ class myobGetClients(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, client):
         env = environ.Env()
         environ.Env.read_env()
@@ -250,6 +256,7 @@ class myobCreateClient(graphene.Mutation):
     client = graphene.Field(ClientType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, name):
         env = environ.Env()
         environ.Env.read_env()
@@ -318,6 +325,7 @@ class myobGetContractors(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, contractor):
         env = environ.Env()
         environ.Env.read_env()
@@ -359,6 +367,7 @@ class myobCreateContractor(graphene.Mutation):
     myob_uid = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, contractor):
         env = environ.Env()
         environ.Env.read_env()
@@ -412,6 +421,7 @@ class myobUpdateContractor(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, contractors):
         env = environ.Env()
         environ.Env.read_env()
@@ -486,6 +496,7 @@ class myobGetInvoices(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, inv, as_pdf=False):
         env = environ.Env()
         environ.Env.read_env()
@@ -566,6 +577,7 @@ class myobGetOrders(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, query):
         env = environ.Env()
         environ.Env.read_env()
@@ -599,6 +611,7 @@ class myobGetJobs(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, job):
         env = environ.Env()
         environ.Env.read_env()
@@ -631,6 +644,7 @@ class myobGetBills(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, bill):
         env = environ.Env()
         environ.Env.read_env()
@@ -662,6 +676,7 @@ class myobGetAccounts(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -692,6 +707,7 @@ class myobGetTaxCodes(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -722,6 +738,7 @@ class myobGetGeneralJournal(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -772,6 +789,7 @@ class myobRepairJobSync(graphene.Mutation):
     errors = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, job_id):
         env = environ.Env()
         environ.Env.read_env()
@@ -839,6 +857,7 @@ class myobSyncJobs(graphene.Mutation):
     errors = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -941,6 +960,7 @@ class myobCreateJob(graphene.Mutation):
     uid = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, job_id):
         env = environ.Env()
         environ.Env.read_env()
@@ -992,6 +1012,7 @@ class myobSyncClients(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -1047,6 +1068,7 @@ class myobSyncContractors(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -1109,6 +1131,7 @@ class myobSyncInvoices(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -1173,6 +1196,7 @@ class myobSyncBills(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -1255,6 +1279,7 @@ class myobImportContractorsFromBills(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -1348,6 +1373,7 @@ class myobImportClientFromABN(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, name):
         env = environ.Env()
         environ.Env.read_env()
@@ -1397,6 +1423,7 @@ class myobImportContractorFromABN(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, name, abn):
         env = environ.Env()
         environ.Env.read_env()
@@ -1448,6 +1475,7 @@ class myobImportBGISInvoices(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -1503,8 +1531,6 @@ class myobImportBGISInvoices(graphene.Mutation):
                             new_invoice.amount = round(float(invoice['Subtotal']), 2)
                             new_invoice.save()
 
-                            # JobInvoice.objects.get_or_create(job=job, invoice=new_invoice)
-
                             invs.append(invoice)
                     
             print("Imported BGIS Invoices")
@@ -1522,6 +1548,7 @@ class myobCreateInvoice(graphene.Mutation):
     number = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, job):
         env = environ.Env()
         environ.Env.read_env()
@@ -1554,7 +1581,7 @@ class myobCreateInvoice(graphene.Mutation):
             if not job.completion_date:
                 return self(success=False, message="Job completion date not recorded!")
 
-            if JobInvoice.objects.filter(job=job).exists():
+            if Invoice.objects.filter(job=job).exists():
                 return self(success=False, message="Invoice already exists for this job")
 
             invoice = []
@@ -1584,6 +1611,7 @@ class myobCreateInvoice(graphene.Mutation):
                     if not os.path.exists(estimate_folder):
                         return self(success=False, message="Jobs Estimate Folder does not exist!")
 
+                    estimate_file = None
                     for files in os.listdir(estimate_folder):
                         if "Approval" in files and not found['approval']:
                             found['approval'] = True
@@ -1593,16 +1621,20 @@ class myobCreateInvoice(graphene.Mutation):
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files)
                             else:
-                                # Convert excel sheet to pdf
-                                xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                                books = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
-                                ws = books.Worksheets[0]
-                                ws.Visible = 1
-                                ws.ExportAsFixedFormat(0, estimate_folder + "/" + files.strip(".xlsm") + ".pdf")
-                                xlApp.ActiveWorkbook.Close()
+                                estimate_file = files
+                    
+                    if not estimate_file == None and not found["estimate"]:
+                        # Convert excel sheet to pdf
+                        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+                        books = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
+                        ws = books.Worksheets[0]
+                        ws.Visible = 1
+                        ws.ExportAsFixedFormat(0, estimate_folder + "/" + files.strip(".xlsm") + ".pdf")
+                        xlApp.ActiveWorkbook.Close()
 
-                                found["estimate"] = True
-                                paths["estimate"] = os.path.join(estimate_folder, files.strip(".xlsm") + ".pdf")
+                        found["estimate"] = True
+                        paths["estimate"] = os.path.join(estimate_folder, files.strip(".xlsm") + ".pdf")
+
                 else:
                     found['approval'] = True
                     found['estimate'] = True
@@ -1690,10 +1722,9 @@ class myobCreateInvoice(graphene.Mutation):
             new_invoice.number = invoice['Number']
             new_invoice.date = invoice['Date'].split('T')[0]
             new_invoice.amount = round(float(invoice['Subtotal']), 2)
+            new_invoice.job = job
             new_invoice.save()
-
-            JobInvoice.objects.get_or_create(job=job, invoice=new_invoice)
-            job.save() ## Update job stage
+            new_invoice.job.save() ## Update job stage
 
             # Get invoice as PDF
             print("Getting PDF")
@@ -1734,16 +1765,120 @@ class myobCreateInvoice(graphene.Mutation):
 
 
 class BillInputType(graphene.InputObjectType):
+    id = graphene.String()
+    myobUid = graphene.String()
+    supplier = myobContractorInput()
+    job = JobInput()
     contractor = graphene.String()
     invoiceNumber = graphene.String()
     invoiceDate = graphene.Date()
+    processDate = graphene.Date()
     amount = graphene.Decimal()
     billType = graphene.String()
+    thumbnailPath = graphene.String()
+    filePath = graphene.String()
 
 class BillOutputType(DjangoObjectType):
     class Meta:
         model = Bill
         fields = '__all__'
+
+class myobUpdateBill(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        bill = BillInputType()
+
+    success = graphene.Boolean()
+    message= graphene.String()
+    uid = graphene.String()
+    job = graphene.Field(JobType)
+    
+    @classmethod
+    @login_required
+    def mutate(self, root, info, uid, bill):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+            
+            if not Bill.objects.filter(id = bill.id).exists():
+                return self(success=False, message="Cannot Find Bill")
+            
+            b = Bill.objects.get(id = bill.id)
+
+            currentJob = b.job
+
+            job = Job.objects.get(id = bill.job.id)
+
+            # Update the MYOB bill
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+                'Content-Type': 'application/json',
+            }
+
+            # GET MYOB Bill
+            get_url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$filter=UID eq guid'{bill.myobUid}'"
+            get_response = requests.request("GET", get_url, headers=headers)
+
+            if not get_response.status_code == 200:
+                print(get_response.status_code)
+                return self(success=False, message="Could Not Get Bill Details From MYOB")
+
+            if len(json.loads(get_response.text)['Items']) == 0:
+                print(json.loads(get_response.text))
+                return self(success=False, message="Could Not Get Bill Details From MYOB")
+
+            myob_bill = json.loads(get_response.text)['Items'][0]
+
+            if myob_bill['Status'] == "Closed":
+                return self(success=False, message="Can not update a Bill that has already been processed")
+
+            # Update lines
+            myob_bill['SupplierInvoiceNumber'] = bill.invoiceNumber
+            myob_bill['Date'] = bill.invoiceDate
+            myob_bill['Lines'][0]['Description'] = str(job)
+            myob_bill['Lines'][0]['Total'] = round(bill.amount, 2)
+            myob_bill['Lines'][0]['Job']['UID'] = job.myob_uid
+
+            myob_bill['Lines'][0]['Account']['UID']  = "d7a5adf7-a9c1-47b0-b11d-f72f62cd575d"
+            if bill.billType == 'material':
+                myob_bill['Lines'][0]['Account']['UID'] = "83c3ab74-1b2e-4002-9e38-65c99fbf2b46"
+
+            # PUT Bill with updates to MYOB
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service/{bill.myobUid}"
+            payload = json.dumps(myob_bill, default=str)
+            response = requests.request("PUT", url, headers=headers, data=payload)
+
+            if(not response.status_code == 200):
+                print(response.status_code, response.text)
+                return self(success=False, message="Issue updating bill in MYOB")
+
+            # Update the bill
+            b.job = job
+            b.invoice_number = bill.invoiceNumber
+            b.invoice_date = bill.invoiceDate
+            b.amount = bill.amount
+            b.bill_type = bill.billType
+
+            if bill.filePath and currentJob != job:
+                folder_name = str(job)
+                job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
+                accounts_folder = os.path.join(job_folder, "Accounts", job.supplier.name)
+                if os.path.exists(bill.filePath):
+                    new_file_path = os.path.join(accounts_folder, bill.filePath.split('\\')[len(bill.filePath.split('\\'))-1])
+                    shutil.move(bill.filePath, new_file_path)
+                    b.file_path = new_file_path
+
+            b.save()
+
+            return self(success=True, message="Successfully Updated Bill", job=currentJob)
+
+        return self(success=False, message="MYOB Connection Error")
 
 class myobCreateBill(graphene.Mutation):
     class Arguments:
@@ -1760,6 +1895,7 @@ class myobCreateBill(graphene.Mutation):
     bill = graphene.Field(BillOutputType)
     
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, jobId, newBill, attachment, attachmentName):
         env = environ.Env()
         environ.Env.read_env()
@@ -1775,6 +1911,7 @@ class myobCreateBill(graphene.Mutation):
 
             # Check to see if bill already exists in the system
             if Bill.objects.filter(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).exists():
+                print(Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).id)
                 return self(success=False, message="Bill Already Exists", error=Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber']))
 
             folder_name = str(job)
@@ -1865,11 +2002,14 @@ class myobCreateBill(graphene.Mutation):
 
             bill = Bill()
             bill.job = job
-            bill.myob_uid = uid
+            bill.myob_uid = bill_uid
             bill.supplier = supplier
             bill.amount = newBill['amount']
             bill.invoice_date = newBill['invoiceDate']
             bill.invoice_number = newBill['invoiceNumber']
+            bill.bill_type = newBill['billType']
+            bill.thumbnail_path = newBill['thumbnailPath']
+            bill.file_path = os.path.join(accounts_folder, attachmentName)
             bill.save()
 
             print("Bill Created for", supplier.name, "- UID =", bill_uid)
@@ -1912,9 +2052,10 @@ class myobProcessPayment(graphene.Mutation):
     success = graphene.Boolean()
     message= graphene.String()
     error = graphene.String()
-    job_invoice = graphene.List(JobInvoiceType)
+    invoice = graphene.List(InvoiceType)
     
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, client, invoices, payment_date):
         env = environ.Env()
         environ.Env.read_env()
@@ -1981,12 +2122,10 @@ class myobProcessPayment(graphene.Mutation):
                     if not inv.date_issued: invoice.date_issued = inv.date_issued
                     invoice.date_paid = payment_date
                     invoice.save()
+                    invoice.job.save() ## save job to update stage
+                    updatedInvoices.append(invoice)
 
-                    jobinv = JobInvoice.objects.get(invoice=invoice)
-                    jobinv.job.save() ## save job to update stage
-                    updatedInvoices.append(jobinv)
-
-            return self(success=True, message="Invoices Updated and Payment Processed.", job_invoice=updatedInvoices)
+            return self(success=True, message="Invoices Updated and Payment Processed.", invoice=updatedInvoices)
 
         return self(success=False, message="Error connecting to MYOB.", error=json.loads("MYOB Connection Error"))
 
@@ -2006,6 +2145,7 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
     converted = graphene.List(graphene.String)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, invoices, date_paid=None):
         env = environ.Env()
         environ.Env.read_env()
@@ -2106,9 +2246,8 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
                     if date_paid: invoice.date_paid = date_paid
                     invoice.save()
 
-                    jobinv = JobInvoice.objects.get(invoice=invoice)
-                    jobinv.job.save() ## save job to update stage
-                    updatedInvoices.append(jobinv)
+                    invoice.job.save() ## save job to update stage
+                    updatedInvoices.append(invoice)
 
             return self(success=True, message="Orders have been converted", converted=converted)
         return self(success=False, message="MYOB Connection Error")
@@ -2123,6 +2262,7 @@ class myobCustomFunction(graphene.Mutation):
     items = graphene.List(graphene.String)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -2142,6 +2282,7 @@ class generateInvoice(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, job):
         env = environ.Env()
         environ.Env.read_env()
@@ -2247,8 +2388,7 @@ class generateInvoice(graphene.Mutation):
                     return self(success=False, message="Error. Purchase Order can not be found")
 
             # GET Invoice from MYOB
-            jobinvoice = JobInvoice.objects.get(job=job)
-            inv = jobinvoice.invoice
+            inv = Invoice.objects.get(job=job)
             invoice_number = inv.number
             invoice_uid = inv.myob_uid
             
@@ -2327,6 +2467,7 @@ class myobGetTimesheets(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, timesheet):
         env = environ.Env()
         environ.Env.read_env()
@@ -2356,6 +2497,7 @@ class myobCustomQuery(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, query):
         env = environ.Env()
         environ.Env.read_env()
@@ -2422,6 +2564,7 @@ class Mutation(graphene.ObjectType):
     myob_create_job = myobCreateJob.Field()
     myob_create_invoice = myobCreateInvoice.Field()
     myob_create_bill = myobCreateBill.Field()
+    myob_update_bill = myobUpdateBill.Field()
     myob_process_payment = myobProcessPayment.Field()
 
     generate_invoice = generateInvoice.Field()

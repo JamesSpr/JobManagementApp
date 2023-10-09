@@ -46,9 +46,7 @@ export interface JobType {
         id: string
     }
     estimateSet: EstimateType[]
-    jobinvoiceSet: [{
-        invoice: InvoiceType
-    }]
+    invoiceSet: InvoiceType[]
     billSet: BillType[]
     opportunityType: string
     bsafeLink: string
@@ -116,6 +114,7 @@ export interface BillType {
     // Supplier data when extracting the bill
     abn?: string
     contractor?: string
+    job?: JobType
 }
 
 export interface BillSummaryType {

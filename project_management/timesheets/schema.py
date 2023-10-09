@@ -33,6 +33,7 @@ class TimesheetType(DjangoObjectType):
     workday_set = graphene.List(WorkDayType)
 
     @classmethod
+    @login_required
     def resolve_workday_set(self, instance, info):
         return WorkDay.objects.filter(timesheet=instance.id).order_by('date')
 
@@ -56,6 +57,7 @@ class GetEmployees(graphene.Mutation):
     employees = graphene.List(EmployeeType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         env.read_env(env.str('ENV_PATH', '../myob/.env'))
@@ -82,7 +84,7 @@ class GetEmployees(graphene.Mutation):
         res = json.loads(response.text)
         res = res['Items']
 
-        not_included = ["David Phillips", "Leo Sprague", "Colin Baggott", "Robert Stapleton"]
+        not_included = ["David Phillips", "Leo Sprague", "Colin Baggott", "Robert Stapleton", "Brett Macpherson"]
         active_employees = []
         for employee in res:
             emp = Employee()
@@ -107,6 +109,7 @@ class GetPayrollCategories(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         env.read_env(env.str('ENV_PATH', '../myob/.env'))
@@ -181,6 +184,7 @@ class ImportTimesheets(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, summary, start_date, end_date):       
         start_date = parse_date_to_string(start_date)
         end_date = parse_date_to_string(end_date)
@@ -224,7 +228,7 @@ class ImportTimesheets(graphene.Mutation):
                 work_day.save()
 
         # Add basic timesheets in for certain employees
-        directors = ['Leo Sprague', 'Robert Stapleton', 'Colin Baggott']
+        directors = ['Leo Sprague', 'Robert Stapleton', 'Colin Baggott', "Brett Macpherson"]
         for director in directors:
             
             employee = Employee.objects.get(name=director)
@@ -308,6 +312,7 @@ class UpdateTimesheet(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, timesheet):
 
         sheet = Timesheet.objects.get(id = timesheet.id)
@@ -335,6 +340,7 @@ class GetMyobJob(graphene.Mutation):
     details = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         env.read_env(env.str('ENV_PATH', '../myob/.env'))
@@ -401,6 +407,7 @@ class GetPayrollDetails(graphene.Mutation):
     details = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         env.read_env(env.str('ENV_PATH', '../myob/.env'))
@@ -441,6 +448,7 @@ class ClearAllTimesheetExamples(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info):
         for workday in WorkDay.objects.all():
             workday.delete()
@@ -464,6 +472,7 @@ class SubmitTimesheets(graphene.Mutation):
     # debug = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, timesheets, start_date, end_date):
         env = environ.Env()
         env.read_env(env.str('ENV_PATH', '../myob/.env'))
@@ -481,6 +490,11 @@ class SubmitTimesheets(graphene.Mutation):
         submissionError = False
         message = ""
         failed = ""
+
+        # Ensure times are always 0 for start and end date. Daylight savings can cause issues
+        start_date = start_date.split("T")[0] + "T00:00:00.000Z"
+        end_date = end_date.split("T")[0] + "T00:00:00.000Z"
+
         for timesheet in timesheets:
             timesheet_data = []
             if not Timesheet.objects.filter(id=timesheet.id).exists():
@@ -629,6 +643,8 @@ class SubmitTimesheets(graphene.Mutation):
 
             print(response)
             print(response.text)
+            if response.status_code != 200:
+                print(timesheet_data)
 
             if response.status_code == 200:
                 sheet.sent_to_myob = True
@@ -725,6 +741,7 @@ class QuickMutate(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @login_required
     def mutate(self, root, info):
         work_days = WorkDay.objects.all()
         for day in work_days:

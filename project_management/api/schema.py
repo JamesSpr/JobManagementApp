@@ -14,7 +14,7 @@ from django.db import connection
 from accounts.models import CustomUser
 from api.services.create_completion_documents import CreateCompletionDocuments
 from .services.email import AllocateJobEmail, CloseOutEmail, EmailQuote
-from .models import Insurance, Estimate, EstimateHeader, EstimateItem, Job, JobInvoice, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
+from .models import Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
 from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote, CreateBGISEstimate
@@ -64,6 +64,7 @@ class EstimateHeaderType(DjangoObjectType):
     estimateitem_set = graphene.List(EstimateItemType)
 
     @classmethod
+    @login_required
     def resolve_estimateitem_set(self, instance, info):
         return EstimateItem.objects.filter(header_id=instance.id).order_by('id')
 
@@ -76,6 +77,7 @@ class EstimateType(DjangoObjectType):
     estimateheader_set = graphene.List(EstimateHeaderType)
 
     @classmethod
+    @login_required
     def resolve_estimateheader_set(self, instance, info):
         return EstimateHeader.objects.filter(estimate_id=instance.id).order_by('id')
 
@@ -95,6 +97,7 @@ class JobType(DjangoObjectType):
     estimate_set = graphene.List(EstimateType)
 
     @classmethod
+    @login_required
     def resolve_estimate_set(self, instance, info):
         return Estimate.objects.filter(job_id=instance.id).order_by('approval_date', 'id')
     
@@ -178,6 +181,25 @@ class LocationInputType(graphene.InputObjectType):
     state = graphene.String()
     postcode = graphene.String()    
 
+class InvoiceUpdateInput(graphene.InputObjectType):
+    myob_uid = graphene.String()
+    number = graphene.String()
+    amount = graphene.Float()
+    date_created = graphene.Date()
+    date_issued = graphene.Date()
+    date_paid = graphene.Date()
+
+class ClientContactInput(graphene.InputObjectType):
+    id = graphene.String(required=False)
+    first_name = graphene.String()
+    last_name = graphene.String()
+    position = graphene.String()
+    phone = graphene.String()
+    email = graphene.String()
+    region = graphene.String()
+    client = graphene.String()
+    active = graphene.Boolean()
+
 class JobInput(graphene.InputObjectType):
     id = graphene.String()
     po = graphene.String()
@@ -190,7 +212,7 @@ class JobInput(graphene.InputObjectType):
     title = graphene.String()
     priority = graphene.String()
     date_issued = graphene.DateTime()
-    requester = graphene.Field(IDInput)
+    requester = graphene.Field(ClientContactInput)
     poc_name = graphene.String()
     poc_phone = graphene.String()
     poc_email = graphene.String()
@@ -216,7 +238,8 @@ class JobInput(graphene.InputObjectType):
     cancelled = graphene.Boolean()
     cancel_reason = graphene.String()
     estimate_set = graphene.List(EstimateInput)
-
+    invoice_set = graphene.List(InvoiceUpdateInput)
+    stage = graphene.String()
 
 class CreateJob(graphene.Mutation):
     class Arguments:
@@ -228,6 +251,7 @@ class CreateJob(graphene.Mutation):
     message = graphene.List(graphene.String)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, input):
         print("Creating Job")
 
@@ -351,6 +375,7 @@ class CreateJob(graphene.Mutation):
             job.description = input["description"]
             if input["overdue_date"]: job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC)
             job.bsafe_link = input["bsafe_link"]
+            job.stage = 'INS'
             job.save()
 
             # Create estimate for job
@@ -397,6 +422,7 @@ class CheckFolder(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, job_id):
         job = Job.objects.get(id=job_id)
 
@@ -433,6 +459,7 @@ class DeleteJob(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         job = Job.objects.get(id=id)
         if job:
@@ -445,10 +472,11 @@ class UpdateJob(graphene.Mutation):
         input = JobInput()
 
     job = graphene.Field(JobType)
-    message = graphene.List(graphene.String)
+    message = graphene.String()
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, input):
         if input.id == "":
             return self(success=False, message="Job ID Not Found!")
@@ -459,15 +487,25 @@ class UpdateJob(graphene.Mutation):
         # Name Checking
         illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         if [char for char in illegal_characters if char in input['title']]:
-            return self(success=False, message=["Title can not contain the characters:"] + illegal_characters)
+            message = "Title can not contain the characters: " + str(illegal_characters)
+            return self(success=False, message=message)
+        
         if [char for char in illegal_characters if char in input['building']]:
-            return self(success=False, message=["Building can not contain the characters:"] + illegal_characters)
+            message = "Building can not contain the characters: " + str(illegal_characters)
+            return self(success=False, message=message)
+        
         if [char for char in illegal_characters if char in input['po']]:
-            return self(success=False, message=["PO can not contain the characters:"] + illegal_characters)
+            message = "PO can not contain the characters: " + str(illegal_characters)
+            return self(success=False, message=message)
+        
         if [char for char in illegal_characters if char in input['sr']]:
-            return self(success=False, message=["SR can not contain the characters:"] + illegal_characters)
+            message = "SR can not contain the characters: " + str(illegal_characters)
+            return self(success=False, message=message)
+        
         if [char for char in illegal_characters if char in input['other_id']]:
-            return self(success=False, message=["Other ID can not contain the characters:"] + illegal_characters)
+            message = "Other ID can not contain the characters: " + str(illegal_characters)
+            return self(success=False, message=message)
+        
         # if Job.objects.filter(po = input['po']).exists():
         #     return self(success=False)
  
@@ -487,7 +525,7 @@ class UpdateJob(graphene.Mutation):
         job.location = None if input.location == None else Location.objects.get(id=input.location.id)
         job.building = input['building']
         job.detailed_location = input['detailed_location']
-        job.requester = None if input.requester == None else ClientContact.objects.get(id=input.requester.id)
+        job.requester = None if input.requester == None or input.requester.id == None else ClientContact.objects.get(id=input.requester.id)
         job.priority = input['priority']
         job.special_instructions = input['special_instructions']
         job.poc_name = input['poc_name']
@@ -498,14 +536,14 @@ class UpdateJob(graphene.Mutation):
         job.alt_poc_email = input['alt_poc_email']
         job.title = input['title']
         job.description = input['description']
-        job.inspection_by = None if input.inspection_by == None else CustomUser.objects.get(id=input.inspection_by.id)
+        job.inspection_by = None if input.inspection_by == None or input.inspection_by.id == None else CustomUser.objects.get(id=input.inspection_by.id)
         job.inspection_date = None if input['inspection_date'] == None else input['inspection_date'].replace(tzinfo=pytz.UTC)
         job.inspection_notes = input['inspection_notes']
         job.scope = input['scope']
-        job.site_manager = None if input.site_manager == None else CustomUser.objects.get(id=input.site_manager.id)
+        job.site_manager = None if input.site_manager == None or input.site_manager.id == None else CustomUser.objects.get(id=input.site_manager.id)
         job.commencement_date = None if input['commencement_date'] == None else input['commencement_date'].replace(tzinfo=pytz.UTC)
         job.completion_date = None if input['completion_date'] == None else input['completion_date'].replace(tzinfo=pytz.UTC)
-        job.total_hours = str(input['total_hours'])
+        job.total_hours = 0.0 if input['total_hours'] == "" else str(input['total_hours'])
         job.work_notes = input['work_notes']
         job.overdue_date = None if input['overdue_date'] == None else input['overdue_date'].replace(tzinfo=pytz.UTC)
         job.close_out_date = None if input['close_out_date'] == None else input['close_out_date'].replace(tzinfo=pytz.UTC)
@@ -529,7 +567,7 @@ class UpdateJob(graphene.Mutation):
         for est in input.estimate_set:
 
             if [char for char in illegal_characters if char in est.name]:
-                return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
+                return self(success=False, message="Estimate name can not contain the characters:" + str(illegal_characters))
 
 
             # Get existing estimate for that job with the same name
@@ -565,28 +603,29 @@ class UpdateJob(graphene.Mutation):
             estimate.save()
 
             # Update the headers
-            for header in est.estimateheaderSet:
-                estimate_header = EstimateHeader.objects.get(id=header.id)
-                estimate_header.estimate_id = estimate
-                estimate_header.description = header.description
-                estimate_header.markup = header.markup
-                estimate_header.gross = header.gross
-                estimate_header.save()
+            if est.estimateheaderSet:
+                for header in est.estimateheaderSet:
+                    estimate_header = EstimateHeader.objects.get(id=header.id)
+                    estimate_header.estimate_id = estimate
+                    estimate_header.description = header.description
+                    estimate_header.markup = header.markup
+                    estimate_header.gross = header.gross
+                    estimate_header.save()
 
-                if not header.estimateitemSet:
-                    continue
+                    if not header.estimateitemSet:
+                        continue
 
-                for item in header.estimateitemSet:
-                    estimate_item = EstimateItem.objects.get(id=item.id)
-                    estimate_item.header_id = estimate_header
-                    estimate_item.description = item.description
-                    estimate_item.quantity = item.quantity
-                    estimate_item.item_type = item.itemType
-                    estimate_item.rate = item.rate
-                    estimate_item.extension = item.extension
-                    estimate_item.markup = item.markup
-                    estimate_item.gross = item.gross
-                    estimate_item.save()
+                    for item in header.estimateitemSet:
+                        estimate_item = EstimateItem.objects.get(id=item.id)
+                        estimate_item.header_id = estimate_header
+                        estimate_item.description = item.description
+                        estimate_item.quantity = item.quantity
+                        estimate_item.item_type = item.itemType
+                        estimate_item.rate = item.rate
+                        estimate_item.extension = item.extension
+                        estimate_item.markup = item.markup
+                        estimate_item.gross = item.gross
+                        estimate_item.save()
 
         job.save() # Save again to update the status
 
@@ -605,6 +644,7 @@ class CreateEstimate(graphene.Mutation):
     estimate = graphene.Field(EstimateType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, job_id, estimate):
 
         job = Job.objects.get(id=job_id)
@@ -665,6 +705,7 @@ class UpdateEstimate(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id, name, description, price, issue_date, approval_date, quote_by):
 
         # Name Checking
@@ -691,6 +732,7 @@ class CreateEstimateHeader(graphene.Mutation):
     estimate_header = graphene.Field(EstimateHeaderType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, estimate_id):
         estHeader = EstimateHeader()
         estHeader.estimate_id = Estimate.objects.get(id=estimate_id)
@@ -709,6 +751,7 @@ class DeleteEstimateHeader(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, header_id):
         estimateItems = EstimateItem.objects.filter(header_id = header_id)
         for item in estimateItems:
@@ -727,6 +770,7 @@ class CreateEstimateItem(graphene.Mutation):
     estimate_item = graphene.Field(EstimateItemType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, header_id):
         estimate_item = EstimateItem()
         estimate_item.header_id = EstimateHeader.objects.get(id=header_id)
@@ -741,6 +785,7 @@ class DeleteEstimateItem(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, item_id):
         estimate_item = EstimateItem.objects.get(id=item_id)
         estimate_item.delete()
@@ -754,6 +799,7 @@ class DeleteEstimate(graphene.Mutation):
         id = graphene.ID()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         estimate = Estimate.objects.get(id=id)
 
@@ -785,6 +831,7 @@ class CreateClient(graphene.Mutation):
     client = graphene.Field(ClientType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, name, myob_uid):
         if(Client.objects.filter(name=name).exists()):
             return self(success=False, message="Client Already Exists")
@@ -805,6 +852,7 @@ class UpdateClient(graphene.Mutation):
     client = graphene.Field(ClientType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, details):
         if(not Client.objects.filter(id=details.id).exists()):
             return self(success=False, message="Client Not Found")
@@ -834,6 +882,7 @@ class CreateLocation(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, client, new_location):
         
         if(Location.objects.filter(client = Client.objects.get(name=client), name = new_location.name).exists()):
@@ -861,6 +910,7 @@ class UpdateLocation(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, client, locations):
         for loc in locations:
             location = Location.objects.get(id=loc.id)
@@ -883,6 +933,7 @@ class DeleteLocation(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         location = Location.objects.get(id=id)
         if location:
@@ -912,6 +963,7 @@ class CreateRegion(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, client, region):
         client_region = Region()
         client_region.client = Client.objects.get(name=client)
@@ -933,6 +985,7 @@ class UpdateRegion(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, regions, client):
         for region in regions:
             if not Region.objects.filter(id=region.id).exists():
@@ -955,6 +1008,7 @@ class DeleteRegion(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         client_region = Region.objects.get(id=id)
 
@@ -972,6 +1026,7 @@ class DeleteClient(graphene.Mutation):
         name = graphene.ID()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, name):
         client = Client.objects.get(name=name)
         client.delete()
@@ -987,17 +1042,6 @@ class ClientContactType(DjangoObjectType):
         model = ClientContact
         fields = '__all__'
 
-class ClientContactInput(graphene.InputObjectType):
-    id = graphene.String(required=False)
-    first_name = graphene.String()
-    last_name = graphene.String()
-    position = graphene.String()
-    phone = graphene.String()
-    email = graphene.String()
-    region = graphene.String()
-    client = graphene.String()
-    active = graphene.Boolean()
-
 class CreateContact(graphene.Mutation):
     class Arguments:
         contact = ClientContactInput()
@@ -1007,6 +1051,7 @@ class CreateContact(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, contact, client):
         if ClientContact.objects.filter(first_name=contact.first_name, last_name=contact.last_name, client=Client.objects.get(name=client)).exists():
             return self(success=False, message="Contact Already Exists")
@@ -1039,6 +1084,7 @@ class UpdateContact(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, contacts, client):
         for contact in contacts:
             client_contact = ClientContact(id=contact.id)
@@ -1061,6 +1107,7 @@ class DeleteContact(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         if not ClientContact.objects.filter(id=id).exists():
             return self(success=False)
@@ -1086,6 +1133,7 @@ class CreateContractor(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, contractor):
         if Contractor.objects.filter(abn=contractor.abn).exists():
             return self(success=False, message="Contractor Already Exists. Check ABN")
@@ -1110,6 +1158,7 @@ class UpdateContractor(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, contractor):
         cont = Contractor.objects.filter(id=contractor.id)[0]
         if contractor.myob_uid: cont.myob_uid = contractor.myob_uid
@@ -1129,6 +1178,7 @@ class DeleteContractor(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         contractor = Contractor.objects.get(id=id)
 
@@ -1148,18 +1198,18 @@ class BillType(DjangoObjectType):
         model = Bill
         fields = '__all__'
 
-    amount = graphene.Float()    
+    amount = graphene.Float()
 
 class BillInput(graphene.InputObjectType):
     id = graphene.String()
+    myobUid = graphene.String()
     job = graphene.String()
     contractor = graphene.String()
     invoiceNumber = graphene.String()
     invoiceDate = graphene.Date()
     amount = graphene.Float()
-    myobUid = graphene.String()
     processDate = graphene.Date()
-    imgPath = graphene.String()
+    thumbnailPath = graphene.String()
 
 class CreateBill(graphene.Mutation):
     class Arguments:
@@ -1172,6 +1222,7 @@ class CreateBill(graphene.Mutation):
     bill = graphene.Field(BillType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, newBill, jobId, uid): 
         contractor = Contractor.objects.get(id=newBill.contractor)
         
@@ -1189,6 +1240,7 @@ class CreateBill(graphene.Mutation):
         bill.invoice_date = newBill['invoiceDate']
         bill.invoice_number = newBill['invoiceNumber']
         bill.img_path = newBill['imagePath']
+        bill.thumbnail_path = newBill['thumbnailPath']
         bill.save()
 
         return self(success=True, message="Bill Successfully Created", bill=bill)
@@ -1202,19 +1254,20 @@ class UpdateBill(graphene.Mutation):
     bill = graphene.Field(BillType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, bill):
         if not Bill.objects.filter(id = bill.id).exists():
             return self(success=False, message="Bill can not be found.")
 
         b = Bill.objects.get(id=bill.id)
         if bill.job: b.job = Job.objects.get(po=bill.job)
-        if bill.myobUid: b.myob_uid = bill.uid
+        if bill.myobUid: b.myob_uid = bill.myobUid
         if bill.contractor: b.supplier = Contractor.objects.get(name=bill.contractor)
         if bill.processDate: b.process_date = bill.processDate
         if bill.amount: b.amount = bill.amount
         if bill.invoiceDate: b.invoice_date = bill.invoiceDate
         if bill.invoiceNumber: b.invoice_number = bill.invoiceNumber
-        if bill.imgPath: b.img_path = bill.imgPath
+        if bill.thumbnailPath: b.thumbnail_path = bill.thumbnailPath
         b.save()
 
         return self(success=True, message="Bill Successfully Updated", bill=b)
@@ -1226,6 +1279,7 @@ class DeleteBill(graphene.Mutation):
     ok = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         bill = Bill.objects.get(id=id)
         bill.delete()
@@ -1238,58 +1292,12 @@ class DeleteInvoice(graphene.Mutation):
         id = graphene.ID()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         invoice = Invoice.objects.get(id=id)
         invoice.delete()
         return self(ok=True)
 
-class JobInvoiceType(DjangoObjectType):
-    class Meta:
-        model = JobInvoice
-        fields = '__all__'
-
-class UpdateJobInvoice(graphene.Mutation):
-    class Arguments:
-        id = graphene.String()
-        po = graphene.String()
-
-    success = graphene.Boolean()
-
-    @classmethod
-    def mutate(self, root, info, id, po):
-        if(not JobInvoice.objects.filter(id=id).exists()):
-            return self(success = False)
-        
-        jobInvoice = JobInvoice.objects.get(id=id)
-        existing_job = jobInvoice.job
-        new_job = Job.objects.get(po=po)
-
-        jobInvoice.job = new_job
-        jobInvoice.save()
-        existing_job.save()
-        new_job.save()
-
-        return self(success=True)
-
-class DeleteJobInvoice(graphene.Mutation):
-    ok = graphene.Boolean()
-
-    class Arguments:
-        id = graphene.ID()
-
-    @classmethod
-    def mutate(self, root, info, id):
-        jobInvoice = JobInvoice.objects.get(id=id)
-        jobInvoice.delete()
-        return self(ok=True)
-
-class InvoiceUpdateInput(graphene.InputObjectType):
-    myob_uid = graphene.String()
-    number = graphene.String()
-    amount = graphene.Float()
-    date_created = graphene.Date()
-    date_issued = graphene.Date()
-    date_paid = graphene.Date()
 
 class CreateInvoice(graphene.Mutation):
     class Arguments:
@@ -1304,6 +1312,7 @@ class CreateInvoice(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, myob_uid, number, amount, date_created, date_issued, job):
         if Invoice.objects.filter(number=number).exists():
             return self(success=False)
@@ -1314,14 +1323,8 @@ class CreateInvoice(graphene.Mutation):
         invoice.amount = amount
         invoice.date_created = date_created
         invoice.date_issued = date_issued
+        invoice.job = Job.objects.get(po=job)
         invoice.save()
-
-        job=Job.objects.get(po=job)
-        ji = JobInvoice()
-        ji.invoice = invoice
-        ji.job = job
-        ji.save()
-        job.save()
 
         return self(success = True)
 
@@ -1332,6 +1335,7 @@ class UpdateInvoice(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, invoice):
         if not Invoice.objects.filter(number=invoice.number).exists():
             return self(success=False)
@@ -1344,9 +1348,6 @@ class UpdateInvoice(graphene.Mutation):
         if invoice.myob_uid: inv.myob_uid = invoice.myob_uid
         inv.save()
 
-        jobinv = JobInvoice.objects.get(invoice=inv)
-        jobinv.job.save() ## save job to update stage
-
         return self(success=True)
 
 
@@ -1357,9 +1358,10 @@ class UpdateInvoices(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
-    job_invoice = graphene.List(JobInvoiceType)
+    invoice = graphene.List(InvoiceType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, invoices, date_paid):
         updatedInvoices = []
         for inv in invoices:
@@ -1368,12 +1370,10 @@ class UpdateInvoices(graphene.Mutation):
                 # if invoice.date_issued == "" or invoice.date_issued == None: invoice.date_issued = inv.date_issued
                 if date_paid: invoice.date_paid = date_paid
                 invoice.save()
+                invoice.job.save() ## save job to update stage
+                updatedInvoices.append(invoice)
 
-                jobinv = JobInvoice.objects.get(invoice=invoice)
-                jobinv.job.save() ## save job to update stage
-                updatedInvoices.append(jobinv)
-
-        return self(success=True, message="Invoices Updated", job_invoice=updatedInvoices)
+        return self(success=True, message="Invoices Updated", invoice=updatedInvoices)
         
 class TransferEstimate(graphene.Mutation):
     class Arguments:
@@ -1382,12 +1382,16 @@ class TransferEstimate(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
+    job = graphene.Field(JobType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, estimate_id, to_job):
         try:
             estimate = Estimate.objects.get(id=estimate_id)
             job = Job.objects.get(id=to_job)
+
+            old_job = estimate.job_id
         except Exception as e:
             return self(success=False, message="Not found: " + str(e))
 
@@ -1396,32 +1400,33 @@ class TransferEstimate(graphene.Mutation):
 
         estimate.job_id = job
         estimate.save()
-        return self(success=True, message="Estimate & Folder successfully transferred")
+        return self(success=True, message="Estimate & Folder successfully transferred", job=old_job)
 
 class TransferInvoice(graphene.Mutation):
     class Arguments:
-        job_invoice_id = graphene.String()
+        invoice_id = graphene.String()
         to_job = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
-    def mutate(self, root, info, job_invoice_id, to_job):
+    @login_required
+    def mutate(self, root, info, invoice_id, to_job):
         try:
-            job_invoice = JobInvoice.objects.get(id=job_invoice_id)
+            invoice = Invoice.objects.get(id=invoice_id)
             new_job = Job.objects.get(id=to_job)
         except Exception as e:
             return self(success=False, message="Not found: " + str(e))
 
-        if os.path.exists(os.path.join(main_folder_path, str(job_invoice.job), "Accounts", "Aurify", "Invoice for PO" + job_invoice.job.po + ".pdf")):
-            shutil.move(os.path.join(main_folder_path, str(job_invoice.job), "Accounts", "Aurify", "Invoice for PO" + job_invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "Invoice for PO" + new_job.po + ".pdf"))
+        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for PO" + invoice.job.po + ".pdf")):
+            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for PO" + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "Invoice for PO" + new_job.po + ".pdf"))
 
-        if os.path.exists(os.path.join(main_folder_path, str(job_invoice.job), "Accounts", "Aurify", "INV" + job_invoice.invoice.number + " - PO" + job_invoice.job.po + ".pdf")):
-            shutil.move(os.path.join(main_folder_path, str(job_invoice.job), "Accounts", "Aurify", "INV" + job_invoice.invoice.number + " - PO" + job_invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "INV" + job_invoice.invoice.number + " - PO" + new_job.po + ".pdf"))
+        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - PO" + invoice.job.po + ".pdf")):
+            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - PO" + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "INV" + invoice.number + " - PO" + new_job.po + ".pdf"))
 
-        job_invoice.job = new_job
-        job_invoice.save()
+        invoice.job = new_job
+        invoice.save()
         return self(success=True, message="Invoice & Folder successfully transferred")
 
 class InsuranceType(DjangoObjectType):
@@ -1447,6 +1452,7 @@ class CreateInsurance(graphene.Mutation):
     data = graphene.Field(InsuranceType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, insurance):
 
         ins = Insurance()
@@ -1469,6 +1475,7 @@ class UpdateInsurance(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, insurance):
 
         if not Insurance.objects.filter(id=insurance.id).exists():
@@ -1490,19 +1497,17 @@ class UpdateInsurance(graphene.Mutation):
 class Query(graphene.ObjectType):
     job_page = relay.ConnectionField(JobConnection)
     archived_jobs = relay.ConnectionField(JobConnection)
-    @login_required
-    def resolve_job_page(root, info, **kwargs):
-        # return Job.objects.exclude(stage="CAN").exclude(stage="FIN").exclude(location__isnull=False)
-        return Job.objects.order_by('id').exclude(stage="CAN").exclude(stage="FIN") #.exclude(location=None)
-        # return Job.objects.all()
 
     @login_required
+    def resolve_job_page(root, info, **kwargs):
+        return Job.objects.order_by('id').exclude(stage="CAN").exclude(stage="FIN") #.exclude(location=None)
+       
+    @login_required
     def resolve_archived_jobs(root, info, **kwargs):
-        # return Job.objects.exclude(stage="CAN").exclude(stage="FIN").exclude(location__isnull=False)
         return Job.objects.filter(Q(stage="CAN") | Q(stage="FIN"))
         # return Job.objects.all()
 
-    jobs = graphene.List(JobType)
+    jobs = graphene.List(JobType, OnlyMyobJobs = graphene.Boolean())
     next_id = graphene.String(item=graphene.String())
     job_all = DjangoFilterConnectionField(JobType)
     estimates = graphene.List(EstimateType)
@@ -1515,9 +1520,21 @@ class Query(graphene.ObjectType):
     client_contacts = graphene.List(ClientContactType, client=graphene.String())
     contractor_contacts = graphene.List(ContractorContactType, contractor=graphene.String())
     invoices = graphene.List(InvoiceType)
-    job_invoices = graphene.List(JobInvoiceType)
-    bills = graphene.List(BillType)
+    bills = graphene.List(BillType, bill=graphene.String())
     insurances = graphene.List(InsuranceType)
+
+    @login_required
+    def resolve_jobs(root, info, OnlyMyobJobs=False, **kwargs):
+        # if order_by:
+        #     if order_by == "job":    
+        #         return Job.objects.all().order_by('po', 'sr', 'other_id')
+            
+        #     return Job.objects.all().order_by(order_by)
+
+        if OnlyMyobJobs:
+            return Job.objects.exclude(myob_uid=None).order_by('po', 'sr', 'other_id')
+
+        return Job.objects.all()
 
     @login_required
     def resolve_insurances(roof, info, **kwargs):
@@ -1532,20 +1549,15 @@ class Query(graphene.ObjectType):
         return row[0] + 1 
 
     @login_required
-    def resolve_bills(root, info, **kwargs):
+    def resolve_bills(root, info, bill=None, **kwargs):
+        if bill:
+           return Bill.objects.filter(id=bill)
+        
         return Bill.objects.all()
-
-    @login_required
-    def resolve_job_invoices(root, info, **kwargs):
-        return JobInvoice.objects.all()
 
     @login_required
     def resolve_invoices(root, info, **kwargs):
         return Invoice.objects.all()
-
-    @login_required
-    def resolve_jobs(root, info, **kwargs):
-        return Job.objects.all()
 
     @login_required
     def resolve_job_from_id(root, info, **kwargs):
@@ -1585,7 +1597,7 @@ class Query(graphene.ObjectType):
 
     @login_required
     def resolve_contractors(root, info, **kwargs):
-        return Contractor.objects.all()
+        return Contractor.objects.all().order_by('name')
     
     @login_required
     def resolve_contractors_contacts(root, info, contractor=None, **kwargs):
@@ -1618,6 +1630,7 @@ class UpdateJobStatus(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info):
         jobs = Job.objects.all()
         for job in jobs:
@@ -1625,18 +1638,26 @@ class UpdateJobStatus(graphene.Mutation):
     
         return self(success=True)
 
-from datetime import date
 class TestFeature(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info):
+        # ## Merge Contractors
+        # primary_contrator = Contractor.objects.get(id=34)
+        # secondary_contractor = Contractor.objects.get(id=94)
+
+        # print(f"{secondary_contractor.name} --> {primary_contrator.name}")
+        # for bill in Bill.objects.all():
+        #     if bill.supplier == secondary_contractor:
+        #         bill.supplier = primary_contrator
+        #         bill.save()
+
+        # for inv in Invoice.objects.all():
+        #     inv.job = None
+        #     inv.save()
         
-        insurances = Insurance.objects.filter(active=True).order_by('expiry_date')
-        
-        for i in insurances:
-            print(i.filename)
-    
         return self(success=True)
 
 class Mutation(graphene.ObjectType):
@@ -1689,9 +1710,6 @@ class Mutation(graphene.ObjectType):
     update_invoices = UpdateInvoices.Field()
     delete_invoice = DeleteInvoice.Field()
     transfer_invoice = TransferInvoice.Field()
-
-    update_jobinvoice = UpdateJobInvoice.Field()
-    delete_jobinvoice = DeleteJobInvoice.Field()
 
     create_bill = CreateBill.Field()
     update_bill = UpdateBill.Field()

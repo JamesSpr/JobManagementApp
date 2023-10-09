@@ -52,11 +52,14 @@ const Bills = () => {
                 data: JSON.stringify({
                     query: `{ 
                         bills {
-                            myobUid
                             id
-                            invoiceNumber
+                            myobUid
                             amount
+                            invoiceNumber
                             invoiceDate
+                            processDate
+                            thumbnailPath
+                            billType
                             job {
                             id
                             po
@@ -65,7 +68,6 @@ const Bills = () => {
                             id
                             name
                             }
-                            processDate
                         }
                     }`,
                     variables: {}

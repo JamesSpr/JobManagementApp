@@ -1,32 +1,38 @@
 import React, { useState, useMemo }  from 'react';
 import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getExpandedRowModel, ColumnDef, Row, ColumnSort, Table, Column} from '@tanstack/react-table'
 import { Dialog, DialogContent, Grid, Typography, IconButton } from '@mui/material';
-import { FileUploadSection } from '../../components/Components';
+import { BasicDialog, FileUploadSection, ProgressIconButton } from '../../components/Components';
 
 // Icons
 import CloseIcon from '@mui/icons-material/Close';
 import RequestPageIcon from '@mui/icons-material/RequestPage';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SaveIcon from '@mui/icons-material/Save';
 
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
-import { BillSummaryType, BillType, EstimateSummaryType, SnackType } from '../../types/types';
-import { BillAttachmentType } from './BillDialog';
+import { BillSummaryType, BillType, EstimateSummaryType, JobType, SnackType } from '../../types/types';
+import { BillAttachmentType, SummariseBill } from './BillDialog';
+import EditBill, { blankBill } from './EditBill';
+import useAuth from '../auth/useAuth';
 
-const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBill, setBillAttachment, setSnack }: {
+const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, setCreateBill, setBillAttachment, setSnack }: {
     open: boolean,
     handleClose: (event?: {}, reason?: string) => void,
     id: string
     data: EstimateSummaryType[]
+    setJob: React.Dispatch<React.SetStateAction<JobType>>
     bills: BillSummaryType[]
     setNewBill: React.Dispatch<React.SetStateAction<BillType>>
     setCreateBill: React.Dispatch<React.SetStateAction<boolean>>
     setBillAttachment: React.Dispatch<React.SetStateAction<BillAttachmentType>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
-    
 }) => {
+
+    const { auth } = useAuth(); 
     const axiosPrivate = useAxiosPrivate();
-    const [waiting, setWaiting] = useState({'create': false});
+    const [waiting, setWaiting] = useState({'create': false, 'update': false});
 
     // Table Columns
     const estimateTableColumns = useMemo<ColumnDef<EstimateSummaryType>[]>(() => [
@@ -168,13 +174,13 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
             maxSize: 80,
         },
         {
-            accessorKey: 'imgPath',
+            accessorKey: 'thumbnailPath',
             header: () => 'Bill',
-            cell: ({getValue}: {getValue: () => any}) => (
-                getValue() ?
-                <IconButton onClick={e => {displayBill(getValue())}}>
+            cell: ({row}: {row: Row<BillSummaryType>}) => (
+                row.parentId !== undefined &&
+                <IconButton onClick={e => {displayBill(row)}}>
                     <RequestPageIcon />
-                </IconButton> : <></>
+                </IconButton>
             ),
             minSize: 40,
             size: 40,
@@ -199,8 +205,12 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
         getExpandedRowModel: getExpandedRowModel(),
     }); 
 
-    const displayBill = ({path}: {path: string}) => {
-        console.log(path)
+    const [editingBill, setEditingBill] = useState<BillType>(blankBill);
+    const [billEditor, setBillEditor] = useState(false);
+    const displayBill = (row: any) => {
+        console.log(row)
+        setEditingBill(row.original);
+        setBillEditor(true);
     }
 
     const estimateTotal = () => {
@@ -300,96 +310,65 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
         }      
     }
 
+    const [toggleSave, setToggleSave] = useState(false);
+
     return (
     <>
         <Dialog fullWidth maxWidth='md' scroll={'paper'} open={open} onClose={handleClose}>
             <span className="dialogTitle">
+                
+                {billEditor && <>
+                    <IconButton onClick={() => setBillEditor(false)} disabled={waiting.update} style={{float: 'left', padding: '0px 0px 4px 0px'}}>
+                        <ArrowBackIcon />
+                    </IconButton>
+                    <ProgressIconButton onClick={() => setToggleSave(true)} waiting={waiting.update} style={{float: 'left', padding: '0px 0px 4px 0px', margin: '0px 0px 0px 8px'}}>
+                        <SaveIcon />
+                    </ProgressIconButton>
+                </>
+                }
                 <h1
-                    style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
+                    style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 104px)', textAlign: 'center', fontWeight: 'bold'}}>
                     Accounts for PO{id}
                 </h1>
-                <IconButton onClick={handleClose} style={{float: 'right', right: '10px', padding: '0px 0px 4px 0px'}} >
+                <IconButton onClick={handleClose} disabled={waiting.update} style={{float: 'right', right: '10px', padding: '0px 0px 4px 0px'}} >
                     <CloseIcon />
                 </IconButton>
             </span>
             <DialogContent>
-                <Grid container spacing={1} direction={'column'} alignItems={'center'} style={{overflow: 'auto hidden'}}>
-                    <Grid item xs={12} style={{margin: '10px 0px'}}>
-                        <Typography variant='h6' textAlign={'center'}>Approved Estimate Items</Typography>
-                        <table style={{width: estimateTable.getTotalSize()}}>
-                            <thead>
-                                {estimateTable.getHeaderGroups().map(headerGroup => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map(header => {
-                                            return (
-                                                <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
-                                                    {header.isPlaceholder ? null : (
-                                                    <>
-                                                        {flexRender(
-                                                        header.column.columnDef.header,
-                                                        header.getContext()
-                                                        )}
-                                                    </>
-                                                    )}
-                                                </th>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody>
-                                {estimateTable.getRowModel().rows.map(row => {
-                                    return (
-                                        <tr key={row.id} style={{height: '20px'}}>
-                                            {row.getVisibleCells().map(cell => {
+                {billEditor ? 
+                    <EditBill bills={editingBill} setJob={setJob} toggleSave={toggleSave} setToggleSave={setToggleSave} setEditing={setBillEditor} setUpdateWaiting={setWaiting}/>
+                    :
+                    <Grid container spacing={1} direction={'column'} alignItems={'center'} style={{overflow: 'auto hidden'}}>
+                        <Grid item xs={12} style={{margin: '10px 0px'}}>
+                            <Typography variant='h6' textAlign={'center'}>Approved Estimate Items</Typography>
+                            <table style={{width: estimateTable.getTotalSize()}}>
+                                <thead>
+                                    {estimateTable.getHeaderGroups().map(headerGroup => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map(header => {
                                                 return (
-                                                    <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '',padding: '4px 5px'}}>
-                                                        {
-                                                            flexRender(
-                                                                cell.column.columnDef.cell,
-                                                                cell.getContext()
-                                                            )
-                                                        }
-                                                    </td>
+                                                    <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
+                                                        {header.isPlaceholder ? null : (
+                                                        <>
+                                                            {flexRender(
+                                                            header.column.columnDef.header,
+                                                            header.getContext()
+                                                            )}
+                                                        </>
+                                                        )}
+                                                    </th>
                                                 );
                                             })}
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </Grid>
-                    <Grid item xs={12} style={{margin: '10px 0px', overflow: 'auto hidden'}}>
-                        <Typography variant='h6' textAlign={'center'}>Bills</Typography>
-                        <table style={{width: billsTable.getTotalSize()}}>
-                            <thead>
-                                {billsTable.getHeaderGroups().map(headerGroup => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map(header => {
-                                            return (
-                                                <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
-                                                    {header.isPlaceholder ? null : (
-                                                    <>
-                                                        {flexRender(
-                                                        header.column.columnDef.header,
-                                                        header.getContext()
-                                                        )}
-                                                    </>
-                                                    )}
-                                                </th>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody>
-                                {billsTable.getRowModel().rows.length > 0 ? (
-                                    billsTable.getRowModel().rows.map(row => {
+                                    ))}
+                                </thead>
+                                <tbody>
+                                    {estimateTable.getRowModel().rows.map(row => {
                                         return (
                                             <tr key={row.id} style={{height: '20px'}}>
                                                 {row.getVisibleCells().map(cell => {
                                                     return (
-                                                        <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '', padding: '4px 5px'}}>
+                                                        <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '',padding: '4px 5px'}}>
                                                             {
                                                                 flexRender(
                                                                     cell.column.columnDef.cell,
@@ -401,61 +380,111 @@ const BillHome = ({ open, handleClose, id, data, bills, setNewBill, setCreateBil
                                                 })}
                                             </tr>
                                         );
-                                    })) : (
-                                        <tr className="EmptyTableData" key={"NoQuote"}>
-                                            <td className="EmptyTableData" colSpan={8}>
-                                                No Bills Found. Upload bills below.
-                                            </td>
+                                    })}
+                                </tbody>
+                            </table>
+                        </Grid>
+                        <Grid item xs={12} style={{margin: '10px 0px', overflow: 'auto hidden'}}>
+                            <Typography variant='h6' textAlign={'center'}>Bills</Typography>
+                            <table style={{width: billsTable.getTotalSize()}}>
+                                <thead>
+                                    {billsTable.getHeaderGroups().map(headerGroup => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map(header => {
+                                                return (
+                                                    <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
+                                                        {header.isPlaceholder ? null : (
+                                                        <>
+                                                            {flexRender(
+                                                            header.column.columnDef.header,
+                                                            header.getContext()
+                                                            )}
+                                                        </>
+                                                        )}
+                                                    </th>
+                                                );
+                                            })}
                                         </tr>
-                                    )
-                                }
-                            </tbody>
-                            <tfoot>
-                                {billsTable.getFooterGroups().map(footerGroup => (
-                                    <tr key={footerGroup.id}>
-                                    {footerGroup.headers.map(header => (
-                                        <th key={header.id} style={{padding: '4px 5px'}}>
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef.footer,
-                                                header.getContext()
-                                            )}
-                                        </th>
                                     ))}
+                                </thead>
+                                <tbody>
+                                    {billsTable.getRowModel().rows.length > 0 ? (
+                                        billsTable.getRowModel().rows.map(row => {
+                                            return (
+                                                <tr key={row.id} style={{height: '20px'}}>
+                                                    {row.getVisibleCells().map(cell => {
+                                                        return (
+                                                            <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '', padding: '4px 5px'}}>
+                                                                {
+                                                                    flexRender(
+                                                                        cell.column.columnDef.cell,
+                                                                        cell.getContext()
+                                                                    )
+                                                                }
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            );
+                                        })) : (
+                                            <tr className="EmptyTableData" key={"NoQuote"}>
+                                                <td className="EmptyTableData" colSpan={8}>
+                                                    No Bills Found. Upload bills below.
+                                                </td>
+                                            </tr>
+                                        )
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    {billsTable.getFooterGroups().map(footerGroup => (
+                                        <tr key={footerGroup.id}>
+                                        {footerGroup.headers.map(header => (
+                                            <th key={header.id} style={{padding: '4px 5px'}}>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                    header.column.columnDef.footer,
+                                                    header.getContext()
+                                                )}
+                                            </th>
+                                        ))}
+                                        </tr>
+                                    ))}
+                                </tfoot>
+                            </table>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <table className='accounts-table'>
+                                <thead>
+                                    <tr>
+                                        <th>Budget</th>
+                                        <th>Profit</th>
+                                        <th>Gross</th>
                                     </tr>
-                                ))}
-                            </tfoot>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className={getBudget() == 0 ? '' : getBudget() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getBudget())}</td>
+                                        <td className={getProfit() == 0 ? '' : getProfit() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getProfit())}</td>
+                                        <td className={getGross() == 0 ? '' : getGross() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getGross())}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <p className='subHeader'>Upload New Bill</p>
+                            <FileUploadSection onSubmit={handleNewBill} waiting={waiting.create} id="create_bill" type=".pdf" button="Create New Bill"/>
+                        </Grid>
                     </Grid>
-                    <Grid item xs={12}>
-                        <table className='accounts-table'>
-                            <thead>
-                                <tr>
-                                    <th>Budget</th>
-                                    <th>Profit</th>
-                                    <th>Gross</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td className={getBudget() == 0 ? '' : getBudget() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getBudget())}</td>
-                                    <td className={getProfit() == 0 ? '' : getProfit() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getProfit())}</td>
-                                    <td className={getGross() == 0 ? '' : getGross() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getGross())}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <p className='subHeader'>Upload New Bill</p>
-                        <FileUploadSection onSubmit={handleNewBill} waiting={waiting.create} id="create_bill" type=".pdf" button="Create New Bill"/>
-                    </Grid>
-                </Grid>
+                }
             </DialogContent>
         </Dialog>
+
     </>
     );
 }
+
+
 
 export default BillHome;
 

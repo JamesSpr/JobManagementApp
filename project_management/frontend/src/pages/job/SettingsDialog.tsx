@@ -174,7 +174,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
                         )}
                     </Box>
                 </Grid>
-                { auth?.user.role === "DEV" || auth?.user.role === "PMU" ?
+                { auth?.user.role === "DEV" || auth?.user.role === "ADM" || auth?.user.role === "PMU" ?
                     <Grid item xs={12}>
                         <Box sx={{position: 'relative', align: "center", display: 'inline-block'}}>                                              
                             <Button onClick={generateInvoice}>
@@ -211,11 +211,17 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
                             )}
                         </Box>
                         <p>ID: {job.id}</p>
+                    </Grid>
+                    :   <></>
+                }
+                {auth?.user.role === "DEV" ?
+                    <Grid item xs={12}>
                         <Button onClick={() => navigator.clipboard.writeText(`[${getJobName()}](${window.location.href})`)}>
                             Obsidian
                         </Button>
                     </Grid>
-                    :   <></>
+                    : <></>
+
                 }
             </Grid>
         </BasicDialog>

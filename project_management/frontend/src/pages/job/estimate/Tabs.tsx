@@ -63,7 +63,6 @@ const EstimateModule = ({ job, setJob, updateRequired, setUpdateRequired, users,
                 variables: {  },
             }),
             }).then((response) => {
-                console.log(response);
                 const res = response?.data?.data?.contractors;
                 setContractors(res);
             }).catch((err) => {

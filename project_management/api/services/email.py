@@ -6,6 +6,7 @@ import pytz
 import math
 from datetime import date, datetime
 from ..models import Job, Estimate, EstimateHeader
+from graphql_jwt.decorators import login_required
 
 import sys
 sys.path.append("...")
@@ -24,6 +25,7 @@ class AllocateJobEmail(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, jobs, recipient):
         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         count = 0
@@ -113,6 +115,7 @@ class CloseOutEmail(graphene.Mutation):
     time = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, jobid):
         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         count = 0
@@ -153,7 +156,7 @@ class CloseOutEmail(graphene.Mutation):
         Signature = mail.HTMLBody.replace("<o:p>&nbsp;</o:p>", "", 2)
 
         mail.To = job.location.region.email
-        mail.CC = "Colin@aurify.com.au; James@aurify.com.au"
+        mail.CC = "Colin@aurify.com.au; James@aurify.com.au; Vivian@aurify.com.au"
         mail.Subject = "Close out: " + str(job)
         
         mail.HTMLBody = f"""{EMAIL_STYLE}
@@ -188,6 +191,7 @@ class EmailQuote(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, job_id, selected_estimate, userId):
         
         job = Job.objects.get(id=job_id)

@@ -27,6 +27,8 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
     const [waiting, setWaiting] = useState(false);
 
     const handleJobAllocation = async () => {
+        setWaiting(true);
+        
         const target = document.getElementById('attachments') as HTMLInputElement;
         const [file] = target?.files as FileList;
         // console.log("File", file)
@@ -54,7 +56,6 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
             }
         })
 
-        setWaiting(true);
         // for(let file in uploadedFiles) {
         //     let fileReader = new FileReader();
         //     fileReader.readAsDataURL(file)

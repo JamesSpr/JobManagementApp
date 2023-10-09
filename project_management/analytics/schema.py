@@ -51,6 +51,7 @@ class UpdateAccounts(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, accounts):
         for acc in accounts:
             if Account.objects.filter(myob_uid=acc['UID']):
@@ -86,6 +87,7 @@ class UpdateTransactions(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, transactions):
         for trans in transactions:
             for line in trans['Lines']:
@@ -115,6 +117,7 @@ class SyncTransactions(graphene.Mutation):
     data = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()
@@ -162,6 +165,7 @@ class SyncAccounts(graphene.Mutation):
     data = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid):
         env = environ.Env()
         environ.Env.read_env()

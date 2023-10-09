@@ -3,15 +3,17 @@ import { useReactTable, getCoreRowModel, getExpandedRowModel, flexRender, Row, C
 import { Table, TableHead, TableBody, TableFooter, TableCell, TableRow, Grid, IconButton, } from '@mui/material';
 
 import { produce } from 'immer';
+import { BasicDialog, InputField, useSkipper } from '../../../components/Components';
+import { EstimateHeaderType, EstimateType, JobType, SnackType } from '../../../types/types';
+import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 
 // Icons
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { BasicDialog, InputField, useSkipper } from '../../../components/Components';
-import { EstimateHeaderType, EstimateType, JobType, SnackType } from '../../../types/types';
-import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
+import SettingsIcon from '@mui/icons-material/Settings';
+import EstimateSettings from './EstimateSettings';
 
 const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : {
     job: JobType
@@ -29,6 +31,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
     const [dialogMessage, setDialogMessage] = useState("");
     const [openAlert, setOpenAlert] = useState(false);
     const [dialogOkay, setDialogOkay] = useState(false);
+    const [openSettings, setOpenSettings] = useState(false);
 
     interface DialogActionType {
         action: string
@@ -341,7 +344,11 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
         },
         {
             id: "settings",
-            header: '',
+            header: () => <>
+                <IconButton onClick={(e) => {setOpenSettings(true)}}>
+                    <SettingsIcon />
+                </IconButton>
+            </>,
             columns: [
             {
                 id: 'lineControls',
@@ -844,23 +851,11 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
             >
                 <p>{dialogMessage}</p>
             </BasicDialog>
-            {/* <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
-                <DialogTitle>{dialogTitle}</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>{dialogMessage}</DialogContentText>
-                    <DialogActions 
-                    >
-                        {dialogOkay ? 
-                            <Button onClick={(e) => {setOpenAlert(false); setDialogOkay(false);}}>Okay</Button>
-                            :
-                            <>
-                                <Button onClick={(e) => {dialogAction(dialogYesAction)}}>Yes</Button>
-                                <Button onClick={(e) => {setOpenAlert(false)}}>No</Button>
-                            </>
-                        }
-                    </DialogActions>
-                </DialogContent>
-            </Dialog> */}
+            
+            <BasicDialog open={openSettings} close={() => setOpenSettings(false)} title='Settings'
+                okay action={() => setOpenSettings(false)}>
+                <EstimateSettings setSnack={setSnack} setJob={setJob} estimate={job.estimateSet[accessorId].id} />
+            </BasicDialog>
         </Grid>
     );
 }
