@@ -40,7 +40,7 @@ ESTIMATE_ITEM_TYPE = [
 class Client(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     name = models.CharField(max_length=100)
-    display_name = models.CharField(max_length=50)
+    display_name = models.CharField(max_length=50, blank=True, null=True)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
 
     @classmethod
@@ -113,7 +113,6 @@ class Job(models.Model):
     # State Of Job
     JOB_STATE = [
         ('INS', 'Inspection/Quote Required'),
-        # ('QUO', 'Quote Required'),
         ('SUB', 'Quote Submitted'),
         ('APP', 'Quote Approved'),
         ('QAR', 'Quote Approval Required'),
@@ -151,19 +150,19 @@ class Job(models.Model):
     alt_poc_name = models.CharField(max_length=75, blank=True)
     alt_poc_phone = models.CharField(max_length=75, blank=True)
     alt_poc_email = models.EmailField(blank=True)
-    date_issued = models.DateField(blank=True, null=True)
-    inspection_date = models.DateField(blank=True, null=True)
+    date_issued = models.DateTimeField(blank=True, null=True)
+    inspection_date = models.DateTimeField(blank=True, null=True)
     inspection_by = models.ForeignKey(CustomUser, on_delete=PROTECT, blank=True, null=True, related_name="inspector")
     inspection_notes = models.TextField(max_length=500, blank=True)    
-    commencement_date = models.DateField(blank=True, null=True)
-    completion_date = models.DateField(blank=True, null=True)
-    total_hours = models.IntegerField(blank=True, default=0)
+    commencement_date = models.DateTimeField(blank=True, null=True)
+    completion_date = models.DateTimeField(blank=True, null=True)
+    total_hours = models.DecimalField(blank=True, max_digits=10, decimal_places=2, default=0.0)
     site_manager = models.ForeignKey(CustomUser, on_delete=PROTECT, blank=True, null=True, related_name="site_manager")
     work_notes = models.TextField(blank=True, max_length=500)
-    close_out_date = models.DateField(blank=True, null=True)
+    close_out_date = models.DateTimeField(blank=True, null=True)
     close_out_reference = models.CharField(max_length=20, blank=True)
     approval_date = models.DateField(blank=True, null=True)
-    overdue_date = models.DateField(blank=True, null=True)
+    overdue_date = models.DateTimeField(blank=True, null=True)
     opportunity_type = models.CharField(default='Commercial', max_length=24)
     bsafe_link = models.CharField(blank=True, max_length=515)
     work_type = models.CharField(max_length=24, default="Reactive Maintenance")
@@ -181,7 +180,7 @@ class Job(models.Model):
                 identifier = self.other_id
         
         building = self.building + " "
-        if not self.building == "" and str(self.building).isdigit():
+        if not self.building == "" and str(self.building)[0].isdigit():
             building = "B" + self.building + " "
         if self.building == "":
             building = ""
@@ -196,9 +195,8 @@ class Job(models.Model):
             self.stage = "CAN"
         elif self.work_type == "PRO":
             self.stage = "PRO"
-        elif JobInvoice.objects.filter(job=self).exists():
-            jobInv = JobInvoice.objects.filter(job=self)[0]
-            inv = jobInv.invoice
+        elif Invoice.objects.filter(job=self).exists():
+            inv = Invoice.objects.filter(job=self)[0]
             if inv.date_paid:
                 self.stage = "FIN"
             elif inv.date_issued:
@@ -228,31 +226,31 @@ class Job(models.Model):
 class Invoice(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
-    # job = models.ForeignKey(Job, on_delete=PROTECT)
+    job = models.ForeignKey(Job, on_delete=PROTECT, null=True)
     number = models.CharField(max_length=13, blank=True, null=True)
     amount = models.DecimalField(max_digits=13, default='0.00', decimal_places=2)
     date_created = models.DateField(auto_now_add=True)
     date_issued = models.DateField(blank=True, null=True)
     date_paid = models.DateField(blank=True, null=True)
+    
+    def __str__(self):
+        return "Invoice " + self.number + " for " + str(self.job)
 
 class Bill(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
     job = models.ForeignKey(Job, on_delete=PROTECT)
     supplier = models.ForeignKey(Contractor, on_delete=PROTECT)
+    bill_type = models.CharField(max_length=16, default="subcontractor")
     process_date = models.DateField(default=datetime.date.today)
     invoice_date = models.DateField()
     invoice_number = models.CharField(max_length=13, blank=True, null=True)
     amount = models.DecimalField(max_digits=13, default='0.00', decimal_places=2)
-    img_path = models.CharField(max_length=32, blank=True)
+    thumbnail_path = models.CharField(max_length=512, blank=True)
+    file_path = models.CharField(max_length=512, blank=True)
 
     def __str__(self):
-        return self.invoice_number + " for " + str(self.job)
-
-class JobInvoice(models.Model):
-    id = models.AutoField(primary_key=True, unique=True)
-    job = models.ForeignKey(Job, on_delete=PROTECT)
-    invoice = models.ForeignKey(Invoice, on_delete=PROTECT)
+        return self.supplier.name + " Invoice #" + self.invoice_number + " for " + str(self.job)
 
 class ContractorContact(models.Model):
     id = models.AutoField(primary_key=True, unique=True)

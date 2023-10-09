@@ -1,21 +1,20 @@
 
 import React, { FC, ReactNode, useState, useEffect, useRef } from "react"; 
-import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions } from "@mui/material";
+import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions, IconButton } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table as ReactTable, RowData, ColumnDef,
-    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState } from '@tanstack/react-table'
+    getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState, ColumnFiltersState } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType, RegionType, SnackBarType } from "../types/types";
-import fuzzyFilter, { TableFilter } from "./FuzzyFilter";
+import { fuzzyFilter, TableFilter } from "./TableHelpers";
 
 declare module '@tanstack/react-table' {
     interface TableMeta<TData extends RowData> {
-      updateData: (rowIndex: number, columnId: string, value: unknown) => void
+      updateData?: (rowIndex: string, columnId: keyof TData, value: any, row: Row<TData>) => void
       getRegions?: () => RegionType[]
+      getStageDescription?: (value: string) => string
     }
 }
 
 export const InputField:FC<InputFieldType> = ({type="text", label, children, multiline=false, rows=0, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
-
-    
     let boxStyle = "inputBox"
     let styleClass = "inputField";
     error ? styleClass += " inputFieldError" : '';
@@ -142,18 +141,20 @@ interface TableType <T extends object> {
     columns: ColumnDef<T>[]
     rowSelection?: {}
     setRowSelection?: React.Dispatch<React.SetStateAction<any>>
-    columnFilters?: []
+    columnFilters?: ColumnFiltersState
     setColumnFilters?: React.Dispatch<React.SetStateAction<any>>
-    globalFilter?: ''
-    setGlobalFilter?: React.Dispatch<React.SetStateAction<any>>
+    globalFilter?: {}
+    setGlobalFilter?: React.Dispatch<React.SetStateAction<string>>
     sorting?: SortingState
     setSorting?: React.Dispatch<React.SetStateAction<any>>
+    columnVisibility?: {}
     rowStyles?: {}
     rowOnDoubleClick?: (row: any) => void
     autoResetPageIndex?: boolean
     skipAutoResetPageIndex?: () => void
     setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>>
     pagination?: boolean
+    showFooter?: boolean
 }
 
 export const useSkipper = () => {
@@ -172,24 +173,27 @@ export const useSkipper = () => {
     return [shouldSkip, skip] as const
 }
 
-export const Table = <T extends object>({data, setData, tableMeta, columns, columnFilters, 
-    setColumnFilters, globalFilter, setGlobalFilter, sorting, setSorting, rowStyles, rowOnDoubleClick,
-    setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex, pagination}: TableType<T>) => {
+export const Table = <T extends object>({data, setData, tableMeta, columns, columnFilters, setColumnFilters, 
+    rowSelection, setRowSelection, columnVisibility,
+    globalFilter, setGlobalFilter, sorting, setSorting, rowOnDoubleClick,
+    setUpdateRequired, autoResetPageIndex, skipAutoResetPageIndex, pagination, showFooter
+}: TableType<T>) => {
 
     const [aRPI, skipARPI] = autoResetPageIndex === undefined || skipAutoResetPageIndex === undefined ? useSkipper() : [autoResetPageIndex, skipAutoResetPageIndex]
-    
 
     const table = useReactTable({
         data,
         columns,
-        // Pipeline
         state: {
+            rowSelection: rowSelection ? rowSelection : '',
             columnFilters,
             globalFilter,
             sorting,
+            columnVisibility,
         },
         onColumnFiltersChange: setColumnFilters,
         onGlobalFilterChange: setGlobalFilter,
+        onRowSelectionChange: setRowSelection ? setRowSelection : undefined,
         onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
@@ -200,6 +204,7 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
         getFacetedMinMaxValues: getFacetedMinMaxValues(),
         globalFilterFn: fuzzyFilter,
         autoResetPageIndex: aRPI,
+        enableMultiRowSelection: false,  
         enableMultiSort: true,
         // Provide our updateData function to our table meta
         meta: tableMeta ?? {
@@ -228,9 +233,59 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
 
     useEffect(()=> {if(pagination){table.setPageSize(15)}},[])
 
+    if(!data || data.length === 0 ) {
+        return (
+            <table style={{width: table.getTotalSize(), paddingBottom: '10px', margin: '0 auto', maxWidth: '95%'}}>
+            <thead>
+                {table.getHeaderGroups().map(headerGroup => (
+                    <tr key={headerGroup.id}>
+                    {headerGroup.headers.map(header => {
+                        return (
+                            <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
+                                {header.isPlaceholder ? null : (
+                                <>
+                                    <div {...{
+                                        className: header.column.getCanSort()
+                                        ? 'cursor-pointer select-none'
+                                        : '',
+                                        onClick: header.column.getToggleSortingHandler(),
+                                    }}>
+                                        {flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext()
+                                        )}
+                                        {{
+                                            asc: ' ▲',
+                                            desc: ' ▼',
+                                        }[header.column.getIsSorted() as string] ?? null}
+                                    </div>
+                                    {header.column.getCanFilter() && columnFilters ? (
+                                        <div>
+                                            <TableFilter column={header.column} table={table} />
+                                        </div>
+                                    ) : null}
+                                </>
+                                )}
+                            </th>
+                        );
+                    })}
+                    </tr>
+                ))}
+            </thead>
+            <tbody>
+                <tr>
+                    <td colSpan={100}>
+                        <p>No Data</p>
+                    </td>
+                </tr>
+            </tbody>
+            </table>
+        )
+    }
+
     return (
         <>
-            <table style={{width: table.getTotalSize(), paddingBottom: '10px', margin: '0 auto'}}>
+            <table style={{width: table.getTotalSize(), paddingBottom: '10px', margin: '0 auto', maxWidth: '95%'}}>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
@@ -271,7 +326,9 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
                     {table.getRowModel().rows.map(row => {
                         return (
                             <tr key={row.id} 
+                                className={row.getIsSelected() ? "selectedRow" : ""}
                                 style={{height: '20px'}}
+                                onClick={(e) => {row.toggleSelected()}}
                                 onDoubleClick={rowOnDoubleClick ? () => rowOnDoubleClick(row) : () => null}
                             >
                                 {row.getVisibleCells().map(cell => {
@@ -290,6 +347,23 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
                         );
                     })}
                 </tbody>
+                {showFooter &&
+                    <tfoot>
+                        {table.getFooterGroups().map(footerGroup => (
+                            <tr key={footerGroup.id}>
+                            {footerGroup.headers.map(header => (
+                                <th key={header.id}>
+                                {header.isPlaceholder
+                                    ? null
+                                    : flexRender(
+                                        header.column.columnDef.footer,
+                                        header.getContext()
+                                    )}
+                                </th>
+                            ))}
+                            </tr>
+                        ))}
+                    </tfoot>}
             </table>
             
             { pagination && <PaginationControls table={table} /> }
@@ -348,7 +422,8 @@ export const FileUploadSection = ({onSubmit, waiting, id, type, button}: {onSubm
     </>
 )
 
-export const ProgressButton = ({name, waiting, onClick, centerButton=false, buttonVariant}: {name: string, waiting?: {}, onClick?: () => {}, centerButton?: boolean, buttonVariant?: "text" | "outlined" | "contained" }) => {
+export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=false, buttonVariant}: 
+{name: string, waiting?: boolean, onClick?: () => void, disabled?: boolean, centerButton?: boolean, buttonVariant?: "text" | "outlined" | "contained" }) => {
     let buttonStyle = "progressButton";
     if(centerButton) {
         buttonStyle += " centered";
@@ -356,7 +431,7 @@ export const ProgressButton = ({name, waiting, onClick, centerButton=false, butt
 
     return (
         <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
-            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick}>{name}</Button>
+            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled : waiting}>{name}</Button>
             {waiting && (
                 <CircularProgress size={24} 
                     sx={{
@@ -373,7 +448,46 @@ export const ProgressButton = ({name, waiting, onClick, centerButton=false, butt
     )
 }
 
+export const ProgressIconButton = ({waiting, onClick, children, disabled, style}: 
+{waiting: boolean, onClick?: () => void, children: ReactNode, disabled?: boolean, style?: {} }) => {
+    return (
+        <Box sx={{display: 'inline-block'}}>
+            <IconButton disabled={disabled ? disabled : waiting} onClick={onClick} style={style}>
+                <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
+                    {children}
+                    {waiting && (
+                        <CircularProgress size={24} 
+                            sx={{
+                                colour: 'primary', 
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                marginTop: '-12px',
+                                marginLeft: '-12px',
+                            }}
+                        />
+                    )}
+                </Box>
+            </IconButton>
+        </Box>
 
+        // <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
+        //     <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled : waiting}>{name}</Button>
+        //     {waiting && (
+        //         <CircularProgress size={24} 
+        //             sx={{
+        //                 colour: 'primary', 
+        //                 position: 'absolute',
+        //                 top: '50%',
+        //                 left: '50%',
+        //                 marginTop: '-12px',
+        //                 marginLeft: '-12px',
+        //             }}
+        //         />
+        //     )}
+        // </Box>
+    )
+}
 
 export const Tooltip = ({children, title, arrow}: {children?: ReactNode, title?: string, arrow?: string}) => {
     if(title !== "") {
@@ -418,6 +532,10 @@ export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, cen
                 </DialogActions>
             </Dialog>
     </>)
+
+}
+
+export const DraggableDiv = ({children}: {children: ReactNode}) => {
 
 }
 

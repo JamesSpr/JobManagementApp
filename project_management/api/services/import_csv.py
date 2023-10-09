@@ -1,4 +1,5 @@
 import graphene
+from graphql_jwt.decorators import login_required
 from io import StringIO, BytesIO
 from PyPDF2 import PdfReader, PdfFileReader, PdfFileWriter
 import pandas as pd
@@ -19,6 +20,7 @@ class UploadJobsCSV(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @login_required
     def mutate(self, root, info, file, **kwargs):
         if not file: return self(success=False)
         tmp_data = pd.read_csv(StringIO(file))
@@ -108,6 +110,7 @@ class UploadInvoiceDetailsCSV(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @login_required
     def mutate(self, root, info, file, **kwargs):
         if not file: return self(success=False)
         tmp_data = pd.read_csv(StringIO(file))
@@ -140,6 +143,7 @@ class UploadLocationsCSV(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @login_required
     def mutate(self, root, info, file, **kwargs):
         if not file: return self(success=False)
 
@@ -173,6 +177,7 @@ class UploadClientsCSV(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @login_required
     def mutate(self, root, info, file, **kwargs):
         if not file: return self(success=False)
 
@@ -196,6 +201,7 @@ class UploadRegionsCSV(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @login_required
     def mutate(self, root, info, file, **kwargs):
         if not file: return self(success=False)
         tmp_data = pd.read_csv(StringIO(file))
@@ -224,6 +230,7 @@ class UploadClientContactsCSV(graphene.Mutation):
 
         
     @classmethod
+    @login_required
     def mutate(self, root, info, file, **kwargs):
         if not file: return self(success=False)
         tmp_data = pd.read_csv(StringIO(file))
@@ -251,6 +258,7 @@ class LocalImportBLCSV(graphene.Mutation):
     success = graphene.Boolean()
     
     @classmethod
+    @login_required
     def mutate(self, root, info, **kwargs):
         
         BL_export_path = r"C:\Users\Aurify Constructions\Aurify Dropbox\James Sprague\BuildLogic Exports\2022 Estimates"

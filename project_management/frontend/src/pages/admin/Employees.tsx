@@ -130,13 +130,13 @@ const Employees = ({employees, setEmployees, setUpdateRequired, myobUsers}:{
 
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
     const tableMeta = {
-        updateData: (rowIndex: number, columnId: any, value: any) => {
+        updateData: (rowIndex: string, columnId: any, value: any) => {
             // setUpdateRequired(true);
             skipAutoResetPageIndex()
             setEmployees(old => old.map((row, index) => {
-                if(index === rowIndex) {
+                if(index === parseInt(rowIndex)) {
                     return {
-                        ...old[rowIndex],
+                        ...old[parseInt(rowIndex)],
                         [columnId]: value,
                     }
                 }

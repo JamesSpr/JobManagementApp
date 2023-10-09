@@ -4,7 +4,7 @@ import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPag
     getFacetedRowModel,getFacetedUniqueValues,getFacetedMinMaxValues,
     Column, Table, ColumnDef, ColumnFiltersState  } from '@tanstack/react-table'
 import { Grid, Box, AppBar, Toolbar, CircularProgress, Button } from '@mui/material';
-import fuzzyFilter from '../../components/FuzzyFilter';
+import { fuzzyFilter } from '../../components/TableHelpers';
 import DebouncedInput from '../../components/DebouncedInput';
 import useAuth from '../auth/useAuth';
 import RemittanceAdvice from './RemittanceAdvice'
@@ -79,9 +79,9 @@ const Invoices = () => {
                 const res = response?.data?.data;
 
                 for(let i = 0; i < res.length; i++) {
-                    res.invoices[i]['dateIssued'] = res.invoices[i]['dateIssued'] ? new Date(res.invoices[i]['dateIssued']).toLocaleDateString('en-AU') : ""
-                    res.invoices[i]['dateCreated'] = res.invoices[i]['dateCreated'] ? new Date(res.invoices[i]['dateCreated']).toLocaleDateString('en-AU') : ""
-                    res.invoices[i]['datePaid'] = res.invoices[i]['datePaid'] ? new Date(res.invoices[i]['datePaid']).toLocaleDateString('en-AU') : ""
+                    res.invoices[i]['dateIssued'] = res.invoices[i]['dateIssued'] ? new Date(res.invoices[i]['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                    res.invoices[i]['dateCreated'] = res.invoices[i]['dateCreated'] ? new Date(res.invoices[i]['dateCreated']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                    res.invoices[i]['datePaid'] = res.invoices[i]['datePaid'] ? new Date(res.invoices[i]['datePaid']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                 }
 
                 setData(res.invoices);

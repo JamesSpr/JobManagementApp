@@ -4,7 +4,7 @@ import { Grid, Typography } from '@mui/material';
 
 const Missing = () => {
     const location = useLocation();
-    const [missingText, setMissingText] = useState();
+    const [missingText, setMissingText] = useState("");
 
     useEffect(() => {
         // console.log(location?.state?.missing);

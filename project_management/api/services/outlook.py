@@ -3,17 +3,20 @@ from graphene_django import DjangoObjectType
 import win32com.client as win32
 import pythoncom
 from datetime import datetime
+import pytz
 import re
 import os
 import sys
 import environ
 import requests
 import json
-from ..models import Job, Estimate, Invoice, JobInvoice
-from ..schema import InvoiceUpdateInput
+from ..models import Job, Estimate, Invoice
+from ..schema import InvoiceUpdateInput, JobType
 sys.path.append("...")
 from myob.models import MyobUser
 from myob.schema import checkTokenAuth
+from accounts.models import CustomUser
+from graphql_jwt.decorators import login_required
 
 EMAIL_STYLE="""<body style="font-size:11pt; font-family:'Calibri'; color: rgb(0,0,0)">"""
 
@@ -27,19 +30,51 @@ class CheckJobExists(graphene.Mutation):
 
     exists = graphene.Boolean()
     name = graphene.String()
+    job = graphene.Field(JobType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, job):
-        print(job)
-        if Job.objects.filter(po = job):
-            return self(exists=True, name=str(Job.objects.get(po = job)))
-        if Job.objects.filter(sr = job):
-            return self(exists=True, name=str(Job.objects.get(sr = job)))
-        if Job.objects.filter(other_id = job):
-            return self(exists=True, name=str(Job.objects.get(other_id = job)))
+        # print(job)
+        if "PO" in job or "SR" in job:
+            job = re.search("\d+", job)[0]  
+            if Job.objects.filter(po = job):
+                found_job = Job.objects.get(po = job)
+                return self(exists=True, name=str(found_job), job=found_job)
+            if Job.objects.filter(sr = job):
+                found_job = Job.objects.get(sr = job)
+                return self(exists=True, name=str(found_job), job=found_job)
+        else:
+            if Job.objects.filter(other_id = job):
+                found_job = Job.objects.get(other_id = job)
+                return self(exists=True, name=str(found_job), job=found_job)
 
         return self(exists=False, name='')
 
+class UpdateInspectionDetails(graphene.Mutation):
+    class Arguments:
+        jobId = graphene.String()
+        updatedBy = graphene.String()
+        inspectionDate = graphene.String()
+        inspectionTime = graphene.String()
+        inspectionNotes = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, jobId, updatedBy, inspectionDate, inspectionTime, inspectionNotes):
+        if not Job.objects.filter(id=jobId).exists():
+            return self(Success=False)
+        
+        job = Job.objects.get(id=jobId)
+
+        job.inspection_by = CustomUser.objects.get(email=updatedBy)
+        job.inspection_date = datetime.strptime(inspectionDate + " " + inspectionTime, '%Y-%m-%d %H:%M').replace(tzinfo=pytz.UTC)
+        job.inspection_notes = inspectionNotes
+        job.save()
+
+        return self(success=True)
 
 class QuoteType(DjangoObjectType):
     class Meta:
@@ -55,6 +90,7 @@ class GetQuotes(graphene.Mutation):
     quotes = graphene.List(QuoteType)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, job):
 
         if not Job.objects.filter(po = job).exists():
@@ -77,7 +113,10 @@ class ProcessApproval(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, job, uid, quote, date):
+        print(job, uid, quote, date)
+        if "PO" in job: job = job[2:]
         if not Job.objects.filter(po = job).exists():
             return self(success = False)
             
@@ -126,6 +165,99 @@ class ProcessApproval(graphene.Mutation):
         
         return self(success=False, message="Error Connecting to MYOB")
 
+# Converts an invoice in MYOB from sale order to sale invoice.
+# Updates the date issued.
+class ProcessInvoice(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        invoice = graphene.String()
+        issue_date = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, uid, invoice, issue_date):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+            invoice = Invoice.objects.get(number=invoice)
+
+            # Check to see if the sale is an order
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter=UID eq guid'{invoice.myob_uid}'"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.request("GET", url, headers=headers, data={})
+
+            if not response.status_code == 200:
+                return self(success=False, message="Error with MYOB Request")
+
+            res = json.loads(response.text)
+            res = res['Items']
+            if len(res) == 0:
+                if invoice.date_issued is None: invoice.date_issued = issue_date
+                invoice.save()
+                invoice.job.save() ## save job to update stage
+                return self(success=True, message="Invoice already converted.")
+            
+            order = res[0]
+            if order['Status'] != "ConvertedToInvoice":
+                # Convert the sale order to invoice
+                for line in order['Lines']:
+                    line.pop("RowID", None)
+
+                order['Lines'].append({
+                    "Type": "Header",
+                    "Description": "Order Created on " + datetime.strptime(order['Date'].split('T')[0], "%Y-%m-%d").strftime('%d/%m/%Y'),
+                })
+
+                # Convert order to Invoice / POST to MYOB
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
+                payload = json.dumps({
+                    "Date": datetime.now(), 
+                    "Number": order['Number'],
+                    "Customer": {"UID": order['Customer']['UID']},
+                    "CustomerPurchaseOrderNumber": order['CustomerPurchaseOrderNumber'],
+                    "Comment": order['Comment'],
+                    "ShipToAddorders": order['ShipToAddress'],
+                    "IsTaxInclusive": False,
+                    "Lines": order['Lines'],
+                    "JournalMemo": order['JournalMemo'],
+                    "Order": {
+                        "UID": order['UID']
+                    }
+                }, default=str)
+                headers = {                
+                    'Authorization': f'Bearer {user.access_token}',
+                    'x-myobapi-key': env('CLIENT_ID'),
+                    'x-myobapi-version': 'v2',
+                    'Accept-Encoding': 'gzip,deflate',
+                    'Content-Type': 'application/json',
+                }
+                response = requests.request("POST", url, headers=headers, data=payload)
+                if not response.status_code == 201:
+                    return self(success=False, message=response.text)
+                
+                # Get uid of the invoice created by conversion process and update invoice
+                myob_uid = response.headers['Location'].replace(url, "")
+                invoice.myob_uid = myob_uid
+
+            invoice.date_issued = issue_date
+            invoice.save()
+            invoice.job.save() ## save job to update stage
+
+            return self(success=True, message="Orders have been converted")
+        return self(success=False, message="MYOB Connection Error")
+
+
 class ProcessInvoices(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -134,10 +266,9 @@ class ProcessInvoices(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
-    # error = graphene.Field(graphene.String)nnnnnnn
-    # converted = graphene.List(graphene.String)
 
     @classmethod
+    @login_required
     def mutate(self, root, info, uid, invoices, issue_date):
         print('invoices:', invoices)
 
@@ -237,9 +368,7 @@ class ProcessInvoices(graphene.Mutation):
                     if converted.get(inv) is not None: invoice.myob_uid = converted[inv]
                     invoice.date_issued = issue_date
                     invoice.save()
-
-                    jobinv = JobInvoice.objects.get(invoice=invoice)
-                    jobinv.job.save() ## save job to update stage
+                    invoice.job.save() ## save job to update stage
 
             return self(success=True, message="Orders have been converted")
         return self(success=False, message="MYOB Connection Error")
@@ -253,6 +382,7 @@ main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\J
 #     message = graphene.String()
 
 #     @classmethod
+    # @login_required
 #     def mutate(self, root, info):
 
 #         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
@@ -268,6 +398,7 @@ main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\J
 #     message = graphene.String()
 
 #     @classmethod
+    # @login_required
 #     def mutate(self, root, info):
 #         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         
@@ -384,5 +515,7 @@ class Mutation(graphene.ObjectType):
     check_job_exists = CheckJobExists.Field()
     get_quotes = GetQuotes.Field()
     process_approval = ProcessApproval.Field()
+    process_invoice = ProcessInvoice.Field()
     process_invoices = ProcessInvoices.Field()
+    update_inspection_details = UpdateInspectionDetails.Field()
     # send_invoices = SendInvoices.Field()

@@ -17,7 +17,6 @@ import MyAccount from "./pages/auth/MyAccount";
 import MyobActivate from "./pages/myob/Myob";
 import Contractors from "./pages/contractors/Contractors";
 import Invoices from "./pages/invoice/Invoices";
-import UpdateInvoices from "./pages/invoice/UpdateInvoices";
 import Dashboard from "./pages/analytics/Dashboard";
 import Bills from "./pages/bill/Bills";
 import Wizard from "./pages/wizard/Wizard";
@@ -28,6 +27,7 @@ import Timesheets from "./pages/timesheets/Timesheets";
 
 import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
+import EditBill from "./pages/bill/EditBill";
 
 const App = () => {
     return ( 
@@ -46,7 +46,7 @@ const App = () => {
                         <Route element={<RequireAuth allowedRoles={['GUS', 'PMU', 'SMU', 'ADM', 'DEV']} />}>
                             <Route path="/" element={<HomePage />} />
                             <Route path="job/edit/:id" element={<EditJobPage />} />
-                            <Route path="job/approved/:input" element={<Approved />} />
+                            {/* <Route path="job/approved/:input" element={<Approved />} /> */}
                             <Route path="job/create/:input" element={<CreateJob />} />
                             <Route path="clients" element={<ClientList />} />
                             <Route path="client/:client" element={<Client />} />
@@ -60,7 +60,7 @@ const App = () => {
                             <Route path="contractors" element={<Contractors />} />
                             <Route path="invoices" element={<Invoices />} />
                             <Route path="bills" element={<Bills />} />
-                            {/* <Route path="invoices/update/:input" element={<UpdateInvoices />} /> */}
+                            <Route path="bills/:id" element={<EditBill />} />
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >
@@ -68,7 +68,6 @@ const App = () => {
                             <Route path="analytics" element={<Dashboard />} />
                             <Route path="timesheets/:endDate" element={<Timesheets />} />                            
                             <Route path="analytics" element={<Dashboard />} />
-                            {/* <Route path="financials" element={<CompanyDashboard />} /> */}
                             <Route path="admin" element={<CompanyAdmin />} />
                         </Route>
 

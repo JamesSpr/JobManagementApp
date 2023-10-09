@@ -259,7 +259,7 @@ const Locations = ({locations, setLocations, regions, client, setUpdateRequired,
                 setCreateDialog((prev: any) => ({...prev, Locations: false}));
 
                 // Add new row to table data
-                const newLocation = res.location.map((obj: any) => ({...obj, region: obj?.region?.id}))
+                const newLocation = res?.location?.map((obj: any) => ({...obj, region: obj?.region?.id}))
                 setLocations(oldArray => [...oldArray, newLocation]);
                 setSnack({active: true, variant: 'success', message: res.message});
             }
@@ -274,13 +274,13 @@ const Locations = ({locations, setLocations, regions, client, setUpdateRequired,
 
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
     const tableMeta = {
-        updateData: (rowIndex: number, columnId: any, value: any) => {
+        updateData: (rowIndex: string, columnId: any, value: any) => {
             setUpdateRequired(true);
             skipAutoResetPageIndex()
             setLocations(old => old.map((row, index) => {
-                if(index === rowIndex) {
+                if(index === parseInt(rowIndex)) {
                     return {
-                        ...old[rowIndex],
+                        ...old[parseInt(rowIndex)],
                         [columnId]: value,
                     }
                 }

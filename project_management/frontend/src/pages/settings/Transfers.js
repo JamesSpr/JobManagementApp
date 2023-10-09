@@ -37,8 +37,6 @@ const Transfers = () => {
         } catch (err) {
             console.log("error:", err);
         }
-        
-    
     }
 
     const handleTransferInvoice = async () => {
@@ -48,14 +46,14 @@ const Transfers = () => {
                 method: 'post',
                 data: JSON.stringify({
                 query: `
-                mutation transferInvoice($jobInvoiceId:String!, $toJob:String!) {
-                    transfer_invoice: transferInvoice(jobInvoiceId:$jobInvoiceId, toJob:$toJob) {
+                mutation transferInvoice($invoiceId:String!, $toJob:String!) {
+                    transfer_invoice: transferInvoice(invoiceId:$invoiceId, toJob:$toJob) {
                         success
                         message
                     }
                 }`,
                 variables: { 
-                    jobInvoiceId: transferInvoice.invoice,
+                    invoiceId: transferInvoice.invoice,
                     toJob: transferInvoice.to
                 },
             }),

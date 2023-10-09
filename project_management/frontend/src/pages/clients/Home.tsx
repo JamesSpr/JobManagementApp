@@ -28,7 +28,7 @@ const Home = ({client, details, setDetails, setUpdateRequired, setSnack }: {
             </Grid>
             <Grid item xs={12}>
                 {/* <InputField type="text" label="Name" name="name" value={details.name} onChange={e => handleInputChange(e)}/> */}
-                <InputField type="text" label="Display Name" name="displayName" value={details.displayName} onChange={handleInputChange}/>
+                <InputField type="text" label="Display Name" name="displayName" value={details?.displayName ?? ""} onChange={handleInputChange}/>
             </Grid>
         </Grid>
     </>    

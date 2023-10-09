@@ -1,396 +1,63 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, ReactNode } from "react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
-import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel,
-    getFacetedRowModel,getFacetedUniqueValues,getFacetedMinMaxValues,
-    Column, Table, ColumnDef, ColumnFiltersState } from '@tanstack/react-table'
+import Cashflow from "./tools/Cashflow";
+import ClientDrilldown from "./tools/ClientDrilldown";
+import { Box, Tab, Tabs } from "@mui/material";
 
-import { Chart as ChartJS, LinearScale, CategoryScale, BarElement, PointElement, LineElement, Legend, Tooltip, LineController, BarController, } from 'chart.js';
-import { Chart } from 'react-chartjs-2';
-import { Button, Grid } from "@mui/material";
-import { InputField, PaginationControls } from "../../components/Components";
-import { TableFilter } from "../../components/FuzzyFilter";
-import { HTMLElementChange } from "../../types/types";
-
-interface chartData {
-    id: string,
-    myobUid: string,
-    number: string,
-    amount: string,
-    dateCreated: Date,
+type TabPanelProps = {
+    children: ReactNode,
+    index: number,
+    value: number
 }
+
+const TabPanel = ({ children, value, index, ...other }: TabPanelProps) => (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+) 
 
 const Dashboard = () => {
 
-    const axiosPrivate = useAxiosPrivate();
-    const [loading, setLoading] = useState(false);
-    const [clients, setClients] = useState([]);
-    const [data, setData] = useState<chartData[]>([]);
+    const [tabValue, setTabValue] = useState<number>(1)
 
-    const [invoiceTotal, setInvoiceTotal] = useState(0.0);
-    const [billTotal, setBillTotal] = useState(0.0);
-    const [operatingExpenses, setOperatingExpenses] = useState(0.0);
-    const [otherCosts, setOtherCosts] = useState(0.0);
+    const tabOptions = ["Cashflow", "Client"]
+    const tabItems = [
+        <Cashflow />,
+        <ClientDrilldown />
+    ]
 
-    interface FilterParameters {
-        start: string
-        end: string
-        frequency: number
-    }
-    const [filterParams, setFilterParams] = useState<FilterParameters>({start: '', end:'', frequency:1})
-    const [labels, setLabels] = useState<string[]>([])
-
-    const [bills, setBills] = useState<chartData[]>([{id: '', myobUid:'', number: '', amount: '', dateCreated: new Date()}]);
-    const [invoices, setInvoices] = useState<chartData[]>([{id: '', myobUid:'', number: '', amount: '', dateCreated: new Date()}]);
-
-    // Get Data
-    useEffect(() => {
-        const controller = new AbortController();
-
-        const fetchData = async () => {
-            await axiosPrivate({ 
-                method: 'post',
-                signal: controller.signal,
-                data: JSON.stringify({
-                    query: `{ 
-                        invoices {
-                            id
-                            myobUid
-                            number
-                            amount
-                            dateCreated
-                        }
-                        bills {
-                            id
-                            myobUid
-                            number: invoiceNumber
-                            amount
-                            dateCreated: invoiceDate                            
-                        }
-                        clients {
-                            id
-                            name
-                        }
-                    }`,
-                    variables: {}
-                }),
-            }).then((response) => {
-                const res = response?.data?.data;
-
-                // Convert Dates & Add Tags
-                for(let i = 0; i < res.invoices.length; i++) {
-                    res.invoices[i]['dateCreated'] = res.invoices[i]['dateCreated'] ? new Date(res.invoices[i]['dateCreated']) : ""
-                    // if(res.invoices[i]['dateCreated']) {
-                    //     res.invoices[i]['dateCreated'] = new Date(res.invoices[i]['dateCreated'])
-                    // } else {
-                    //     res.invoices.splice(i, 1)
-                    // }
-                }
-
-                for(let i = 0; i < res.bills.length; i++) {
-                    res.bills[i]['dateCreated'] = res.bills[i]['dateCreated'] ? new Date(res.bills[i]['dateCreated']) : ""
-                }
-
-                setClients(res.clients);
-
-                setData((res.invoices).concat(res.bills))
-                setBills(res.bills);
-                setInvoices(res.invoices);
-
-                const minDate = new Date(Math.min(...((res.invoices).concat(res.bills)).map((element: chartData) => (new Date(element.dateCreated))))).toISOString().split("T")[0]
-                const maxDate = new Date(Math.max(...((res.invoices).concat(res.bills)).map((element: chartData) => (new Date(element.dateCreated))))).toISOString().split("T")[0]
-                setFilterParams({start: minDate, end: maxDate, frequency: 1})
-
-                setLoading(false);
-
-            }).catch((err) => {
-                // TODO: handle error
-                if(err.name === "CanceledError") {
-                    return
-                }
-                console.log("Error:", err);
-            });
+    const a11yProps = (index: number) => {
+        return {
+            id: `simple-tab-${index}`,
+            'aria-controls': `simple-tabpanel-${index}`,
         }
-
-        fetchData();
-
-        return () => {
-            controller.abort();
-        } 
-    }, []);
-
-
-    const getFilterFrequency = () => {
-        const d1 = new Date(filterParams.start)
-        const d2 = new Date(filterParams.end)
-
-        if(filterParams.frequency == 4) {
-            return Math.round(((d2.getTime() - d1.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-        }
-        // if(filterParams.frequency == 2) {
-        //     return Math.round((d2.getTime() - d1.getTime()) / (2 * 7 * 24 * 60 * 60 * 1000));
-        // }
-        if(filterParams.frequency == 1) {
-            return d2.getMonth() - d1.getMonth() + (12* (d2.getFullYear() - d1.getFullYear())) + 1
-            // return ((d2.getFullYear() - d1.getFullYear()) * 12 - d1.getMonth() + d2.getMonth());
-        }
-
-        return 0
-    }
-
-    const updateChartData = () => {
-
-        const frequency = getFilterFrequency();
-
-        let billData = Array(frequency).fill(0.0);
-        let invoiceData = Array(frequency).fill(0.0);
-        let runningData = Array(frequency).fill(0.0);
-
-        let totalBill = 0.0;
-        let totalInvoice = 0.0;
-        
-        const monthLabels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        
-        setData([]);
-        setLabels([])
-
-        // Build the chart labels based on the frequency
-        let labelCounter = Math.floor(new Date(filterParams.start).getMonth() * filterParams.frequency);
-        let labels = []
-        for(let i = 0; i < frequency; i++) {
-            if(Math.floor(labelCounter/filterParams.frequency) > 11) {
-                labelCounter = 0
-            }
-            labels.push(monthLabels[Math.floor(labelCounter/filterParams.frequency)])
-            labelCounter ++;
-        }
-
-        const startYear = new Date(filterParams.start).getFullYear()
-        const startMonth = new Date(filterParams.start).getMonth()
-        for(let i = 0; i < invoices.length; i++) {
-            if(invoices[i]['dateCreated'] >= new Date(filterParams.start) && invoices[i]['dateCreated'] <= new Date(filterParams.end)) {
-                // console.log("Invoice", invoiceData, invoices[i]['dateCreated'].getMonth() - startMonth + (invoices[i]['dateCreated'].getFullYear() - startYear) * 12, parseFloat(invoices[i]['amount']))
-                invoiceData[(invoices[i]['dateCreated'].getMonth() - startMonth) + ((invoices[i]['dateCreated'].getFullYear() - startYear) * 12)] += parseFloat(invoices[i]['amount'])
-                totalInvoice += parseFloat(invoices[i]['amount'])
-                setData(prev => [...prev, invoices[i]]);
-            }
-        }
-        
-        for(let i = 0; i < bills.length; i++) {
-            if(bills[i]['dateCreated'] >= new Date(filterParams.start) && bills[i]['dateCreated'] <= new Date(filterParams.end)) {
-                billData[(bills[i]['dateCreated'].getMonth() - startMonth) + ((bills[i]['dateCreated'].getFullYear() - startYear) * 12)] -= parseFloat(bills[i]['amount'])
-                totalBill += parseFloat(bills[i]['amount'])
-                setData(prev => [...prev, bills[i]]);
-            }
-        }
-
-        for(let i = 0; i < frequency; i++) {
-            if(i > 0) {
-                runningData[i] = runningData[i-1] + (invoiceData[i] + billData[i])
-            }
-            else {
-                runningData[i] = (invoiceData[i] + billData[i])
-            }
-        }
-
-        setInvoiceTotal(parseFloat(totalInvoice.toFixed(2)))
-        setBillTotal(parseFloat(totalBill.toFixed(2)))
-        setChartData({
-            labels,
-            datasets: [
-                {
-                  type: 'line' as const,
-                  label: 'Running Total',
-                  borderColor: 'rgb(255, 99, 132)',
-                  borderWidth: 2,
-                  fill: false,
-                  data: runningData,
-                },
-                {
-                  type: 'bar' as const,
-                  label: 'Income',
-                  backgroundColor: 'rgb(75, 192, 192)',
-                  data: invoiceData,
-                  borderColor: 'white',
-                  borderWidth: 2,
-                },
-                {
-                  type: 'bar' as const,
-                  label: 'Outgoing',
-                  backgroundColor: 'rgb(53, 162, 235)',
-                  data: billData,
-                },
-            ],
-        })
-    }
-
-    function Table ({data, columns}: {data: chartData[], columns: ColumnDef<chartData>[]}) {
-        const table = useReactTable({
-            data,
-            columns,
-            // Pipeline
-            getCoreRowModel: getCoreRowModel(),
-            getFilteredRowModel: getFilteredRowModel(),
-            getPaginationRowModel: getPaginationRowModel(),
-        })
-
-        return (
-            <>
-                <table>
-                    <thead>
-                        {table.getHeaderGroups().map(headerGroup => (
-                            <tr key={headerGroup.id} >
-                            {headerGroup.headers.map(header => {
-                                return (
-                                <th key={header.id} colSpan={header.colSpan} style={{padding: '0 20px'}}>
-                                    {header.isPlaceholder ? null : (
-                                    <div>
-                                        {flexRender(
-                                        header.column.columnDef.header,
-                                        header.getContext()
-                                        )}
-                                    </div>
-                                    )}
-                                </th>
-                                )
-                            })}
-                            </tr>
-                        ))}
-                    </thead>
-                    <tbody>
-                        {table.getRowModel().rows.map(row => {
-                            return (
-                            <tr key={row.id}>
-                                {row.getVisibleCells().map(cell => {
-                                return (
-                                    <td key={cell.id}>
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext()
-                                    )}
-                                    </td>
-                                )
-                                })}
-                            </tr>
-                            )
-                        })}
-                    </tbody>
-                </table>
-                
-                <PaginationControls table={table} />
-            </>
-        )
-    }
-
-
-    ChartJS.register(
-        LinearScale,
-        CategoryScale,
-        BarElement,
-        PointElement,
-        LineElement,
-        Legend,
-        Tooltip,
-        LineController,
-        BarController
-    );
-
-    const [chartData, setChartData] = useState({
-        labels,
-        datasets: [
-            {
-              type: 'line' as const,
-              label: 'Running Total',
-              borderColor: 'rgb(255, 99, 132)',
-              borderWidth: 2,
-              fill: false,
-              data: [0.0],
-            },
-            {
-              type: 'bar' as const,
-              label: 'Income',
-              backgroundColor: 'rgb(75, 192, 192)',
-              data: [0.0],
-              borderColor: 'white',
-              borderWidth: 2,
-            },
-            {
-              type: 'bar' as const,
-              label: 'Outgoing',
-              backgroundColor: 'rgb(53, 162, 235)',
-              data: [0.0],
-            },
-        ],
-    })
-
-
-    const columns = useMemo<ColumnDef<chartData>[]>(() => [
-        {
-            accessorKey: 'number',
-            header: () => "Number",
-            cell: info => info.getValue(),
-        },
-        {
-            accessorKey: 'amount',
-            header: () => "Amount",
-            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
-            footer: props => props.column.id,
-        },
-        {
-            accessorKey: 'dateCreated',
-            header: () => "Date",
-            cell: info => (info.getValue() as Date).toDateString(),
-        },
-    ], [] )
-    
-
-    const getTotalProfitLoss = () => {
-        return new Intl.NumberFormat('en-AU', {style:'currency', currency:'AUD'}).format((invoiceTotal ?? 0) - (billTotal ?? 0) - (operatingExpenses ?? 0) - (otherCosts ?? 0))
     }
 
     return ( 
         <>
-            {!loading &&
-            <>
-                <Grid container spacing={1} 
-                    alignItems="center" 
-                    justifyContent="center"
-                    alignContent="center"
-                    textAlign="center"
-                    direction="column"
-                >
-                    <Grid item xs={12}>
-                        <h2>Maintenance Analytics</h2>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <h4>Filters</h4>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <InputField type="select" label="Frequency" value={filterParams?.frequency} onChange={(e: React.ChangeEvent<HTMLElementChange>) => setFilterParams(prev => ({...prev, frequency: e.target.value as unknown as number}))}>
-                            <option key={0} value={1}>Monthly</option>
-                            <option key={1} value={4}>Weekly</option>
-                        </InputField>
-                        <InputField type="date" label="Filter Start Date" value={filterParams?.start} onChange={(e: React.ChangeEvent<HTMLElementChange>) => setFilterParams(prev => ({...prev, start: e.target.value}))}> </InputField>
-                        <InputField type="date" label="Filter End Date"  value={filterParams?.end} onChange={(e: React.ChangeEvent<HTMLElementChange>) => setFilterParams(prev => ({...prev, end: e.target.value}))}> </InputField>
-                        <Button variant="outlined" onClick={updateChartData}>Update Chart</Button>
-                    </Grid>
-                    <div style={{ position: "relative", margin: "auto", width: "60vw" }}>
-                        <Chart type='bar' data={chartData} style={{height: '100%', width: '100%'}}/>
-                    </div>
-                    <Grid item xs={12}>
-                        <InputField type="number" label="Total Income" value={invoiceTotal} onChange={() => {}}/>
-                        <InputField type="number" label="Total Bills" value={billTotal} onChange={() => {}}/>
-                        <InputField type="number" label="Operating Expenses" value={operatingExpenses} onChange={e => {setOperatingExpenses(parseFloat(e.target.value))}} step={0.01}/>
-                        <InputField type="number" label="Other Costs" value={otherCosts} onChange={e => {setOtherCosts(parseFloat(e.target.value))}} step={0.01}/>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <p>Maintenance Total: {getTotalProfitLoss()}</p>
-                    </Grid>
-                    {/* <Grid item xs={12}>
-                        <Table {...{data, columns}} />
-                    </Grid> */}
-                </Grid>
-            </>
-            }
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs value={tabValue} onChange={ (event, val) => {setTabValue(val)}} indicatorColor="primary" centered>
+                    {tabOptions.map((name, i) => (
+                        <Tab label={name} {...a11yProps(i)} />
+                    ))}
+                </Tabs>
+            </Box>
+            {tabItems.map((item, i) => (
+                <TabPanel key={i} value={tabValue} index={i}>
+                    {item}
+                </TabPanel>        
+            ))}
+
         </>
     )
 

@@ -187,7 +187,7 @@ class ExtractBillDetails(graphene.Mutation):
 
                 if not data.get('abn'):
                     abn_set = set(abn_regex)
-                    if '14609594532' in abn_set: abn_set.remove('14609594532') # Aurify ABN
+                    if '14609594532' in abn_set: abn_set.remove('14609594532') # Aurify ABN [HARDCODED]
                     abn_regex = list(abn_set)
                     if(len(abn_regex) == 1): 
                         abn = abn_format(abn_regex[0])

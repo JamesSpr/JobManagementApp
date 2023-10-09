@@ -281,13 +281,13 @@ const Contacts = ({contacts, setContacts, regions, client, setUpdateRequired, se
     const [autoResetPageIndex, skipAutoResetPageIndex] = useSkipper()
     const [sorting, setSorting] = useState<SortingState>([{"id": "active", "desc": true}]);
     const tableMeta = {
-        updateData: (rowIndex: number, columnId: any, value: any) => {
+        updateData: (rowIndex: string, columnId: any, value: any) => {
             // setUpdateRequired(true);
             skipAutoResetPageIndex()
             setContacts(old => old.map((row, index) => {
-                if(index === rowIndex) {
+                if(index === parseInt(rowIndex)) {
                     return {
-                        ...old[rowIndex],
+                        ...old[parseInt(rowIndex)],
                         [columnId]: value,
                     }
                 }

@@ -4,15 +4,17 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import useAuth from "../auth/useAuth";
 import { JobType, SnackType } from "../../types/types";
 
-const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWaiting, setSnack}:{
+const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequired, waiting, setWaiting, setSnack, getJobName}:{
     open: boolean
     setOpen: React.Dispatch<React.SetStateAction<boolean>>
     job: JobType
     setJob: React.Dispatch<React.SetStateAction<JobType>>
-    handleInput: () => void
+    handleInput: (e: { target: { name?: any; value?: any; }; }) => void
     waiting: any
+    setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
     setWaiting: React.Dispatch<React.SetStateAction<any>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
+    getJobName: () => string
 }) => {
 
     const axiosPrivate = useAxiosPrivate();
@@ -129,7 +131,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWa
             <Grid container spacing={1} textAlign={'center'} justifyContent={'center'}>
                 <Grid item xs={12}> {/* Accounts */}
                     <Typography variant='body1' style={{display:'inline-block', verticalAlign: 'bottom'}}> Cancelled? </Typography>
-                    <Checkbox checked={job.cancelled} onChange={(e: { target: { checked: any; }; }) => {setJob((prev: any) => ({...prev, 'cancelled': e.target.checked}))}} style={{paddingBottom: '0px', verticalAlign: 'bottom'}}/>
+                    <Checkbox checked={job.cancelled} onChange={(e: { target: { checked: any; }; }) => {setJob((prev: any) => ({...prev, 'cancelled': e.target.checked})); setUpdateRequired(true)}} style={{paddingBottom: '0px', verticalAlign: 'bottom'}}/>
                     <InputField type="text" name="cancelReason" label="Reason" value={job.cancelReason} onChange={handleInput}/>
                 </Grid>
                 <Grid item xs={12}> {/* Settings */}
@@ -172,7 +174,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWa
                         )}
                     </Box>
                 </Grid>
-                { auth?.user.role === "DEV" || auth?.user.role === "PMU" ?
+                { auth?.user.role === "DEV" || auth?.user.role === "ADM" || auth?.user.role === "PMU" ?
                     <Grid item xs={12}>
                         <Box sx={{position: 'relative', align: "center", display: 'inline-block'}}>                                              
                             <Button onClick={generateInvoice}>
@@ -211,6 +213,15 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, waiting, setWa
                         <p>ID: {job.id}</p>
                     </Grid>
                     :   <></>
+                }
+                {auth?.user.role === "DEV" ?
+                    <Grid item xs={12}>
+                        <Button onClick={() => navigator.clipboard.writeText(`[${getJobName()}](${window.location.href})`)}>
+                            Obsidian
+                        </Button>
+                    </Grid>
+                    : <></>
+
                 }
             </Grid>
         </BasicDialog>

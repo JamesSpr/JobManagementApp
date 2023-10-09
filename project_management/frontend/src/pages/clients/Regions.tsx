@@ -201,11 +201,11 @@ const Regions = ({regions, setRegions, client, setUpdateRequired, setSnack, crea
             }
             else {
                 console.log("error",res);
-                setSnack({active: true, variant: 'error', message: "Error Creating Location"});
+                setSnack({active: true, variant: 'error', message: "Error Creating Region"});
             }
         }).catch((err) => {
             console.log("Error", err)
-            setSnack({active: true, variant: 'error', message: "Error Creating Location"});
+            setSnack({active: true, variant: 'error', message: "Error Creating Region"});
         });
     }
 

@@ -2,9 +2,11 @@ import graphene
 import win32com.client as win32
 import pythoncom
 import os
+import pytz
 import math
 from datetime import date, datetime
 from ..models import Job, Estimate, EstimateHeader
+from graphql_jwt.decorators import login_required
 
 import sys
 sys.path.append("...")
@@ -17,11 +19,13 @@ class AllocateJobEmail(graphene.Mutation):
     class Arguments:
         jobs = graphene.List(graphene.String)
         recipient = graphene.List(graphene.String)
+        attachments = graphene.List(graphene.String)
 
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, jobs, recipient):
         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         count = 0
@@ -37,7 +41,8 @@ class AllocateJobEmail(graphene.Mutation):
                 job_string = f"<b>Job</b>: {str(job)}<br>"
                 description = f"<b>Description</b>: {job.description}<br>".replace('\n', '<br>') if job.description else ""
                 priority = f"<b>Priority</b>: {job.priority} <br>" if job.priority else ""
-                overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y')} <br>" if job.overdue_date else ""
+                received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} <br>" if job.date_issued else ""
+                overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y @ %H:%M')} <br>" if job.overdue_date else ""
                 special_instructions = f"<b>Special Instructions</b>: {job.special_instructions}<br>" if job.special_instructions else ""
                 detailed_locaton = f"<b>Detailed Location</b>: {job.detailed_location}<br>" if job.detailed_location else ""
                 requester = f"<b>Requestor</b>: {job.requester.first_name} {job.requester.last_name} - {job.requester.phone}<br>" if job.requester.first_name else ""
@@ -71,6 +76,7 @@ class AllocateJobEmail(graphene.Mutation):
 
                                 {job_string}
                                 {priority}
+                                {received_date}
                                 {overdue_date}
                                 {detailed_locaton}
                                 {description}
@@ -106,8 +112,10 @@ class CloseOutEmail(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
+    time = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, jobid):
         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         count = 0
@@ -148,7 +156,7 @@ class CloseOutEmail(graphene.Mutation):
         Signature = mail.HTMLBody.replace("<o:p>&nbsp;</o:p>", "", 2)
 
         mail.To = job.location.region.email
-        mail.CC = "Colin@aurify.com.au; James@aurify.com.au"
+        mail.CC = "Colin@aurify.com.au; James@aurify.com.au; Vivian@aurify.com.au"
         mail.Subject = "Close out: " + str(job)
         
         mail.HTMLBody = f"""{EMAIL_STYLE}
@@ -167,10 +175,11 @@ class CloseOutEmail(graphene.Mutation):
 
         mail.Send()
 
-        job.close_out_date = datetime.today()
+        closeout_datetime = datetime.today().replace(tzinfo=pytz.UTC)
+        job.close_out_date = closeout_datetime
         job.save()
 
-        return cls(success=True, message=f"Close Out Email Sent")
+        return cls(success=True, message=f"Close Out Email Sent", time=closeout_datetime.strftime('%Y-%m-%dT%H:%M'))
 
 class EmailQuote(graphene.Mutation):
     class Arguments:
@@ -182,6 +191,7 @@ class EmailQuote(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, job_id, selected_estimate, userId):
         
         job = Job.objects.get(id=job_id)

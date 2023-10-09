@@ -2,7 +2,7 @@ import React from 'react';
 import { styled, createTheme, useTheme, ThemeProvider } from '@mui/material/styles';
 import Navbar from './Navbar';
 import useAuth from "../pages/auth/useAuth";
-import { EstimateProvider } from '../context/EstimateProvider';
+// import { EstimateProvider } from '../context/EstimateProvider';
 
 const drawerWidth = 115;
 
@@ -57,11 +57,11 @@ const Layout = (props) => {
         <div id='container'>
             <ThemeProvider theme={theme}>
                 <Navbar />
-                <EstimateProvider>
+                {/* <EstimateProvider> */}
                     <Main open={auth?.sidebar}>
                         {props.children}
                     </Main>
-                </EstimateProvider>
+                {/* </EstimateProvider> */}
             </ThemeProvider>
         </div>
     );

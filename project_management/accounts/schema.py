@@ -9,6 +9,7 @@ from graphql_auth.schema import UserQuery, MeQuery
 from accounts.models import CustomUser, Company
 from graphene_django.filter import DjangoFilterConnectionField
 from django.core.validators import EMPTY_VALUES
+from graphql_jwt.decorators import login_required
 
 class CompanyType(DjangoObjectType):
     class Meta:
@@ -24,6 +25,7 @@ class CreateCompany(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, name, logo):
 
         if Company.objects.filter(name=name).exists():
@@ -61,6 +63,7 @@ class UpdateCompany(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, name, logo):
 
         if not Company.objects.filter(name=name).exists():
@@ -89,6 +92,7 @@ class UserRefreshTokenMutation(graphene.Mutation):
     user = graphene.Field(CustomUserType)
 
     @classmethod
+    @login_required
     def mutate (cls, root, info, refreshToken, id):
         user = CustomUser.objects.get(pk=id)
         user.refresh_token = refreshToken
@@ -113,6 +117,7 @@ class UpdateUser(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate (self, root, info, id, first_name=None, last_name=None, email=None, phone=None, position=None, default_pagination_amount=None, role=None, staff=None, myobAccess=None):
         if CustomUser.objects.filter(pk=id).exists():
             user = CustomUser.objects.get(pk=id)
@@ -140,6 +145,7 @@ class DeleteUser(graphene.Mutation):
     ok = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(self, root, info, id):
         if CustomUser.objects.filter(pk=id).exists():
             user = CustomUser.objects.get(pk=id)

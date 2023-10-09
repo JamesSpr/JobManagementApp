@@ -4,7 +4,7 @@ import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPag
     getFacetedRowModel,getFacetedUniqueValues,getFacetedMinMaxValues,
     Column, Table, ColumnDef, ColumnFiltersState } from '@tanstack/react-table'
 import { Grid, Box, CircularProgress } from '@mui/material';
-import fuzzyFilter from '../../components/FuzzyFilter';
+import { fuzzyFilter } from '../../components/TableHelpers';
 import DebouncedInput from '../../components/DebouncedInput';
 import { PaginationControls } from '../../components/Components';
 
@@ -52,11 +52,14 @@ const Bills = () => {
                 data: JSON.stringify({
                     query: `{ 
                         bills {
-                            myobUid
                             id
-                            invoiceNumber
+                            myobUid
                             amount
+                            invoiceNumber
                             invoiceDate
+                            processDate
+                            thumbnailPath
+                            billType
                             job {
                             id
                             po
@@ -65,7 +68,6 @@ const Bills = () => {
                             id
                             name
                             }
-                            processDate
                         }
                     }`,
                     variables: {}
@@ -75,8 +77,8 @@ const Bills = () => {
 
                 for(let i = 0; i < res.length; i++) {
                     res[i]['invoiceNumber'] = res[i]['invoiceNumber'] ? res[i]['invoiceNumber'] : ""
-                    res[i]['invoiceDate'] = res[i]['invoiceDate'] ? new Date(res[i]['invoiceDate']).toLocaleDateString('en-AU') : ""
-                    res[i]['processDate'] = res[i]['processDate'] ? new Date(res[i]['processDate']).toLocaleDateString('en-AU') : ""
+                    res[i]['invoiceDate'] = res[i]['invoiceDate'] ? new Date(res[i]['invoiceDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                    res[i]['processDate'] = res[i]['processDate'] ? new Date(res[i]['processDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                 }
 
                 setData(res);

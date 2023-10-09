@@ -3,20 +3,19 @@ import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { Button, Grid, Typography, Box, Tooltip, CircularProgress, Portal, IconButton, } from '@mui/material';
 import { useParams, useNavigate } from "react-router-dom";
 import EstimateModule from './estimate/Tabs';
-import useEstimate from './estimate/useEstimate';
 import useAuth from '../auth/useAuth';
 import useApp from '../../context/useApp';
 import { usePrompt } from '../../hooks/promptBlocker';
-import produce from 'immer';
-import { Footer, InputField, SnackBar } from '../../components/Components';
+import { Footer, InputField, ProgressButton, SnackBar } from '../../components/Components';
 
 import Settings from '@mui/icons-material/Settings';
 import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { openInNewTab } from '../../components/Functions';
-import { jobAllQuery } from './Queries';
+import { blankJob, jobAllQuery, jobQueryData } from './Queries';
 import SettingsDialog from './SettingsDialog';
+import { ClientType, ContactType, EmployeeType, InvoiceType, JobStageType, JobType, LocationType, SnackType } from '../../types/types';
 
 const JobPage = () => { 
     const axiosPrivate = useAxiosPrivate();
@@ -30,71 +29,29 @@ const JobPage = () => {
     
     const { auth } = useAuth();
     const { setApp } = useApp();
-    const { estimateSet, setEstimateSet } = useEstimate();
 
-    const [snack, setSnack] = useState({active: false, message:"", variant:'info'})
-    const [job, setJob] = useState({
-        'myobUid': '',
-        'id': '',
-        'po': '',
-        'sr': '',
-        'otherId': '',
-        'client': '',
-        'location': '',
-        'building': '',
-        'detailedLocation': '',
-        'title': '',
-        'priority': '',
-        'dateIssued': '',
-        'requester': '',
-        'pocName': '',
-        'pocPhone': '',
-        'pocEmail': '',
-        'altPocName': '',
-        'altPocPhone': '',
-        'altPocEmail': '',
-        'description': '',
-        'specialInstructions': '',
-        'inspectionBy': '',
-        'inspectionDate': '',
-        'inspectionNotes': '',
-        'scope': '',
-        'workNotes': '',
-        'siteManager': '',
-        'commencementDate': '',
-        'completionDate': '',
-        'totalHours': '',
-        'bsafeLink': '',
-        'overdueDate': '',
-        'closeOutDate': '',
-        'workType': '',
-        'opportunityType': '',
-        'cancelled': false,
-        'cancelReason': '',
-    })
+    const [snack, setSnack] = useState<SnackType>({active: false, message:"", variant:'info'})
+    const [job, setJob] = useState<JobType>(blankJob)
 
-    const [employees, setEmployees] = useState([]);
-    const [clients, setClients] = useState([]);
-    const [clientContacts, setClientContacts] = useState([]);
-    const [locations, setLocations] = useState([]);
-    const [jobStages, setJobStages] = useState([]);
-    const [bills, setBills] = useState([]);
-    const [initialEstimate, setInitialEstimate] = useState([]);
-    const [invoice, setInvoice] = useState({'number': '', 'dateCreated': '', 'dateIssued':'', 'datePaid':''});
-    const [stage, setStage] = useState()
+    const [employees, setEmployees] = useState<EmployeeType[]>([]);
+    const [clients, setClients] = useState<ClientType[]>([]);
+    const [clientContacts, setClientContacts] = useState<ContactType[]>([]);
+    const [locations, setLocations] = useState<LocationType[]>([]);
+    const [jobStages, setJobStages] = useState<JobStageType[]>([]);
+    const [invoice, setInvoice] = useState<InvoiceType>({number: '', dateCreated: '', dateIssued:'', datePaid:''});
+    const [stage, setStage] = useState<string>('')
 
-    const [loading, setLoading] = useState(true);
     const [waiting, setWaiting] = useState({'save': false, 'invoice': false, 'invoiceSubmit': false, 'closeout': false, 'myobLink': false, 'compDocs': false, 'generateInvoice': false});
+    const [loading, setLoading] = useState(true);
     const [updateRequired, setUpdateRequired] = useState(false);
     const [titleChange, setTitleChange] = useState(false);
     const [settingsDialog, setSettingsDialog] = useState(false);
-
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
 
     // let saveCommand = false;
-    const handleKeyPress = useCallback((e) => {
+    const handleKeyPress = useCallback((e: { code: string; metaKey: any; ctrlKey: any; preventDefault: () => void; }) => {
         if (e.code === 'KeyS' && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
             e.preventDefault();
             // console.log(saveCommand)
@@ -116,12 +73,7 @@ const JobPage = () => {
             document.addEventListener('keydown', handleKeyPress)
         }
     }, [handleKeyPress]);
-
-    // Update is required when data changes
-    useEffect(() => {
-        setUpdateRequired(true);
-    }, [job, estimateSet])
-
+    
     let id_po = "";
     let id_sr = "";
     let id_other = "";
@@ -162,17 +114,17 @@ const JobPage = () => {
                 clients ? setClients(clients) : [];
                 clientContacts ? setClientContacts(clientContacts) : [];
 
-                const users = response?.data?.data?.users.edges.map((user) => {return user.node})
+                const users = response?.data?.data?.users.edges.map((user: { node: any; }) => {return user.node})
                 // Sort users
-                users.sort((a, b) => {
+                users.sort((a: { firstName: string; }, b: { firstName: string; }) => {
                     // ignore case
                     const nameA = a.firstName.toUpperCase(); 
                     const nameB = b.firstName.toUpperCase();
                     if (nameA > nameB) {
-                    return 1;
+                        return 1;
                     }
                     if (nameA < nameB) {
-                    return -1;
+                        return -1;
                     }
                 
                     // names must be equal
@@ -186,32 +138,15 @@ const JobPage = () => {
                     navigate('/missing', { replace: true, state: {missing: "job"} });
                 }
 
-                // Flatten objects for field values
-                job_data['location'] = job_data?.location?.id ?? "";
-                job_data['client'] = job_data?.client?.id ?? "";
-                job_data['requester'] = job_data?.requester?.id ?? "";
-                job_data['inspectionBy'] = job_data?.inspectionBy?.id ?? "";
-                job_data['siteManager'] = job_data?.siteManager?.id ?? "";
-
-                // Correct null date values
-                job_data['inspectionDate'] = job_data?.inspectionDate ?? "";
-                job_data['commencementDate'] = job_data?.commencementDate ?? "";
-                job_data['completionDate'] = job_data?.completionDate ?? "";
-                job_data['closeOutDate'] = job_data?.closeOutDate ?? "";
-                job_data['overdueDate'] = job_data?.overdueDate ?? "";
-
                 setJob(job_data);
-                setBills(job_data.billSet);
-                setInitialEstimate(job_data.estimateSet);
-                setEstimateSet(job_data.estimateSet);
                 
-                setInvoice(job_data?.jobinvoiceSet[0]?.invoice ?? false);
-                jobStages.map((values) => {
+                setInvoice(job_data?.invoiceSet[0] ?? null);
+                jobStages.map((values: JobStageType) => {
                     if(job_data.stage === values['name']){
                         setStage(values['description'])
                     }
                 })
-
+                
                 setLoading(false);
                 setUpdateRequired(false);
                 setTitleChange(true);
@@ -233,25 +168,17 @@ const JobPage = () => {
 
     useEffect(() => {
         // console.log("Changing App Title", getJobName(), stage)
-        setApp(prev => ({...prev, title: getJobName(), subTitle: stage}));
+        setApp((prev: any) => ({...prev, title: getJobName(), subTitle: stage}));
         setTitleChange(false);
     }, [titleChange])
 
     const handleUploadChanges = async () => {
-        let partialError = false;
         setWaiting(prev => ({...prev, 'save': true}));
 
         // Remove unwanted values from job state for backend
-        let {jobinvoiceSet:_, myobUid:__, estimateSet:___, stage:____, billSet: _____, ...jobInput} = job
-
+        let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
         // Define formats before sending to backend
-        job['dateIssued'] === "" ? jobInput['dateIssued'] = new Date(0).toISOString().split('T')[0] : null;
-        job['inspectionDate'] === "" ? jobInput['inspectionDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['commencementDate'] === "" ? jobInput['commencementDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['completionDate'] === "" ? jobInput['completionDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['overdueDate'] === "" ? jobInput['overdueDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['closeOutDate'] === "" ? jobInput['closeOutDate'] = new Date(0).toISOString().split('T')[0] : null;
-        job['totalHours'] === "" ? jobInput['totalHours'] = 0 : null;
+        job['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
 
         await axiosPrivate({
             method: 'post',
@@ -261,6 +188,9 @@ const JobPage = () => {
                 {
                     success
                     message
+                    job {
+                        ${jobQueryData}
+                    }
                 }
             }`,
             variables: {
@@ -268,97 +198,26 @@ const JobPage = () => {
             },
         }),
         }).then((response) => {
-            console.log("upload_job", response);
-            // console.log("Job Upload Complete");
-            setWaiting(prev => ({...prev, 'save': false}));
-            if(response?.data?.errors || !response?.data?.data?.update.success) {
-                partialError = true;
-                setSnack({active: true, variant:'error', message: "Job Upload Error: " + response.data.errors[0].message})
-            }
-        }).catch((err) => {
-            console.log('job upload error', err);
-            partialError = true;
-            setSnack({active: true, variant:'error', message: "Error: " + err.response?.data?.errors[0]?.message})
-            setWaiting(prev => ({...prev, 'save': false}));
-        })
-
-        // If a date is removed from an estimate, make sure it is null before sending to api.
-        const cleanEstimateSet = estimateSet.map(est => {
-            const newEstimate = produce(est, draft => {
-                est.approvalDate === "" ? draft.approvalDate = null : null;
-                est.issueDate === "" ? draft.issueDate = null : null;
-            })
-            return newEstimate;
-        })
-
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation createEstimateFromSet ( $estimateSet: [EstimateInput]!, $jobId: String! ) { 
-                create_estimate_from_set: createEstimateFromSet( estimateSet: $estimateSet, jobId: $jobId)
-                {
-                    success
-                    message
-                    job {
-                        stage
-                        estimateSet {
-                            id
-                            name
-                            description
-                            price
-                            issueDate
-                            approvalDate
-                            scope
-                            quoteBy {
-                                id
-                            }
-                            estimateheaderSet{
-                                id
-                                description
-                                markup
-                                gross
-                                subRows: estimateitemSet {
-                                    id
-                                    description
-                                    quantity
-                                    itemType
-                                    rate
-                                    extension
-                                    markup
-                                    gross
-                                }
-                            }	
-                        }
-                    }
-                }
-            }`,
-            variables: {
-                estimateSet: cleanEstimateSet,
-                jobId: job.id,
-            },
-        }),
-        }).then((response) => {
             // console.log(response);
-            const res = response?.data?.data?.create_estimate_from_set;
+            const res = response?.data?.data?.update;
             if(res.success) {
-                setEstimateSet(res.job.estimateSet);
-                
+                setJob(res.job)
+
                 // Update Job Stage
                 jobStages.map((values) => {
                     res?.job?.stage === values['name'] ? 
                         setStage(values['description']) : null;
                 })
                 setTitleChange(true);
-
-                if(!partialError) {
-                    setSnack({active: true, variant:'success', message: res.message})
-                }
-                // TODO: Update the id of any new jobs.
+                setSnack({active: true, variant:'success', message: res.message})
                 setUpdateRequired(false);
             } 
             else {
-                setSnack({active: true, variant:'error', message: "Estimate Upload Error: " + res.message})
+                setSnack({active: true, variant:'error', message: "Job Upload Error: " + res.message})
             }
+        }).catch((err) => {
+            console.log("Upload Changes Error", err)
+            setSnack({active: true, variant:'error', message: "Job Upload Error. Contact Developer"})
         }).finally(() => {
             setWaiting(prev => ({...prev, 'save': false}));
         });
@@ -371,10 +230,11 @@ const JobPage = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `mutation closeOutEmail ($jobid: String!) { 
-                    close_out_email: closeOutEmail(jobid: $jobid)
+                close_out_email: closeOutEmail(jobid: $jobid)
                 {
                     success
                     message
+                    time
                 }
             }`,
             variables: {
@@ -383,13 +243,13 @@ const JobPage = () => {
         }),
         }).then((response) => {
             const res = response?.data?.data?.close_out_email;
-            setStage("Invoicing");
-            setTitleChange(true);
             
             if(res.success) {
-                setJob(prev => ({...prev, 'closeOutDate': new Date().toISOString().slice(0, 10)}));
+                setJob(prev => ({...prev, 'closeOutDate': res.time}));
                 setSnack({active: true, variant:'success', message: res.message});
                 setUpdateRequired(false);
+                setStage("Invoicing");
+                setTitleChange(true);
             }
             else {
                 setSnack({active: true, variant:'error', message: "Email Error: " + res.message})
@@ -490,7 +350,7 @@ const JobPage = () => {
         }
 
         let build = job.building + " ";
-        if(job.building !== "" && !isNaN(job.building)) {
+        if(job.building !== "" && !isNaN(parseFloat(job.building))) {
             build = "B" + job.building + " ";
         }
         if(job.building === "") {
@@ -498,7 +358,7 @@ const JobPage = () => {
         }
 
         let loc = locations[locations.findIndex(element => {
-            if(element.id == job.location) {
+            if(element.id == job.location.id) {
                 return true;
             }
             return false;
@@ -574,176 +434,186 @@ const JobPage = () => {
         })
     }
 
-    const handleInput = (e) => {
+    const handleInput = (e: { target: { name?: any; value?: any; }; }) => {
         setJob(prev => ({...prev, [e.target.name]: e.target.value}))
+        setUpdateRequired(true);
+    }
+
+    const handleNumberInput = (e: { target: { name?: any; value?: any; }; }) => {
+        const val = e.target.value === "" ? 0 : e.target.value
+        setJob(prev => ({...prev, [e.target.name]: val}))
+        setUpdateRequired(true);
+    }
+
+    const handleDateInput = (e: { target: { name?: any; value?: any; }; }) => {
+        const val = e.target.value === "" ? null : e.target.value
+        setJob(prev => ({...prev, [e.target.name]: val}))
+        setUpdateRequired(true);
+    }
+
+    const handleSelection = (e: { target: { name?: any; value?: any; }; }) => {
+        const val = e.target.value === "" ? null : {id: e.target.value}
+        setJob(prev => ({...prev, [e.target.name]: val}))
+        setUpdateRequired(true);
     }
  
     return (
         <>
         {loading?
-            <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingTop: '10px'}} align="center">
+            <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingTop: '10px'}}>
                 <CircularProgress />
             </Box>
         :
         <>
-            <Grid container spacing={3}>
+            <Grid container spacing={2} direction={'column'} alignItems={'center'}>
                 {/* Request Details */}
-                <Grid item xs={12} align="center">
-                    <InputField type="select" name="client" label="Client" value={job.client} onChange={handleInput}>
+                <Grid item xs={12} >
+                    <InputField type="select" name="client" label="Client" value={job.client?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_client"} value={''}></option>
                         {clients?.map((c) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))} 
                     </InputField>
-                    <InputField name="dateIssued" type="date" label="Date Issued" value={job.dateIssued} onChange={handleInput} max="9999-12-31"/>
-                    <InputField name="overdueDate" type="date" label="Overdue Date" value={job.overdueDate} onChange={handleInput} max="9999-12-31"/>
+                    <InputField type="datetime-local" name="dateIssued" label="Date Issued" max='9999-12-31T23:59:59' value={job.dateIssued ?? null} onChange={handleDateInput}/>
+                    <InputField type="datetime-local" name="overdueDate" label="Overdue Date" max='9999-12-31T23:59:59' value={job.overdueDate ?? null} onChange={handleDateInput}/>
                 </Grid>
                 {/* Job Details */}
-                <Grid item xs={12} align="center"> 
-                    <InputField name="po" label="Purchase Order #" value={job.po} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
-                    <InputField name="sr" label="Service Request #" value={job.sr} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
-                    <InputField name="otherId" label="Other Id" value={job.otherId} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                <Grid item xs={12} > 
+                    <InputField type="string" name="po" label="Purchase Order #" value={job.po} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                    <InputField type="string" name="sr" label="Service Request #" value={job.sr} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                    <InputField type="string" name="otherId" label="Other Id" value={job.otherId} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
                 </Grid>
                 {/* Location & Title */}
-                <Grid item xs={12} align="center"> 
-                    <InputField type="select" name="location" label="Location" value={job.location} onChange={handleInput} onBlur={() => setTitleChange(true)}>
+                <Grid item xs={12} > 
+                    <InputField type="select" name="location" label="Location" value={job.location?.id ?? ''} onChange={handleSelection} onBlur={() => setTitleChange(true)}>
                         <option key="blank_location" value={""}></option>
                         {locations?.map((loc) => (
-                            loc.client.id === job.client ? <option key={loc.id} value={loc.id}>{loc.name} ({loc.region.shortName})</option> : <></>
+                            loc.client.id === job.client.id ? <option key={loc.id} value={loc.id}>{loc.name} ({loc.region.shortName})</option> : <></>
                         ))}
                     </InputField>
-                    <InputField name="building" label="Building" value={job.building} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
-                    <InputField name="detailedLocation" label="Detailed Location" value={job.detailedLocation} onChange={handleInput}/>
+                    <InputField type="string" name="building" label="Building" value={job.building} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                    <InputField type="string" name="detailedLocation" label="Detailed Location" value={job.detailedLocation} onChange={handleInput}/>
                 </Grid>
                 {/* Extra Details */}
-                <Grid item xs={12} align="center">
-                    <InputField type="select" label="Requester" name="requester" value={job.requester} onChange={handleInput}>
+                <Grid item xs={12} >
+                    <InputField type="select" label="Requester" name="requester" value={job.requester?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_requester"} value={""}></option>
                         {clientContacts?.map((contact) => (
-                            contact.client.id === job.client ? <option key={contact.id} value={contact.id}>{contact.firstName + " " + contact.lastName}</option> : /*&& contact.region.shortName === locations[location-1].region.shortName*/ <></>
+                            contact.client.id === job.client.id ? <option key={contact.id} value={contact.id}>{contact.firstName + " " + contact.lastName}</option> : /*&& contact.region.shortName === locations[location-1].region.shortName*/ <></>
                         ))}
                     </InputField>
-                    <InputField name="priority" label="Priority" value={job.priority} onChange={handleInput}/>
-                    <InputField name="specialInstructions" label="Special Instructions" value={job.specialInstructions} onChange={handleInput}/>
+                    <InputField type="string" name="priority" label="Priority" value={job.priority} onChange={handleInput}/>
+                    <InputField type="string" name="specialInstructions" label="Special Instructions" value={job.specialInstructions} onChange={handleInput}/>
                 </Grid>
                 {/* Point of Contact */}
-                <Grid item xs={12} align="center">
-                    <InputField name="pocName" label="POC Name" value={job.pocName} onChange={handleInput}/>
-                    <InputField name="pocPhone" label="POC Phone" value={job.pocPhone} onChange={handleInput}/>
-                    <InputField name="pocEmail" label="POC Email" value={job.pocEmail} onChange={handleInput}/>
+                <Grid item xs={12} >
+                    <InputField type="string" name="pocName" label="POC Name" value={job.pocName} onChange={handleInput}/>
+                    <InputField type="string" name="pocPhone" label="POC Phone" value={job.pocPhone} onChange={handleInput}/>
+                    <InputField type="string" name="pocEmail" label="POC Email" value={job.pocEmail} onChange={handleInput}/>
                 </Grid>
                 {/* Alt Point of Contact */}
-                <Grid item xs={12} align="center"> 
-                    <InputField name="altPocName" label="Alt POC Name" value={job.altPocName} onChange={handleInput}/>
-                    <InputField name="altPocPhone" label="Alt POC Phone" value={job.altPocPhone} onChange={handleInput}/>
-                    <InputField name="altPocEmail" label="Alt POC Email" value={job.altPocEmail} onChange={handleInput}/>
+                <Grid item xs={12} > 
+                    <InputField type="string" name="altPocName" label="Alt POC Name" value={job.altPocName} onChange={handleInput}/>
+                    <InputField type="string" name="altPocPhone" label="Alt POC Phone" value={job.altPocPhone} onChange={handleInput}/>
+                    <InputField type="string" name="altPocEmail" label="Alt POC Email" value={job.altPocEmail} onChange={handleInput}/>
                 </Grid>
                 {/* Title */}
-                <Grid item xs={12} align="center"> 
-                    <InputField width={750} name="title" label="Title" value={job.title} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
+                <Grid item xs={12} > 
+                    <InputField type="string" width={750} name="title" label="Title" value={job.title} onChange={handleInput} onBlur={() => setTitleChange(true)}/>
                 </Grid>
                 {/* Description */}
-                <Grid item xs={12} align="center"> 
-                    <InputField multiline width={750} name="description" label="Description" value={job.description} onChange={handleInput}/>
+                <Grid item xs={12} > 
+                    <InputField type="string" multiline width={750} name="description" label="Description" value={job.description} onChange={handleInput}/>
                 </Grid>
-                <Grid item xs={12} align="center">
+                <Grid item xs={12} >
                     <Typography variant='body1'>Inspection Details</Typography>
                 </Grid>
                 {/* Priority and Date */}
-                <Grid item xs={12} align="center"> 
-                    <InputField type="date" name="inspectionDate" max='9999-12-31' label="Inspection Date" value={job.inspectionDate} onChange={handleInput}/>
-                    <InputField type="select" name="inspectionBy" label="Inspector" value={job.inspectionBy} onChange={handleInput}>
+                <Grid item xs={12} > 
+                    <InputField type="datetime-local" name="inspectionDate" max='9999-12-31T23:59:59' label="Inspection Date" value={job.inspectionDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="select" name="inspectionBy" label="Inspector" value={job.inspectionBy?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_inspector"} value={""}></option>
                         {employees?.map((emp) => (
                             <option key={emp.id} value={emp.id}>{emp.firstName + " " + emp.lastName}</option>
                         ))}
                     </InputField>
                 </Grid>
-                {/* Inspection Notes */}
-                <Grid item xs={12} align="center">
-                    <InputField multiline wide name="inspectionNotes" label="Inspection Notes" value={job.inspectionNotes} onChange={handleInput}/>
+                <Grid item xs={12} >
+                    <InputField type="string" multiline wide name="inspectionNotes" label="Inspection Notes" value={job.inspectionNotes} onChange={handleInput}/>
                 </Grid>
-                {/* Estimate Builder */}
-                <Grid item xs={12} align="center">
+                <Grid item xs={12} >
                     <Typography variant='body1'>Quote Details</Typography>
-                    <InputField multiline wide name="scope" label="General Scope of Works" value={job.scope} onChange={handleInput}/>
                 </Grid>
-                <Grid item xs={12} align="center" />
-                <Grid item xs={12} align="center" style={{overflowX: 'auto'}}>
-                    <EstimateModule estimates={initialEstimate} jobId={job.id} updateRequired={updateRequired} 
-                        setUpdateRequired={setUpdateRequired} users={employees} bills={bills} setBills={setBills}
-                        client={job.client} myobSync={job.myobUid}/>
+                <Grid item xs={12} >
+                    <InputField type="string" multiline wide name="scope" label="General Scope of Works" value={job.scope} onChange={handleInput}/>
                 </Grid>
-                <Grid item xs={12} align="center">
+                <Grid item xs={12}  />
+                <Grid item xs={12}  style={{overflowX: 'auto', width: '95%'}}>
+                    <EstimateModule job={job} setJob={setJob} updateRequired={updateRequired} 
+                        setUpdateRequired={setUpdateRequired} users={employees} 
+                        snack={snack} setSnack={setSnack} />
+                </Grid>
+                <Grid item xs={12} >
                     <Typography variant='body1'>On-Site Details</Typography>
                 </Grid>
                 {/* On Site Details */}
-                <Grid item xs={12} align="center">
-                    <InputField type="select" style={{width: '200px'}} name="siteManager" label="Site Manager" value={job.siteManager} onChange={handleInput}>
+                <Grid item xs={12} >
+                    <InputField type="select" style={{width: '200px'}} name="siteManager" label="Site Manager" value={job.siteManager?.id ?? ''} onChange={handleSelection}>
                         <option key={"blank_sitemanager"} value={""}></option>
                         {employees?.map((emp) => (
-                            <option key={emp.id} value={emp.id}>{emp.firstName + " " + emp.lastName}</option>
+                            <option key={emp?.id} value={emp?.id}>{emp?.firstName + " " + emp?.lastName}</option>
                         ))}
                     </InputField>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="commencementDate" label="Commencement Date" value={job.commencementDate} onChange={handleInput}/>
-                    <InputField type="date" style={{width: '146px'}} max='9999-12-31' name="completionDate" label="Completion Date" value={job.completionDate} onChange={handleInput}/>
-                    <InputField type="number" step=".1" min={0} style={{width: '146px'}} name="totalHours" label="Hours" value={job.totalHours} onChange={handleInput}/>
+                    <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="commencementDate" label="Commencement Date" value={job.commencementDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="completionDate" label="Completion Date" value={job.completionDate ?? null} onChange={handleDateInput}/>
+                    <InputField type="number" step={0.1} min={0} style={{width: '146px'}} name="totalHours" label="Hours" value={job.totalHours ?? 0} onChange={handleNumberInput}/>
                 </Grid>
                 {/* Job Notes */}
-                <Grid item xs={12} align="center"> 
-                    <InputField multiline wide name="workNotes" label="Notes" value={job.workNotes} onChange={handleInput}/>
+                <Grid item xs={12} > 
+                    <InputField type="string" multiline wide name="workNotes" label="Notes" value={job.workNotes} onChange={handleInput}/>
                 </Grid>
                 {/* Close Out Details */}
-                <Grid item xs={12} align="center"> 
-                    <InputField type="date"  style={{width: '150px'}} max='9999-12-31' name="closeOutDate" label="Close Out Date" value={job.closeOutDate} onChange={handleInput}/>
-                    <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : job.commencementDate === "" || job.completionDate === "" || job.hours === 0 ? "Please Fill Out Completion Details" : ""}>
+                <Grid item xs={12} > 
+                    <InputField type="datetime-local" width={200} max='9999-12-31T23:59:59' name="closeOutDate" label="Close Out Date" value={job.closeOutDate ?? null} onChange={handleDateInput}/>
+                    <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : job.commencementDate === null || job.completionDate === null || job.totalHours === 0 ? "Please Fill Out Completion Details" : ""}>
                         <Box style={{display:'inline-block'}}>
-                            <Button variant='outlined' style={{margin: '10px'}} onClick={handleCloseOut} disabled={!(!updateRequired && job.commencementDate !== "" && job.completionDate !== "" && job.totalHours !== 0 && job.totalHours !== "" && job.closeOutDate === "")}>Close Out</Button>
+                            <ProgressButton name="Close Out" buttonVariant='outlined' onClick={handleCloseOut} 
+                            waiting={waiting.closeout}
+                            disabled={!(!updateRequired && job.commencementDate !== null && job.completionDate !== null && job.totalHours !== 0 && job.closeOutDate === null)} />
                         </Box>
                     </Tooltip>
                 </Grid>
-                <Grid item xs={12} align="center">
+                <Grid item xs={12} >
                     <Typography variant='body1'>Accounts Details</Typography>
                 </Grid>
-                <Grid item xs={12} align="center" style={{paddingTop: '0px'}}> {/* Accounts */}
-                    <Tooltip title={updateRequired ? "Please save changes" : job.closeOutDate === "" ? "Job Requires Close Out" : ""}>
-                        <Box style={{position: 'relative', display: 'block', padding: '5px'}}>
-                            <Button variant="outlined" 
-                                style={{margin: '5px'}}
-                                onClick={(() => handleCreateInvoice())}
-                                disabled={invoice || job.closeOutDate === "" || updateRequired}
-                                >
-                                Create Invoice
-                            </Button>
-                            {waiting.invoice && (
-                                <CircularProgress size={24} 
-                                    sx={{
-                                        colour: 'primary', 
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: '50%',
-                                        marginTop: '-12px',
-                                        marginLeft: '-12px',
-                                    }}
-                                />
-                            )}
+                <Grid item xs={12} style={{paddingTop: '0px'}}> {/* Accounts */}
+                    <Tooltip title={updateRequired ? "Please save changes" : job.closeOutDate === null ? "Job Requires Close Out" : ""}>
+                        
+                        <Box style={{position: 'relative', display: 'flex', justifyContent: 'center', padding: '5px'}}>
+                            <ProgressButton name='Create Invoice'
+                                buttonVariant='outlined' 
+                                waiting={waiting.invoice} 
+                                onClick={handleCreateInvoice} 
+                                disabled={invoice !== null || job.closeOutDate === null || updateRequired || waiting.invoice} 
+                            />
+                            
                         </Box>
                     </Tooltip>
-                    <InputField disabled width={150} type="text" label="MYOB Invoice" value={invoice?.number}/>
-                    <InputField disabled width={150} type="date" label="Date Invoice Created" value={invoice?.dateCreated}/>
+                    <InputField disabled={true} width={150} type="text" label="MYOB Invoice" value={invoice?.number}/>
+                    <InputField disabled={true} width={150} type="date" label="Date Invoice Created" value={invoice?.dateCreated}/>
                 </Grid>
-                <Grid item xs={12} align="center"> {/* Accounts */}
-                    <InputField disabled width={150} type="date" label="Date Invoice Issued" value={invoice?.dateIssued}/>
-                    <InputField disabled width={150} type="date" label="Date Invoice Paid" value={invoice?.datePaid}/>
+                <Grid item xs={12} > {/* Accounts */}
+                    <InputField disabled={true} width={150} type="date" label="Date Invoice Issued" value={invoice?.dateIssued}/>
+                    <InputField disabled={true} width={150} type="date" label="Date Invoice Paid" value={invoice?.datePaid}/>
                 </Grid>
-                <Grid item xs={12} align="center" style={{paddingTop: '0px'}}> {/* Accounts */}
-                    {job.client !== "1" ?
+                <Grid item xs={12}  style={{paddingTop: '0px'}}> {/* Accounts */}
+                    {job.client.id !== "1" ?
                         <Tooltip title={updateRequired ? "Please save changes" : ""}>
                             <Box sx={{ m: 1, position: 'relative' }}>
                                 <Button variant="outlined" 
                                     style={{margin: '5px'}}
                                     onClick={() => handleSubmitInvoice()}
-                                    disabled={!invoice || updateRequired || invoice.dateIssued}
+                                    disabled={invoice === null || updateRequired || invoice.dateIssued !== null}
                                     >
                                     Submitted Invoice
                                 </Button>
@@ -773,10 +643,12 @@ const JobPage = () => {
             setOpen={setSettingsDialog} 
             job={job}
             setJob={setJob}
+            setUpdateRequired={setUpdateRequired}
             handleInput={handleInput}
             waiting={waiting}
             setWaiting={setWaiting}
             setSnack={setSnack}
+            getJobName={getJobName}
         />
 
         <Portal>
@@ -871,3 +743,4 @@ const JobPage = () => {
     );
 }
 export default JobPage;
+// export default () => '';

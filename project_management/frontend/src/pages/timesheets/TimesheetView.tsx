@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import useAxiosPrivate from '../../hooks/useAxiosPrivate'
-import { useParams } from 'react-router-dom'
 import { Button, CircularProgress, Grid, IconButton, Portal } from '@mui/material'
-import { BasicDialog, Footer, ProgressButton, SnackBar, Table, Tooltip, } from '../../components/Components'
-import { ColumnDef, RowSelection } from '@tanstack/react-table'
-import useAuth from '../auth/useAuth'
+import { Footer, Table, Tooltip, } from '../../components/Components'
 
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
@@ -15,7 +12,6 @@ import { createColumnHelper } from '@tanstack/react-table'
 import TimesheetEditDialog from './EditDialog'
 import { IAuth, SnackType } from '../../types/types'
 import { TimesheetType, EmployeeType, workDayOptions } from './Timesheets'
-import SubmissionDialog from './SubmissionDialog'
 import TimesheetSubmission from './SubmissionDialog'
 
 const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, auth, dateFilter, setSnack }: {
@@ -126,7 +122,7 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
         columnHelper.accessor((row: any) => row?.employee?.name, {
             id: 'employee',
             header: () =>  <p style={{textAlign: 'center'}}>Employee</p>,
-            cell: (info: any) => info.getValue(),
+            cell: ({row, getValue}) => <p>{getValue()} ({row.original.employee.payBasis.charAt(0)})</p>,
             size: 250
         }),
         ...timesheets[0]?.workdaySet.map((workday, i) => (
@@ -134,9 +130,14 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
                 id: `workDay${i}`,
                 header: () => new Date(workday.date).toLocaleDateString('en-AU', { weekday: 'long', day: '2-digit', month: '2-digit', year:'numeric' }),
                 cell: ({getValue, row, column: { id }}) => {
-
                     const workType: string = row.original?.workdaySet[parseInt(id.replace("workDay", ""))]?.workType;
                     const formatType: string = (workDayOptions as any)[workType]?.colour ?? '';
+
+                    if(getValue() == 0) {
+                        return (<p style={{backgroundColor: formatType, padding: '14px 0px', margin: '0px'}}>0</p>)
+                    }
+
+                    const payBasis: string = row.original?.employee.payBasis
 
                     let OT = null
                     const dayOfWeek = new Date(workday.date).getDay()
@@ -145,6 +146,10 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
 
                     if(allowOvertime && (parseFloat(getValue()) > 8 || (isWeekend && parseFloat(getValue()) > 0)) || (allowOvertime && workType == "PH")) {
                         OT = <span style={{color: "red", fontWeight: "bold"}}> *</span>
+                    }
+
+                    if(payBasis === "Salary" && !isWeekend) {
+                        return (<p style={{backgroundColor: formatType, padding: '14px 0px', margin: '0px'}}>8.00 {getValue() != "8.00" ? "*" : ""}</p>)
                     }
                     
                     return (<p style={{backgroundColor: formatType, padding: '14px 0px', margin: '0px'}}>{getValue()} {OT}</p>)
@@ -205,7 +210,7 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
                                     {(workDayOptions as any)[key]['name']}
                                 </p>
                                 <p style={{display: 'inline', padding: '0px 5px', margin: '5px'}}>
-                                    <span style={{color: "red", fontWeight: "bold"}}> *</span> Overtime
+                                    Overtime <span style={{color: "red", fontWeight: "bold"}}> *</span>
                                 </p> 
                             </>)
                         }
@@ -218,10 +223,10 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
                     })}
                 </div>
             </Grid>
-            <Grid item xs={12}>
+            {/* <Grid item xs={12}>
                 <button onClick={() => console.log(payrollDetails)}>Payroll Details</button>
                 <button onClick={syncPayrollCategories}>Sync Payroll Categories</button>
-            </Grid>
+            </Grid> */}
             <Grid item xs={12}>
                 {timesheets.length > 0 ?
                     <Table data={timesheets} columns={columns} />

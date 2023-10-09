@@ -92,16 +92,14 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
                                 success
                                 message
                                 error
-                                jobInvoice {
-                                    invoice {
-                                        id
-                                        myobUid
-                                        number
-                                        dateCreated
-                                        dateIssued
-                                        datePaid
-                                        amount
-                                    }
+                                invoiceSet {
+                                    id
+                                    myobUid
+                                    number
+                                    dateCreated
+                                    dateIssued
+                                    datePaid
+                                    amount
                                 }
                             }
                         }`,
@@ -115,9 +113,9 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
                 }).then((response) => {
                     console.log(response)
                     const res = response?.data?.data?.process_payment; 
-                    console.log("UpdateInvoices Response", res.jobInvoice)
+                    console.log("UpdateInvoices Response", res.invoiceSet)
                     setWaiting(prev => ({...prev, 'submit': false}));
-                    onClose(event, reason, res.jobInvoice);
+                    onClose(event, reason, res.invoiceSet);
 
                     if(res.success) {
                         setSnack({'active': true, variant:'success', message: 'Sucessfully updated invoices from remittance advice.'})

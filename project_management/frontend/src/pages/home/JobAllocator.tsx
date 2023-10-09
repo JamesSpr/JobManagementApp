@@ -1,25 +1,22 @@
 import { useState } from "react";
 import { Button, Checkbox, Dialog, DialogContent, FormControlLabel, FormGroup, Grid, IconButton } from "@mui/material"
-import { User } from "../../types/types";
+import { EmployeeType, SnackType, User } from "../../types/types";
 import { RowModel, Table } from "@tanstack/react-table";
 import CloseIcon from '@mui/icons-material/Close';
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
+import { ProgressButton } from "../../components/Components";
 
 interface JobAllocatorProps {
     open: boolean,
     onClose: () => void,
-    users: [User],
+    users: EmployeeType[],
     table?: Table<any>
     rowSelection?: {}
     job?: string
-    snack: {
-        setSnack: (value: boolean) => void
-        setSnackVariant: (variant: string) => void
-        setSnackMessage: (message: string) => void
-    }
+    setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }
 
-const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, table, rowSelection, snack}) => {
+const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, table, rowSelection, setSnack}) => {
 
     interface emailRecipientType {
         [email: string]: boolean
@@ -27,8 +24,11 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
 
     const axiosPrivate = useAxiosPrivate();
     const [emailRecipients, setEmailRecipients] = useState<emailRecipientType>({})
+    const [waiting, setWaiting] = useState(false);
 
     const handleJobAllocation = async () => {
+        setWaiting(true);
+
         // Gather all the selected rows
         const selectedRows: String[] = []
         if(table && rowSelection) {
@@ -72,18 +72,18 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
         }),
         }).then((response) => {
             const res = response?.data?.data?.allocate_job_email;
-            snack.setSnack(true);
+            
 
             if(res.success) {
-                snack.setSnackVariant('success');
-                snack.setSnackMessage(res.message);
+                setSnack({active: true, variant:'success', message:res.message})
                 onClose();
             }
             else {
-                snack.setSnackVariant('error');
-                snack.setSnackMessage("Email Error: " + response.data.errors[0].message);
+                setSnack({active: true, variant:'error', message:"Email Error: " + response.data.errors[0].message})
             }
 
+        }).finally(() => {
+            setWaiting(false);
         });
     }
 
@@ -110,7 +110,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                     <FormGroup sx={{marginTop: '5px'}}>
                         <Grid container spacing={1}>
                             {
-                                users?.map((user: User) => {
+                                users?.map((user: EmployeeType) => {
                                     if(user.firstName) {
                                         return (
                                             <Grid item xs={12} >
@@ -126,7 +126,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                             }
                         </Grid>
                     </FormGroup>
-                    <Button disabled={Object.values(emailRecipients).every(value => value === false)} onClick={handleJobAllocation}>Send Email</Button>
+                    <ProgressButton name="Send Email" waiting={waiting} disabled={Object.values(emailRecipients).every(value => value === false)} onClick={handleJobAllocation} />
                 </DialogContent>
                     
             </Dialog>
