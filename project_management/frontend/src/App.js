@@ -7,7 +7,6 @@ import LoginPage from "./pages/login/Login";
 import Activate from './pages/login/Activate';
 import PasswordReset from "./pages/login/PasswordReset";
 import HomePage from "./pages/home/Home";
-import Approved from "./pages/job/Approved";
 import EditJobPage from "./pages/job/EditJob";
 import CreateJob from "./pages/job/CreateJob";
 import Unauthorized from "./pages/auth/Unauthorized";
@@ -46,7 +45,6 @@ const App = () => {
                         <Route element={<RequireAuth allowedRoles={['GUS', 'PMU', 'SMU', 'ADM', 'DEV']} />}>
                             <Route path="/" element={<HomePage />} />
                             <Route path="job/edit/:id" element={<EditJobPage />} />
-                            {/* <Route path="job/approved/:input" element={<Approved />} /> */}
                             <Route path="job/create/:input" element={<CreateJob />} />
                             <Route path="clients" element={<ClientList />} />
                             <Route path="client/:client" element={<Client />} />
