@@ -247,6 +247,7 @@ const Contacts = ({contacts, setContacts, regions, client, setUpdateRequired, se
                         region {
                             id
                         }
+                        active
                     }
                 }
             }`,

@@ -62,21 +62,21 @@ const Client = () => {
 
     const [tabValue, setTabValue] = useState(0); // Active Tab tabValue
 
-    const tabOptions = ["Client", "Contacts", "Locations", "Regions"]
+    const tabOptions = ["Client", "Regions", "Locations", "Contacts"]
     const tabItems = [
         <Home client={client} details={details} setDetails={setDetails} setUpdateRequired={setUpdateRequired} setSnack={setSnack}/>, 
-
-        <Contacts contacts={contacts} setContacts={setContacts} regions={regions} client={client} 
-            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
-            createDialog={createDialog} setCreateDialog={setCreateDialog} />,
+        
+        <Regions regions={regions} setRegions={setRegions} client={client}
+            setUpdateRequired={setUpdateRequired} setSnack={setSnack} 
+            createDialog={createDialog} setCreateDialog={setCreateDialog}/>,
 
         <Locations locations={locations} setLocations={setLocations} regions={regions} client={client}
             setUpdateRequired={setUpdateRequired} setSnack={setSnack}
             createDialog={createDialog} setCreateDialog={setCreateDialog} />, 
 
-        <Regions regions={regions} setRegions={setRegions} client={client}
-            setUpdateRequired={setUpdateRequired} setSnack={setSnack} 
-            createDialog={createDialog} setCreateDialog={setCreateDialog}/>
+        <Contacts contacts={contacts} setContacts={setContacts} regions={regions} client={client} 
+            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
+            createDialog={createDialog} setCreateDialog={setCreateDialog} />
     ]
 
     if(!client){
