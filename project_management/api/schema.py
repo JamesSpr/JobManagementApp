@@ -18,7 +18,7 @@ from .models import Insurance, Estimate, EstimateHeader, EstimateItem, Job, Loca
 from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote, CreateBGISEstimate
-from .services.get_pdf_thumbnail import PDFToImage
+from .services.file_processing import PDFToImage
 
 main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
 

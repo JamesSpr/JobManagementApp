@@ -7,6 +7,9 @@ import math
 from datetime import date, datetime
 from ..models import Job, Estimate, EstimateHeader
 from graphql_jwt.decorators import login_required
+import base64
+import re
+from .file_processing import compress_image_for_mail
 
 import sys
 sys.path.append("...")
@@ -20,13 +23,14 @@ class AllocateJobEmail(graphene.Mutation):
         jobs = graphene.List(graphene.String)
         recipient = graphene.List(graphene.String)
         attachments = graphene.List(graphene.String)
+        attachmentNames = graphene.List(graphene.String)
 
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(cls, root, info, jobs, recipient):
+    def mutate(cls, root, info, jobs, recipient, attachments, attachmentNames):
         outlook = win32.DispatchEx('Outlook.Application', pythoncom.CoInitialize())
         count = 0
 
@@ -50,8 +54,23 @@ class AllocateJobEmail(graphene.Mutation):
                 alt_poc = f"<b>ALT POC</b>: {job.alt_poc_name} - {job.alt_poc_phone}<br>" if job.alt_poc_name or job.alt_poc_phone else ""
                 bsafe_link = f"<a href='{job.bsafe_link}'>BSAFE Link</a><br>" if job.bsafe_link else ""
                 
-                # print(str(job))
+                
                 mail = outlook.CreateItem(0)
+
+                for i, attachment in  enumerate(attachments):
+                    imgAttachment = False
+                    if "image" in attachment:
+                        imgAttachment = True
+
+                    attachment = re.sub("data:(.*);base64,", "", attachment)
+                    file = base64.b64decode(attachment, validate=True)
+                    with open(os.path.join(JOBS_PATH, str(job), attachmentNames[i]), 'wb') as f:
+                        f.write(file)
+
+                    if imgAttachment:
+                        compress_image_for_mail(file, attachmentNames[i], mail)
+                    else:
+                        mail.attachments.Add(os.path.join(JOBS_PATH, str(job), attachmentNames[i]))
 
                 mail.Display()
                 Signature = mail.HTMLBody.replace("<p class=MsoNromal><o:p>&nbsp;</o:p></p>", "")
@@ -98,7 +117,7 @@ class AllocateJobEmail(graphene.Mutation):
                                 </body>
                                 """ + Signature
 
-                mail.Send()
+                # mail.Send()
                 count += 1
 
                 job = ""

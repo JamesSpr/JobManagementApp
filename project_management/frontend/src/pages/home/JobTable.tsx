@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, 
     getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, 
-    ColumnDef, Column, ColumnFiltersState, Table as ReactTable, Row, Cell } from '@tanstack/react-table'
+    ColumnDef, Column, ColumnFiltersState, Table as ReactTable } from '@tanstack/react-table'
 
 import DebouncedInput from "../../components/DebouncedInput";
 
@@ -17,7 +17,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { fuzzyFilter, dateSort, inDateRange } from '../../components/TableHelpers';
 import { SnackBar, Table, Tooltip } from '../../components/Components';
 import { fetchArchivedData } from './QueryData';
-import JobAllocator from './JobAllocator';
+import JobAllocator from './JobAllocatorNew';
 import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
 import { EmployeeType, JobStageType, JobType, SnackType } from '../../types/types';
 

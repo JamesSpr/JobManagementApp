@@ -64,3 +64,19 @@ class PDFToImage(graphene.Mutation):
         os.remove(tf_pdf.name) # remove temp file
 
         return self(success=True, thumbnail_path=thumbnail_image_path, file_path=file_path)
+
+# Resize image and reduce quality to be emailed
+def compress_image_for_mail(b64_img, filename, mail):
+    image_bytes = BytesIO(b64_img)
+ 
+    pil_image = Image.open(image_bytes)
+
+    max_size = 512
+    pil_image = pil_image.resize((max_size, max_size))
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_file = os.path.join(temp_dir, filename)
+        print(temp_file)
+        pil_image.save(temp_file, format="JPEG", quality=90)
+        mail.attachments.Add(temp_file)
+

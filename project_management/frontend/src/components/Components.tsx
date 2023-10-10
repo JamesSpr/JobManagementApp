@@ -504,6 +504,7 @@ interface BasicDialogType {
     open: boolean
     close: () => void
     action: () => void
+    waiting?: boolean
     title: string
     children?: ReactNode
     okay?: boolean
@@ -512,7 +513,7 @@ interface BasicDialogType {
     center?: boolean
 }
 
-export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, center, children, okay, fullWidth, maxWidth}) => {
+export const BasicDialog:FC<BasicDialogType> = ({open, close, action, waiting, title, center, children, okay, fullWidth, maxWidth}) => {
 
     return(<>
         <Dialog open={open} onClose={close} scroll={'paper'} fullWidth={fullWidth} maxWidth={maxWidth}>
@@ -522,10 +523,13 @@ export const BasicDialog:FC<BasicDialogType> = ({open, close, action, title, cen
                 </DialogContent>
                 <DialogActions style={{alignSelf: center ? "center" : "" }}>
                         {okay ? 
-                        <Button onClick={action}>Okay</Button>
-                        :
+                            <Button onClick={action}>Okay</Button>
+                            :
                         <>
-                            <Button onClick={action}>Yes</Button>
+                            {waiting ? 
+                                <ProgressButton onClick={action} waiting={waiting} name="Yes"/>
+                                : <Button onClick={action}>Yes</Button>
+                            }
                             <Button onClick={close}>No</Button>
                         </>
                     }
