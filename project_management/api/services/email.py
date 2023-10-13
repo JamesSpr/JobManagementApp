@@ -117,7 +117,7 @@ class AllocateJobEmail(graphene.Mutation):
                                 </body>
                                 """ + Signature
 
-                # mail.Send()
+                mail.Send()
                 count += 1
 
                 job = ""
