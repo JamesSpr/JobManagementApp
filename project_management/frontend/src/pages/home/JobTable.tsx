@@ -17,7 +17,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { fuzzyFilter, dateSort, inDateRange } from '../../components/TableHelpers';
 import { SnackBar, Table, Tooltip } from '../../components/Components';
 import { fetchArchivedData } from './QueryData';
-import JobAllocator from './JobAllocatorNew';
+import JobAllocator from './JobAllocator';
 import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
 import { EmployeeType, JobStageType, JobType, SnackType } from '../../types/types';
 
