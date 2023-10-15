@@ -266,7 +266,7 @@ const JobPage = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `mutation myobCreateInvoice($uid:String!, $job:String!) {
-                    myob_create_invoice: myobCreateInvoice(uid:$uid, job:$job) {
+                    invoice: myobCreateInvoice(uid:$uid, job:$job) {
                         success
                         message
                         number
@@ -274,12 +274,12 @@ const JobPage = () => {
                 }`,
                 variables: {
                     uid: auth?.myob.id,
-                    job: job.po,
+                    job: job.id,
                 }
             })
         }).then((response) => {
             // console.log(response);
-            const res = response.data?.data?.myob_create_invoice;
+            const res = response.data?.data?.invoice;
 
             if(res.success) {
                 // console.log(res.message)

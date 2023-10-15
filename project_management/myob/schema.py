@@ -988,12 +988,21 @@ class myobCreateJob(graphene.Mutation):
             if job.myob_uid:
                 return self(success=False, message=json.dumps("Job is already linked to MYOB"))
 
-            if not job.po:
-                return self(success=False, message=json.dumps("Job needs to have PO before sending to MYOB"))
+            if job.client.name == "BGIS" and not job.po:
+                return self(success=False, message=json.dumps("BGIS Job needs to have PO before sending to MYOB"))
+
+            job_name = ""
+            if job.po:
+                job_name = f"PO{job.po}"
+            elif job.other_id:
+                job_name = job.other_id
+
+            if job_name == "":
+                return self(success=False, message=json.dumps("Job Identifier Error. Please contact developer"))
 
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
             payload = json.dumps({
-                "Number": "PO" + job.po,
+                "Number": job_name,
                 "Name": (job.location.name + " " + job.title)[0:30],
                 "Description": str(job),
                 "IsHeader": False,
@@ -1572,7 +1581,7 @@ class myobCreateInvoice(graphene.Mutation):
             user = MyobUser.objects.get(id=uid)
             print("Creating Invoice")
 
-            job = Job.objects.get(po=job) if Job.objects.filter(po=job).exists() else None 
+            job = Job.objects.get(id=job) if Job.objects.filter(id=job).exists() else None 
 
             # Error Checking
             if not job:
@@ -1670,7 +1679,6 @@ class myobCreateInvoice(graphene.Mutation):
                 if not found['purchaseOrder']:
                     return self(success=False, message="Error. Purchase Order can not be found")
 
-            
             if job.location.region.bill_to_address == '':
                 shipToAddress = f"{job.client} {job.location}\n{job.location.getFullAddress()}"
             else:
@@ -1921,7 +1929,11 @@ class myobCreateBill(graphene.Mutation):
             job = Job.objects.get(po=jobId)
 
             if not job.myob_uid:
-                return self(success=False, message="Please sync job with MYOB before creating invoice!")
+                res = myobCreateJob.mutate(root, info, uid, job.id)
+                if not res.success:
+                    return self(success=False, message="Please sync job with MYOB before creating invoice!")               
+                
+                job = Job.objects.get(id=job.id)
 
             # Check to see if bill already exists in the system
             if Bill.objects.filter(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).exists():

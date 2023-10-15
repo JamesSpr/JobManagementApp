@@ -2,7 +2,7 @@ import React, { useState, useMemo }  from 'react';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel } from '@tanstack/react-table'
 import { Dialog, DialogContent, DialogTitle, Grid, Typography, IconButton, Snackbar, Alert, Portal } from '@mui/material';
-import { FileUploadSection, InputField, ProgressButton } from '../../components/Components';
+import { FileUploadSection, InputField, ProgressButton, SnackBar } from '../../components/Components';
 import CloseIcon from '@mui/icons-material/Close';
 import { Box } from '@mui/system';
 import useAuth from '../auth/useAuth';
@@ -132,51 +132,6 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
                     console.log("error:", err);
                     setSnack({'active': true, variant:'error', message: 'Error Connecting to Server. Please try again or contact admin.'})
                 });
-
-                // await axiosPrivate({
-                //     method: 'post',
-                //     data: JSON.stringify({
-                //         query: `
-                //         mutation updateInvoices($invoices: [InvoiceUpdateInput]!, $datePaid: Date!) {
-                //             update_invoices: updateInvoices(invoices: $invoices, datePaid: $datePaid) {
-                //                 success
-                //                 message
-                //                 jobInvoice {
-                //                     invoice {
-                //                         id
-                //                         myobUid
-                //                         number
-                //                         dateCreated
-                //                         dateIssued
-                //                         datePaid
-                //                         amount
-                //                     }
-                //                 }
-                //             }
-                //         }`,
-                //         variables: {
-                //             invoices: data,
-                //             datePaid: remittanceDate,
-                //         },
-                // }),
-                // }).then((response) => {
-                //     const res = response?.data?.data?.update_invoices; 
-                //     // console.log("UpdateInvoices Response", res.jobInvoice)
-                //     setWaiting(prev => ({...prev, 'submit': false}));
-                //     onClose(event, reason, res.jobInvoice);
-                //     setData([]);
-                //     setRemittanceDate('');
-
-                //     if(res.success) {
-                //         setSnack({'active': true, variant:'success', message: 'Sucessfully updated invoices from remittance advice.'})
-                //     }
-                //     else {
-                //         setSnack({'active': true, variant:'error', message: 'Error updating invoices. Please try again or contact admin.'})
-                //     }
-                // }).catch(() => {
-                //     console.log("error:", err);
-                //     setSnack({'active': true, variant:'error', message: 'Error Connecting to Server. Please try again or contact admin.'})
-                // });
             }
             else {
                 onClose(event, reason);
@@ -336,6 +291,7 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
                         </Grid></>
                         :
                         <Grid item xs={12} align="center">
+                            <p>Upload Remittance advice PDF</p>
                             <Box style={{paddingTop: '15px'}}>
                                 <FileUploadSection 
                                     onSubmit={handleRemittanceAdvice} 
@@ -351,17 +307,7 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
             </DialogContent>
         </Dialog>
 
-        <Portal>
-            {/* Notification Snackbar */}
-            <Snackbar
-                anchorOrigin={{vertical: "bottom", horizontal:"center"}}
-                open={snack['active']}
-                autoHideDuration={12000}
-                onClose={(e) => setSnack(prev => ({...prev, 'active': false}))}
-                >
-                <Alert onClose={(e) => setSnack(prev => ({...prev, 'active': false}))} severity={snack['variant']} sx={{width: '100%'}}>{snack['message']}</Alert>
-            </Snackbar>
-        </Portal>
+        <SnackBar snack={snack} setSnack={setSnack} />
     </>
     )
 }

@@ -221,6 +221,12 @@ class Job(models.Model):
         
         super(Job, self).save(*args, **kwargs)
 
+class RemittanceAdvice(models.Model):
+    id = models.AutoField(primary_key=True, unique=True)
+    myob_uid = models.CharField(max_length=36)
+    img_uid = models.CharField(max_length=36)
+    date = models.DateField()
+    client = models.ForeignKey(Client, on_delete=PROTECT)
 
 # Invoices
 class Invoice(models.Model):
@@ -232,6 +238,7 @@ class Invoice(models.Model):
     date_created = models.DateField(auto_now_add=True)
     date_issued = models.DateField(blank=True, null=True)
     date_paid = models.DateField(blank=True, null=True)
+    remittance = models.ForeignKey(RemittanceAdvice, on_delete=PROTECT, null=True)
     
     def __str__(self):
         return "Invoice " + self.number + " for " + str(self.job)
@@ -304,7 +311,6 @@ class Estimate(models.Model):
     def __str__(self):
         return str(self.job_id) + " : " + self.name
         
-
 # Estimate Header Item
 class EstimateHeader(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
