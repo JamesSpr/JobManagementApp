@@ -64,14 +64,13 @@ const Locations = ({locations, setLocations, regions, client, setUpdateRequired,
         const [regions, setRegions] = useState<RegionType[]>([])
         
         // When the input is blurred, we'll call our table meta's updateData function
-        const onSelection = (e: { target: { value: any; }; }) => {
-            setValue(e.target.value)
+        const onBlur = () => {
             if(initialValue !== value) {
-                setUpdateRequired(true);
                 table.options.meta?.updateData(index, id, value);
+                setUpdateRequired(true);
             }
         }
-        
+
         // If the initialValue is changed external, sync it up with our state
         useEffect(() => {
             setValue(initialValue)
@@ -82,7 +81,7 @@ const Locations = ({locations, setLocations, regions, client, setUpdateRequired,
         }, [])
 
         return (
-            <select value={value} onChange={onSelection}
+            <select value={value} onChange={e => setValue(e.target.value)} onBlur={onBlur}
                 style={{display:'block', margin:'0 auto', width: 'calc(100% - 3px)', padding: '5px', fontSize: '0.875rem'}}
             >
                 <option key={'blank'} value=''>{''}</option>
@@ -312,7 +311,7 @@ const Locations = ({locations, setLocations, regions, client, setUpdateRequired,
                     <Grid item xs={12}>
                         <InputField type="string" label="Client Ref" value={newLocation['clientRef']} onChange={(e) => setNewLocation(prev => ({...prev, 'clientRef':e.target.value}))}/>
                         <InputField type="select" label="Region" value={newLocation['region']} 
-                            onChange={(e) => setNewLocation(prev => ({...prev, 'region':e.target.value}))}
+                            onChange={(e) => setNewLocation(prev => ({...prev, 'region': e.target.value}))}
                         >
                             <option key={"blank_newRegion"} value={""}></option>
                             {regions?.map((region) => (

@@ -70,41 +70,40 @@ const Contacts = ({contacts, setContacts, regions, client, setUpdateRequired, se
     }
 
     const RegionSelectionCell = ({ getValue, row: {index}, column: { id }, table }:
-    { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
-        const initialValue = getValue()
-        // We need to keep and update the state of the cell normally
-        const [value, setValue] = useState(initialValue)
-        const [regions, setRegions] = useState<RegionType[]>([])
-        
-        // When the input is blurred, we'll call our table meta's updateData function
-        const onSelection = (e: { target: { value: any; }; }) => {
-            setValue(e.target.value)
-            if(initialValue !== value) {
-                setUpdateRequired(true);
-                table.options.meta?.updateData(index, id, value);
+        { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
+            const initialValue = getValue()
+            // We need to keep and update the state of the cell normally
+            const [value, setValue] = useState(initialValue)
+            const [regions, setRegions] = useState<RegionType[]>([])
+            
+            // When the input is blurred, we'll call our table meta's updateData function
+            const onBlur = () => {
+                if(initialValue !== value) {
+                    table.options.meta?.updateData(index, id, value);
+                    setUpdateRequired(true);
+                }
             }
+    
+            // If the initialValue is changed external, sync it up with our state
+            useEffect(() => {
+                setValue(initialValue)
+            }, [initialValue])
+    
+            useEffect(() => {
+                setRegions(table.options.meta?.getRegions())
+            }, [])
+    
+            return (
+                <select value={value} onChange={e => setValue(e.target.value)} onBlur={onBlur}
+                    style={{display:'block', margin:'0 auto', width: 'calc(100% - 3px)', padding: '5px', fontSize: '0.875rem'}}
+                >
+                    <option key={'blank'} value=''>{''}</option>
+                    {regions?.map((region: any) => (
+                        <option key={region.id} value={region.id}>{region.shortName}</option>
+                    ))}
+                </select>
+            )
         }
-        
-        // If the initialValue is changed external, sync it up with our state
-        useEffect(() => {
-            setValue(initialValue)
-        }, [initialValue])
-
-        useEffect(() => {
-            setRegions(table.options.meta?.getRegions())
-        }, [])
-
-        return (
-            <select value={value} onChange={onSelection}
-                style={{display:'block', margin:'0 auto', width: 'calc(100% - 3px)', padding: '5px', fontSize: '0.875rem'}}
-            >
-                <option key={'blank'} value=''>{''}</option>
-                {regions?.map((region: any) => (
-                    <option key={region.id} value={region.id}>{region.shortName}</option>
-                ))}
-            </select>
-        )
-    }
 
     const CheckboxCell = ({ getValue, row: {index}, column: { id }, table }:
     { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
