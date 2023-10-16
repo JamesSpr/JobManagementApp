@@ -43,6 +43,7 @@ class AllocateJobEmail(graphene.Mutation):
                     return cls(success=False, message="Could not find Job. ID = " + str(job_id))
 
                 job_string = f"<b>Job</b>: {str(job)}<br>"
+                location = f"<b>Location</b>: {job.location.name}, {job.location.address}, {job.location.locality} {job.location.state} {job.location.postcode}<br>"
                 description = f"<b>Description</b>: {job.description}<br>".replace('\n', '<br>') if job.description else ""
                 priority = f"<b>Priority</b>: {job.priority} <br>" if job.priority else ""
                 received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} <br>" if job.date_issued else ""
@@ -94,6 +95,7 @@ class AllocateJobEmail(graphene.Mutation):
                                 We have received this new work request. Could you please inspect and provide details/quote<br><br>
 
                                 {job_string}
+                                {location}
                                 {priority}
                                 {received_date}
                                 {overdue_date}
