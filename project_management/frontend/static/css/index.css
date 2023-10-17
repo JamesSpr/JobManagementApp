@@ -605,7 +605,7 @@ a {
 .pdf-preview {
   overflow-x: hidden;
   overflow-y: auto;
-  max-height: 750px;
+  max-height: 700px;
   border: 1px solid black;
 }
 
@@ -614,6 +614,10 @@ a {
   overflow-y: auto;
   max-height: 1000px;
   border: 1px solid black;
+}
+
+.pdf-img {
+  max-width: 600px;
 }
 
 /* || Accordion */
