@@ -95,6 +95,13 @@ export interface EstimateItemType {
     estimateitemSet: EstimateItemType[]
 }
 
+export interface RemittanceType {
+    id: string
+    myobUid: string
+    date: string
+    invoiceSet: InvoiceType[]
+}
+
 export interface InvoiceType {
     number: string
     dateCreated: string

@@ -1,13 +1,13 @@
 import React, { useState, useMemo }  from 'react';
-import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel } from '@tanstack/react-table'
 import { Dialog, DialogContent, DialogTitle, Grid, Typography, IconButton, Snackbar, Alert, Portal } from '@mui/material';
-import { FileUploadSection, InputField, ProgressButton, SnackBar } from '../../components/Components';
+import { FileUploadSection, InputField, ProgressButton, SnackBar } from '../../../components/Components';
 import CloseIcon from '@mui/icons-material/Close';
 import { Box } from '@mui/system';
-import useAuth from '../auth/useAuth';
+import useAuth from '../../auth/useAuth';
 
-const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
+const CreateRemittance = ({ open, onClose, invoices, clients }) => {
 
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
@@ -312,4 +312,4 @@ const RemittanceAdvice = ({ open, onClose, invoices, clients }) => {
     )
 }
 
-export default RemittanceAdvice;
+export default CreateRemittance;

@@ -1,6 +1,7 @@
 
 import React, { FC, ReactNode, useState, useEffect, useRef } from "react"; 
-import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, DialogTitle, DialogContent, Dialog, DialogActions, IconButton } from "@mui/material";
+import { Box, Button, CircularProgress, Portal, Snackbar, Alert, AppBar, Toolbar, Tab, Tabs,
+    DialogTitle, DialogContent, Dialog, DialogActions, IconButton } from "@mui/material";
 import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowModel, Table as ReactTable, RowData, ColumnDef,
     getFacetedRowModel, getFacetedUniqueValues, getFacetedMinMaxValues, getSortedRowModel, flexRender, Row, TableMeta, SortingState, ColumnFiltersState } from '@tanstack/react-table'
 import { HTMLElementChange, InputFieldType, RegionType, SnackBarType } from "../types/types";
@@ -562,5 +563,63 @@ export const Accordion:FC<AccordionType> = ({title, children}) => {
             {children}
         </div>
     </>)
+
+}
+
+
+
+type TabPanelProps = {
+    children: ReactNode,
+    index: number,
+    value: number
+}
+
+const TabPanel:FC<TabPanelProps> = ({ children, value, index, ...other }) => (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+) 
+
+export const TabComponent = ({tabValue, setTabValue, tabItems, tabOptions}: {
+    tabValue: number,
+    setTabValue: React.Dispatch<React.SetStateAction<number>>,
+    tabOptions: string[],
+    tabItems: ReactNode[],
+}) => {
+
+    const a11yProps = (index: number) => {
+        return {
+            id: `simple-tab-${index}`,
+            'aria-controls': `simple-tabpanel-${index}`,
+        }
+    }
+
+    return (
+        <>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs value={tabValue} onChange={(event, val) => {setTabValue(val)}} indicatorColor="primary" centered>
+                    {tabOptions.map((name, i) => (
+                        <Tab label={name} {...a11yProps(i)} />
+                    ))}
+                </Tabs>
+            </Box>
+            
+            {tabItems.map((item, i) => (
+                <TabPanel key={i} value={tabValue} index={i}>
+                    {item}
+                </TabPanel>        
+            ))}
+        </>
+    )
 
 }

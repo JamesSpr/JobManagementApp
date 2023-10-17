@@ -3,7 +3,6 @@ import useAxiosPrivate from '../../hooks/useAxiosPrivate';
 import { Button, Grid, Typography, Box, AppBar, Toolbar, Portal, Snackbar, Alert } from '@mui/material';
 import { useNavigate, useParams } from "react-router-dom";
 
-import axios from 'axios';
 import { InputField, ProgressButton, SnackBar } from "../../components/Components";
 import JobAllocator from "../home/JobAllocator";
 import { defineJobIdentifier, openInNewTab } from "../../components/Functions";

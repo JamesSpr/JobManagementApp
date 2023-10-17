@@ -49,7 +49,7 @@ class PDFToImage(graphene.Mutation):
         with fitz.open(tf_pdf.name) as doc: # open document
             img_bytes = []
             for page in doc:
-                pix = page.get_pixmap()  # render page to an image
+                pix = page.get_pixmap(dpi=300)  # render page to an image
                 img_bytes.append(pix.pil_tobytes(format="JPEG", optimize=True))
 
             imgs = [Image.open(BytesIO(i)) for i in img_bytes]
@@ -58,7 +58,7 @@ class PDFToImage(graphene.Mutation):
             min_shape = sorted([(np.sum(i.size), i.size ) for i in imgs])[0][1]
 
             imgs_comb = np.vstack([i.resize(min_shape) for i in imgs])
-            imgs_comb = Image.fromarray( imgs_comb)
+            imgs_comb = Image.fromarray(imgs_comb)
             imgs_comb.save(thumbnail_image_path)
 
         os.remove(tf_pdf.name) # remove temp file

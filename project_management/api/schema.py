@@ -14,7 +14,7 @@ from django.db import connection
 from accounts.models import CustomUser
 from api.services.create_completion_documents import CreateCompletionDocuments
 from .services.email import AllocateJobEmail, CloseOutEmail, EmailQuote
-from .models import Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
+from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
 from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 from .services.data_extraction import ExtractBillDetails
 from .services.data_extraction_v2 import ExtractRemittanceAdvice
@@ -81,6 +81,11 @@ class EstimateType(DjangoObjectType):
     @login_required
     def resolve_estimateheader_set(self, instance, info):
         return EstimateHeader.objects.filter(estimate_id=instance.id).order_by('id')
+
+class RemittanceType(DjangoObjectType):
+    class Meta:
+        model = RemittanceAdvice
+        fields = '__all__'
 
 # Jobs
 class JobType(DjangoObjectType):
@@ -1523,6 +1528,7 @@ class Query(graphene.ObjectType):
     invoices = graphene.List(InvoiceType)
     bills = graphene.List(BillType, bill=graphene.String())
     insurances = graphene.List(InsuranceType)
+    remittance_advice = graphene.List(RemittanceType)
 
     @login_required
     def resolve_jobs(root, info, OnlyMyobJobs=False, **kwargs):
@@ -1626,6 +1632,10 @@ class Query(graphene.ObjectType):
         if client:
             return Region.objects.filter(client = Client.objects.get(name=client))
         return Region.objects.all()
+    
+    @login_required
+    def resolve_remittance_advice(root, info, **kwargs):
+        return RemittanceAdvice.objects.all()
 
 class UpdateJobStatus(graphene.Mutation):
     success = graphene.Boolean()

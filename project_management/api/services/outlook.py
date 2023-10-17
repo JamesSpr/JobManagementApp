@@ -47,6 +47,7 @@ class CheckJobExists(graphene.Mutation):
         else:
             if Job.objects.filter(other_id = job):
                 found_job = Job.objects.get(other_id = job)
+                print(found_job)
                 return self(exists=True, name=str(found_job), job=found_job)
 
         return self(exists=False, name='')
