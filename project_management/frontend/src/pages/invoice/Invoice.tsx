@@ -31,7 +31,6 @@ const Invoice = () => {
 
     // Get Data
     useEffect(() => {
-        // Set Default Page Size
         const controller = new AbortController();
 
         const fetchData = async () => {
@@ -54,15 +53,20 @@ const Invoice = () => {
                                 sr
                                 otherId
                             }
-                            remittance {
-                                id
-                            }
                         }
                         remittanceAdvice {
                             id
                             myobUid
                             imgUid
                             date
+                            client {
+                                name
+                                displayName
+                            }
+                            invoiceSet {
+                                id
+                                amount
+                            }
                         }
                         clients {
                             id

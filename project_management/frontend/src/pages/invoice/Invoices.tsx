@@ -4,12 +4,20 @@ import { Grid } from '@mui/material';
 import DebouncedInput from '../../components/DebouncedInput';
 import { Table } from '../../components/Components';
 import { InvoiceType } from '../../types/types';
+import { defineJobIdentifier } from '../../components/Functions';
+import { dateSort, inDateRange } from '../../components/TableHelpers';
 
 const InvoiceList = ({invoices}: {
     invoices: InvoiceType[]
 }) => {
     // Table Columns
     const columns = useMemo<ColumnDef<InvoiceType>[]>(() => [
+        {                
+            accessorFn: row => defineJobIdentifier(row.job),
+            id: 'job',
+            header: () => 'Job',
+            size: 150,
+        },
         {                
             accessorKey: 'number',
             header: () => 'Invoice',
@@ -24,16 +32,22 @@ const InvoiceList = ({invoices}: {
         {
             accessorKey: 'dateCreated',
             header: () => 'Created',
+            filterFn: inDateRange,
+            sortingFn: dateSort,
             size: 150,
         },
         {
             accessorKey: 'dateIssued',
             header: () => 'Issued',
+            filterFn: inDateRange,
+            sortingFn: dateSort,
             size: 150,
         },
         {
             accessorKey: 'datePaid',
             header: () => 'Paid',
+            filterFn: inDateRange,
+            sortingFn: dateSort,
             size: 150,
         },
     ], []);

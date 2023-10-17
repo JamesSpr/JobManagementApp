@@ -6,18 +6,18 @@ export const openInNewTab = (url: string) => {
     if(newWindow) newWindow.opener = null
 }
 
-export const defineJobIdentifier = (job: JobType) => {
-    let identifier = "PO" + job.po; // Default Value is PO
+export const defineJobIdentifier = (job: JobType | undefined) => {
+    let identifier = "PO" + job?.po; // Default Value is PO
     
-    if (job.po == '') {
-        if (job.otherId && job.otherId.includes("VP")) {
-            identifier = job.otherId;
+    if (job?.po == '') {
+        if (job?.otherId && job?.otherId.includes("VP")) {
+            identifier = job?.otherId;
         }
-        else if (job.sr != '') {
-            identifier = "SR" + job.sr;
+        else if (job?.sr != '') {
+            identifier = "SR" + job?.sr;
         }
-        else if (job.otherId != ''){
-            identifier = job.otherId;
+        else if (job?.otherId != ''){
+            identifier = job?.otherId;
         }
     }
 

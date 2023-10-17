@@ -225,6 +225,7 @@ class RemittanceAdvice(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     myob_uid = models.CharField(max_length=36)
     img_uid = models.CharField(max_length=36)
+    amount = models.DecimalField(max_digits=13, default='0.00', decimal_places=2)
     date = models.DateField()
     client = models.ForeignKey(Client, on_delete=PROTECT)
 

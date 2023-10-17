@@ -99,7 +99,9 @@ export interface RemittanceType {
     id: string
     myobUid: string
     date: string
+    amount: number
     invoiceSet: InvoiceType[]
+    client: ClientType
 }
 
 export interface InvoiceType {
@@ -107,6 +109,8 @@ export interface InvoiceType {
     dateCreated: string
     dateIssued: string
     datePaid: string
+    amount?: number
+    job?: JobType
 }
 
 export interface BillType {
