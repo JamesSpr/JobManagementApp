@@ -317,40 +317,39 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
         });
     }
 
-    const handleCreateEstimate = async () => {
-        setWaiting(prev => ({...prev, estimate: true}));
+    // const handleCreateEstimate = async () => {
+    //     setWaiting(prev => ({...prev, estimate: true}));
 
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation createBgisEstimate ( $jobId: String!, $selectedEstimate: String!) { 
-                    create_bgis_estimate: createBgisEstimate( jobId: $jobId, selectedEstimate: $selectedEstimate)
-                    {
-                        success
-                        message
-                    }
-            }`,
-            variables: {
-                jobId: job.id,
-                selectedEstimate: job.estimateSet[parseInt(Object.keys(rowSelection)[0])].id,
-            },
-        }),
-        }).then((response) => {
-            const res = response?.data?.data?.create_bgis_estimate
-            if(res?.success) {
-                setSnack({active: true, variant:'success', message: 'Estimate Created'})
-            }
-            else {
-                setSnack({active: true, variant:'error', message: "Estimate Creation Error: " + res.message})
-            }
-        }).catch((err) => {
-            console.log(err);
-            setSnack({active: true, variant:'error', message: "Server Error. Please Contact Admin: " + err})
-        }).finally(() => {
-            setWaiting(prev => ({...prev, estimate: false}));
-        });
-        
-    }
+    //     await axiosPrivate({
+    //         method: 'post',
+    //         data: JSON.stringify({
+    //             query: `mutation createBgisEstimate ( $jobId: String!, $selectedEstimate: String!) { 
+    //                 create_bgis_estimate: createBgisEstimate( jobId: $jobId, selectedEstimate: $selectedEstimate)
+    //                 {
+    //                     success
+    //                     message
+    //                 }
+    //         }`,
+    //         variables: {
+    //             jobId: job.id,
+    //             selectedEstimate: job.estimateSet[parseInt(Object.keys(rowSelection)[0])].id,
+    //         },
+    //     }),
+    //     }).then((response) => {
+    //         const res = response?.data?.data?.create_bgis_estimate
+    //         if(res?.success) {
+    //             setSnack({active: true, variant:'success', message: 'Estimate Created'})
+    //         }
+    //         else {
+    //             setSnack({active: true, variant:'error', message: "Estimate Creation Error: " + res.message})
+    //         }
+    //     }).catch((err) => {
+    //         console.log(err);
+    //         setSnack({active: true, variant:'error', message: "Server Error. Please Contact Admin: " + err})
+    //     }).finally(() => {
+    //         setWaiting(prev => ({...prev, estimate: false}));
+    //     });
+    // }
 
     // const handleEmailQuote = async () => {
     //     setWaiting(prev => ({...prev, email: true}));
@@ -484,7 +483,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                     </Box>
                 </Tooltip> 
                 
-                {job.client.id == "1" ? 
+                {/* {job.client.id == "1" ? 
                     <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>
                         <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
                             <Button 
@@ -509,7 +508,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                             )}
                         </Box>
                     </Tooltip> : <></>
-                }
+                } */}
 
                 {job.estimateSet.find((estimate) => estimate.approvalDate !== null) &&
                     <Tooltip title={job.myobUid === "" ? "Please Sync with MYOB" : null}>

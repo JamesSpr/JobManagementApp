@@ -18,7 +18,7 @@ from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, Estim
 from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 # from .services.data_extraction import ExtractBillDetails
 from .services.data_extraction_v2 import ExtractRemittanceAdvice, ExtractBillDetails
-from .services.create_quote import CreateQuote, CreateBGISEstimate
+from .services.create_quote import CreateQuote
 from .services.file_processing import PDFToImage
 
 main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
@@ -86,6 +86,8 @@ class RemittanceType(DjangoObjectType):
     class Meta:
         model = RemittanceAdvice
         fields = '__all__'
+
+    amount = graphene.Float()
 
 # Jobs
 class JobType(DjangoObjectType):
@@ -1635,7 +1637,7 @@ class Query(graphene.ObjectType):
     
     @login_required
     def resolve_remittance_advice(root, info, **kwargs):
-        return RemittanceAdvice.objects.all()
+        return RemittanceAdvice.objects.all().order_by('-date')
 
 class UpdateJobStatus(graphene.Mutation):
     success = graphene.Boolean()
@@ -1738,7 +1740,6 @@ class Mutation(graphene.ObjectType):
     delete_estimate_item = DeleteEstimateItem.Field()
 
     create_quote = CreateQuote.Field()
-    create_bgis_estimate = CreateBGISEstimate.Field()
     create_completion_documents = CreateCompletionDocuments.Field()
 
     create_insurance = CreateInsurance.Field()

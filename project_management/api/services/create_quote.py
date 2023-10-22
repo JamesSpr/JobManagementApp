@@ -1,6 +1,9 @@
 import shutil
 import graphene
 
+import win32com.client as win32
+import pythoncom
+
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_ALIGN_VERTICAL
@@ -28,19 +31,17 @@ class CreateQuote(graphene.Mutation):
     message = graphene.String()
 
     @classmethod
-    def mutate(cls, root, info, job_id, selected_estimate, userId):
+    def mutate(self, root, info, job_id, selected_estimate, userId):
         
         job = Job.objects.get(id=job_id)
         estimate = Estimate.objects.get(job_id=job_id, id=selected_estimate)
         estimate_headers = EstimateHeader.objects.filter(estimate_id=estimate)
         user = CustomUser.objects.get(id=userId)
-        # print("Creating Quote for", job)
-        # print("Selected Estimate", estimate.name)
-    
+
         # Check to see if file already exists# Save to dropbox
         # This will have to be removed when we move to pdf only quotes
         if os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), 'Aurify Quote ' + str(estimate.name).strip() + '.docx')):
-            return CreateQuote(success=False, message="Quote Already Exists")
+            return self(success=False, message="Quote Already Exists")
 
         # Create File
         document = Document(os.path.join(os.getcwd(), QUOTE_PATH))
@@ -170,54 +171,68 @@ class CreateQuote(graphene.Mutation):
             os.mkdir(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
         except FileExistsError:
             pass
+
         ## Save to new folder
         document.save(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), 'Aurify Quote ' + str(estimate.name).strip() + '.docx'))
 
         ## Save to local for backup
         document.save(os.path.join(os.getcwd(),'api/generated_quotes/Aurify Quote ' + str(estimate.name).strip() + '.docx'))
 
-        return CreateQuote(success=True, message="Quote Created Successfully")
+        # Create BGIS Estimate for BGIS Quotes
+        if job.client.name == "BGIS":
+            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx")):
+                xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+                xlApp.Visible = True
+                wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
+                ws = wb.Sheets("Cost Breakdown")
+                ws.Range("C5").Value = estimate.name 
 
-import win32com.client as win32
-import pythoncom
+                wb.SaveAs(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"), 51)
+                wb.Close()
+                xlApp.Quit()
+                del xlApp
 
-class CreateBGISEstimate(graphene.Mutation):
-    class Arguments:
-        job_id = graphene.String()
-        selected_estimate = graphene.String()
+                return self(success=True, message="Quote and Estimate Created Successfully")
 
-    success = graphene.Boolean()
-    message = graphene.String()
+        return self(success=True, message="Quote Created Successfully")
 
-    @classmethod
-    def mutate(cls, root, info, job_id, selected_estimate):
+# class CreateBGISEstimate(graphene.Mutation):
+#     class Arguments:
+#         job_id = graphene.String()
+#         selected_estimate = graphene.String()
+
+#     success = graphene.Boolean()
+#     message = graphene.String()
+
+#     @classmethod
+#     def mutate(cls, root, info, job_id, selected_estimate):
         
-        job = Job.objects.get(id=job_id)
-        estimate = Estimate.objects.get(job_id=job_id, id=selected_estimate)
+#         job = Job.objects.get(id=job_id)
+#         estimate = Estimate.objects.get(job_id=job_id, id=selected_estimate)
 
-        # Check to see if file already exists
-        # This will have to be removed when we move to pdf only quotes
-        if os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx")):
-            return cls(success=False, message="Estimate Already Exists")
+#         # Check to see if file already exists
+#         # This will have to be removed when we move to pdf only quotes
+#         if os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx")):
+#             return cls(success=False, message="Estimate Already Exists")
 
-        ## Create folder for the selected estimate
-        try:
-            os.mkdir(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
-        except FileExistsError:
-            pass
+#         ## Create folder for the selected estimate
+#         try:
+#             os.mkdir(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
+#         except FileExistsError:
+#             pass
 
-        ## Save to new folder
-        # shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
+#         ## Save to new folder
+#         # shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
 
-        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-        xlApp.Visible = True
-        wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
-        ws = wb.Sheets("Cost Breakdown")
-        ws.Range("C5").Value = estimate.name 
+#         xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+#         xlApp.Visible = True
+#         wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
+#         ws = wb.Sheets("Cost Breakdown")
+#         ws.Range("C5").Value = estimate.name 
 
-        wb.SaveAs(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"), 51)
-        wb.Close()
-        xlApp.Quit()
-        del xlApp
+#         wb.SaveAs(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"), 51)
+#         wb.Close()
+#         xlApp.Quit()
+#         del xlApp
 
-        return cls(success=True, message="Estimate Created Successfully")
+#         return cls(success=True, message="Estimate Created Successfully")
