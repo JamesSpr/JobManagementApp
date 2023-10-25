@@ -17,7 +17,7 @@ const Invoice = () => {
     const [loading, setLoading] = useState(true);
 
     const [snack, setSnack] = useState<SnackType>({active: false, variant: 'info', message: ''})
-    const [tabValue, setTabValue] = useState(0); // Active Tab tabValue
+    const [tabValue, setTabValue] = useState(1); // Active Tab tabValue
     const tabOptions = ["Invoices", "Remittance Advice"]
     const tabItems = [
         <InvoiceList invoices={invoices} />,
@@ -59,6 +59,7 @@ const Invoice = () => {
                             myobUid
                             imgUid
                             date
+                            amount
                             client {
                                 name
                                 displayName

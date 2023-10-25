@@ -41,6 +41,8 @@ class ExtractRemittanceAdvice(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, file, filename, **kwargs):
+        debug = False
+        
         if not file: 
             return self(success=False)
 
@@ -54,13 +56,13 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         f.write(pdf)
         f.close()
 
-        img_uid = pdf_to_image(pdf)
+        img_uid = pdf_to_image(pdf, 'remittance')
+        if debug: print(img_uid)
         advice_text = pytesseract.image_to_string(Image.open(f"Media\\remittance\\{img_uid}.jpg"))
 
         data = []
         calculated_total = 0.0
         
-        debug = True
         client = None
         if debug: print(advice_text)
 
@@ -117,7 +119,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
             if debug: print(f" Price Validation: {round(calculated_total,2) == total} -> (${round(calculated_total,2)} / ${total})")
 
         if not round(calculated_total, 2) == total:
-            return self(success=True, message="Remittance Advice Totals do not add up. Please Contact Admin", data=data, advice_date=advice_date)
+            return self(success=True, message="Remittance Advice Totals do not add up. Please Check Advice", data=data, advice_date=advice_date, client=client.id)
 
         return self(success=True, message="Successfully extracted remittance advice", data=data, advice_date=advice_date, client=client.id)
 
@@ -136,12 +138,15 @@ class ExtractBillDetails(graphene.Mutation):
     def mutate(self, root, info, file, filename):
         if not file: 
             return self(success=False)
+        
+        debug = False
 
         file = file.replace("data:application/pdf;base64,", "")
         pdf = base64.b64decode(file, validate=True)
 
-        img_uid = pdf_to_image(pdf)
-        bill_text = pytesseract.image_to_string(Image.open(f"Media\\remittance\\{img_uid}.jpg")).lower()
+        img_uid = pdf_to_image(pdf, 'bills')
+        if debug: print(img_uid)
+        bill_text = pytesseract.image_to_string(Image.open(f"Media\\bills\\{img_uid}.jpg")).lower()
 
         data = {
             'thumbnailPath':'',
@@ -151,9 +156,8 @@ class ExtractBillDetails(graphene.Mutation):
             'amount':'',
             'billType':'subcontractor'
         }
-        data.update({'thumbnailPath': f"Media\\remittance\\{img_uid}.jpg"})
+        data.update({'thumbnailPath': f"Media\\bills\\{img_uid}.jpg"})
 
-        debug = True
         if debug: print(bill_text)
 
         abn_regex = re.findall('[\b\s]abn:?\s*([0-9]{2}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3})', bill_text)
@@ -240,17 +244,17 @@ def try_parsing_date(text, debug=False):
 
     return ""
 
-def pdf_to_image(pdf):
+def pdf_to_image(pdf, type):
     # write pdf to temp file so we can convert to a thumbnail image
     temp_pdf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
     temp_pdf.write(pdf)
     temp_pdf.close()
 
     img_filename = uuid.uuid4().hex
-    while os.path.exists(f"Media\\remittance\\{img_filename}.jpg"):
+    while os.path.exists(f"Media\\{type}\\{img_filename}.jpg"):
         img_filename = uuid.uuid4().hex
 
-    thumbnail_image_path = f"Media\\remittance\\{img_filename}.jpg"
+    thumbnail_image_path = f"Media\\{type}\\{img_filename}.jpg"
 
     with fitz.open(temp_pdf.name) as doc: # open document
         img_bytes = []

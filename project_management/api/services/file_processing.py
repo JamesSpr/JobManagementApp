@@ -70,6 +70,7 @@ def compress_image_for_mail(b64_img, filename, mail):
     image_bytes = BytesIO(b64_img)
  
     pil_image = Image.open(image_bytes)
+    pil_image = pil_image.convert('RGB')
 
     max_size = 512
     pil_image = pil_image.resize((max_size, max_size))
@@ -77,6 +78,11 @@ def compress_image_for_mail(b64_img, filename, mail):
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_file = os.path.join(temp_dir, filename)
         print(temp_file)
+        # Change file name to show the correct format
+        if temp_file.lower().endswith('png'):
+            temp_file = temp_file[:-4]
+            temp_file = temp_file + ".jpg"
+            
         pil_image.save(temp_file, format="JPEG", quality=90)
         mail.attachments.Add(temp_file)
 

@@ -3,7 +3,7 @@ import { useState, useMemo } from "react"
 import { Grid, IconButton } from '@mui/material';
 import { ColumnDef  } from '@tanstack/react-table'
 import { Footer, Table, Tooltip } from "../../../components/Components";
-import CreateRemittance from "./Create";
+import CreateRemittance from "./CreateRemittance";
 import { ClientType, InvoiceType, RemittanceType } from "../../../types/types";
 import { usePrompt } from "../../../hooks/promptBlocker";
 
@@ -20,14 +20,14 @@ const RemittanceAdvice = ({remittanceAdvice, setRemittanceAdvice, invoices, setI
 
     const [updateRequired, setUpdateRequired] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [createDialog, setCreateDialog] = useState(false)
+    const [createDialog, setCreateDialog] = useState(false);
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
 
     // Dialog Controls
-    const handleDialogClose = (event: { target: { name: string; }; }, reason: string, updatedInvoices: any[]) => {
-        if(event.target.name === "submit") {
+    const handleDialogClose = (submit: boolean, updatedInvoices?: InvoiceType[]) => {
+        if(submit) {
             // Update advice table and invoice data with new remittance advice information
             // SetInvoices
             // SetRemittanceAdvice
@@ -60,17 +60,17 @@ const RemittanceAdvice = ({remittanceAdvice, setRemittanceAdvice, invoices, setI
             header: 'Amounts',
             columns: [
                 {       
-                    accessorFn: row => row.invoiceSet.reduce((acc, val) => acc + (val.amount ?? 0), 0),         
+                    accessorFn: row => row.invoiceSet.reduce((acc, val) => acc + parseFloat(val.amount?.toString() ?? '0') * 1.1, 0),         
                     id: 'maintenanceAmount',
                     header: () => 'Maintenance',
-                    cell: info => "$" + info.getValue(),
+                    cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
                     size: 150,
                 },
                 {       
                     accessorFn: row => row.amount,         
                     id: 'totalAmount',
                     header: () => 'Total',
-                    cell: info => "$" + info.getValue(),
+                    cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
                     size: 150,
                 },
             ]
@@ -80,20 +80,20 @@ const RemittanceAdvice = ({remittanceAdvice, setRemittanceAdvice, invoices, setI
     return (<>
         <Grid container spacing={1} justifyContent="center" alignItems="center">
             <Grid item xs={12}>
-                <Table data={remittanceAdvice} columns={columns} />
+                <Table pagination data={remittanceAdvice} columns={columns} />
             </Grid>
         </Grid>
 
         <Footer>
-            {/* <Tooltip title="Save Changes">
-                <IconButton disabled={!updateRequired} onClick={handleSave}><SaveIcon /></IconButton>
-            </Tooltip> */}
             <Tooltip title={`New Remittance Advice`}>
                 <IconButton onClick={(e) => setCreateDialog(true)}><AddIcon /></IconButton>
             </Tooltip> 
+            {/* <Tooltip title="Save Changes">
+                <IconButton disabled={!updateRequired} onClick={handleSave}><SaveIcon /></IconButton>
+            </Tooltip> */}
         </Footer>
 
-        <CreateRemittance open={createDialog} onClose={handleDialogClose} invoices={invoices} clients={clients}/>
+        <CreateRemittance open={createDialog} onClose={handleDialogClose} invoices={invoices} clients={clients} setRemittanceAdvice={setRemittanceAdvice}/>
     </>
     )
 

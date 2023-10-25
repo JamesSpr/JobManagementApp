@@ -1,7 +1,7 @@
 import React, { useState, useMemo }  from 'react';
 import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getExpandedRowModel, ColumnDef, Row, ColumnSort, Table, Column} from '@tanstack/react-table'
 import { Dialog, DialogContent, Grid, Typography, IconButton } from '@mui/material';
-import { BasicDialog, FileUploadSection, ProgressIconButton } from '../../components/Components';
+import { FileUploadSection, ProgressIconButton } from '../../components/Components';
 
 // Icons
 import CloseIcon from '@mui/icons-material/Close';

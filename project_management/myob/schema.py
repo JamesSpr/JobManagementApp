@@ -2,8 +2,8 @@ from datetime import date, datetime, timedelta
 from genericpath import exists
 import shutil
 from accounts.models import CustomUser
-from api.models import Client, Contractor, Estimate, Job, Invoice, Bill
-from api.schema import InvoiceUpdateInput, ClientType, InvoiceType, JobInput, JobType
+from api.models import Client, Contractor, Estimate, Job, Invoice, Bill, RemittanceAdvice
+from api.schema import InvoiceUpdateInput, ClientType, InvoiceType, JobInput, JobType, RemittanceType
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
@@ -529,15 +529,15 @@ class myobGetInvoices(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             
-            if not as_pdf:
-                return self(success=True, message=response.text)
-
             ## Save Invoice as PDF
             if not response.status_code == 200:
                 return self(success=False, message=response.text)
 
             res = json.loads(response.text)
             res = res['Items']
+
+            if not as_pdf:
+                return self(success=True, message=json.dumps(res))
 
             if len(res) > 1:
                 for invoice in res:
@@ -1293,6 +1293,82 @@ class myobSyncBills(graphene.Mutation):
         else:
             return self(success=False, message="MYOB Connection Error")
 
+class myobSyncRemittance(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, uid):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        if MyobUser.objects.filter(id=uid).exists():
+            checkTokenAuth(uid)
+            user = MyobUser.objects.get(id=uid)
+            remittance = []
+
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment?$top=1000&$filter=Account/DisplayID eq '1-1120' and Date gt datetime'2023-01-01'"
+            
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.request("GET", url, headers=headers, data={})
+            res = json.loads(response.text)
+            remittance = res
+            counter = 1
+
+            while res['NextPageLink'] != None:
+                skip = 1000*counter
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment?$top=1000&$skip={skip}"
+            
+                headers = {                
+                    'Authorization': f'Bearer {user.access_token}',
+                    'x-myobapi-key': env('CLIENT_ID'),
+                    'x-myobapi-version': 'v2',
+                    'Accept-Encoding': 'gzip,deflate',
+                }
+                response = requests.request("GET", url, headers=headers, data={})
+                res = json.loads(response.text)
+                remittance['Items'].extend(res['Items'])
+                counter += 1
+
+            relevant_advice = []
+            for advice in remittance['Items']:
+                if len(advice['Invoices']) > 0 and 'BGIS' in advice['Memo']:
+                    relevant_advice.append(advice)
+                    
+                    if RemittanceAdvice.objects.filter(myob_uid=advice['UID']).exists():
+                        remittance_advice = RemittanceAdvice.objects.get(myob_uid=advice['UID'])
+                    else:
+                        remittance_advice = RemittanceAdvice()
+
+                    remittance_advice.myob_uid = advice['UID']
+                    remittance_advice.date = advice['Date'].split('T')[0]
+                    remittance_advice.amount = advice['AmountReceived']
+                    remittance_advice.client = Client.objects.get(name="BGIS")
+                    remittance_advice.save()
+
+                    for inv in advice['Invoices']:
+                        if Invoice.objects.filter(myob_uid=inv['UID']).exists():
+                            invoice = Invoice.objects.get(myob_uid=inv['UID'])
+                            invoice.remittance = remittance_advice
+                            if not invoice.date_paid: invoice.date_paid = remittance_advice.date
+                            invoice.save()
+                        else:
+                            print(inv['Number'])
+
+
+            return self(success=True, message=json.dumps(relevant_advice))
+        else:
+            return self(success=False, message="MYOB Connection Error")
+
 
 class myobImportContractorsFromBills(graphene.Mutation):
     class Arguments:
@@ -1588,24 +1664,24 @@ class myobCreateInvoice(graphene.Mutation):
                 return self(success=False, message="Job Not Found!")
 
             if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
-                return self(success=False, message="No Approved Estimate to Invoice")
+                return self(success=False, message="No Approved Estimate to use as Invoice.")
 
             if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
-                return self(success=False, message="More than 1 estimate approved!")
+                return self(success=False, message="More than 1 estimate approved. Please fix and try again.")
 
             estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
 
             if estimate.price == 0.0:
-                return self(success=False, message="Estimate price is $0. please check job!")
+                return self(success=False, message="Estimate price is $0. Please check job.")
 
             if not job.myob_uid:
-                return self(success=False, message="Please sync job with MYOB before creating invoice!")
+                return self(success=False, message="Please sync job with MYOB before creating invoice.")
 
             if not job.completion_date:
-                return self(success=False, message="Job completion date not recorded!")
+                return self(success=False, message="Job completion date not recorded.")
 
             if Invoice.objects.filter(job=job).exists():
-                return self(success=False, message="Invoice already exists for this job")
+                return self(success=False, message="Invoice already exists for this job.")
 
             invoice = []
 
@@ -1613,16 +1689,17 @@ class myobCreateInvoice(graphene.Mutation):
             job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
 
             if not os.path.exists(job_folder):
-                return self(success=False, message="Job Folder does not exist!")
+                return self(success=False, message="Job Folder does not exist.")
 
             accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
 
             if not os.path.exists(accounts_folder):
                 os.mkdir(accounts_folder)
-            estimate_folder = os.path.join(job_folder, "Estimates", estimate.name)
 
             if not os.path.exists(accounts_folder):
-                return self(success=False, message="Jobs Accounts Folder does not exist!")
+                return self(success=False, message="Jobs Accounts Folder does not exist.")
+
+            estimate_folder = os.path.join(job_folder, "Estimates", estimate.name)
 
             if job.client.name == "BGIS":
                 ## Check the required invoice files that are stored in the relevant estimate folder
@@ -2078,7 +2155,8 @@ class myobProcessPayment(graphene.Mutation):
     success = graphene.Boolean()
     message= graphene.String()
     error = graphene.String()
-    invoice = graphene.List(InvoiceType)
+    remittance_advice = graphene.List(RemittanceType)
+    invoices = graphene.List(InvoiceType)
     
     @classmethod
     @login_required
@@ -2091,24 +2169,64 @@ class myobProcessPayment(graphene.Mutation):
             user = MyobUser.objects.get(id=uid)
             client = Client.objects.get(id=client)
 
+            total_amount = 0
+            for inv in invoices:
+                total_amount += inv.amount
+
+            if RemittanceAdvice.objects.filter(client = client, date=payment_date, amount=total_amount).exists():
+                return self(success=False, message="Remittance Advice Already Exists")
+            
+            remittance_advice = RemittanceAdvice()
+            remittance_advice.client = client
+            remittance_advice.date = payment_date
+            remittance_advice.amount = total_amount
+
             # Create payment from the list of invoices provided
             paid_invoices = []
             external_invoices = []
             for invoice in invoices:
                 if Invoice.objects.filter(number=invoice.number).exists():
                     inv = Invoice.objects.get(number=invoice.number)
+                    if not inv.remittance == None:
+                        return self(success=False, message="Remittance Advice Already Exists.")
+                    
                     paid_invoices.append({
                         "UID": inv.myob_uid,
                         "Type": "Invoice",
                         "AmountApplied": round(float(inv.amount) * 1.1, 2),
                         "AmountAppliedForeign": None
                     })
+
                 else:
                     external_invoices.append(invoice.number)
 
-            if len(external_invoices) > 1:
+            if len(external_invoices) > 0:
                 # Get the details of the invoices that are not saved in the system
-                return self(success=False, message="Get Dev to finish this function")
+                for inv_num in external_invoices:
+                    # Fetch the invoice from MYOB to include in the paid invoices
+                    url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$filter=Number eq '{inv_num}'"
+                    headers = {                
+                        'Authorization': f'Bearer {user.access_token}',
+                        'x-myobapi-key': env('CLIENT_ID'),
+                        'x-myobapi-version': 'v2',
+                        'Accept-Encoding': 'gzip,deflate',
+                    }
+                    response = requests.request("GET", url, headers=headers, data={})
+                    
+                    ## Save Invoice as PDF
+                    if not response.status_code == 200:
+                        print(response.text)
+                        return self(success=False, message='Error Finding External Invoice')
+
+                    res = json.loads(response.text)
+                    ext_inv = res['Items']
+
+                    paid_invoices.append({
+                        "UID": ext_inv['UID'],
+                        "Type": "Invoice",
+                        "AmountApplied": round(float(ext_inv['Amount']) * 1.1, 2),
+                        "AmountAppliedForeign": None
+                    })
 
 
             if len(paid_invoices) < 1:
@@ -2116,7 +2234,7 @@ class myobProcessPayment(graphene.Mutation):
 
             # POST Payment to MYOB
             # ANZ Online-Saver UID: "7c6557f4-d684-41f2-9e0b-2f53c06828d3"
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment"
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment/"
             payload = json.dumps({
                 "Date": payment_date, 
                 "DepositTo": "Account",
@@ -2135,10 +2253,13 @@ class myobProcessPayment(graphene.Mutation):
             }
             response = requests.request("POST", url, headers=headers, data=payload)
 
-            # print(payload)
-
             if(not response.status_code == 201):
-                return self(success=False, message="Issue creating bill in MYOB", error=json.loads(response.text))
+                return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
+
+            print(response.headers['Location'].replace(url, ""))
+            print(response.headers['Location'])
+            remittance_advice.myob_uid = response.headers['Location'].replace(url, "")
+            remittance_advice.save()
 
             # Update invoices after the payment is processed in myob
             updatedInvoices = []
@@ -2147,11 +2268,11 @@ class myobProcessPayment(graphene.Mutation):
                 if invoice:
                     if not inv.date_issued: invoice.date_issued = inv.date_issued
                     invoice.date_paid = payment_date
+                    invoice.remittance = remittance_advice
                     invoice.save()
-                    invoice.job.save() ## save job to update stage
                     updatedInvoices.append(invoice)
 
-            return self(success=True, message="Invoices Updated and Payment Processed.", invoice=updatedInvoices)
+            return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
 
         return self(success=False, message="Error connecting to MYOB.", error=json.loads("MYOB Connection Error"))
 
@@ -2581,6 +2702,7 @@ class Mutation(graphene.ObjectType):
     myob_sync_bills = myobSyncBills.Field()
     myob_sync_clients = myobSyncClients.Field()
     myob_sync_contractors = myobSyncContractors.Field()
+    myob_sync_remittance = myobSyncRemittance.Field()
     
     myob_import_contractor_from_abn = myobImportContractorFromABN.Field()
     myob_import_client_from_abn = myobImportClientFromABN.Field()

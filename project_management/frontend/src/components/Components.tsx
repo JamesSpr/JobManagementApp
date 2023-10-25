@@ -12,6 +12,8 @@ declare module '@tanstack/react-table' {
       updateData?: (rowIndex: string, columnId: keyof TData, value: any, row: Row<TData>) => void
       getRegions?: () => RegionType[]
       getStageDescription?: (value: string) => string
+      checkMaintenanceInvoice?: (row: Row<TData>) => number
+      getMaintenanceTotal?: () => string
     }
 }
 
@@ -364,7 +366,8 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
                             ))}
                             </tr>
                         ))}
-                    </tfoot>}
+                    </tfoot>
+                }
             </table>
             
             { pagination && <PaginationControls table={table} /> }
@@ -472,21 +475,6 @@ export const ProgressIconButton = ({waiting, onClick, children, disabled, style}
             </IconButton>
         </Box>
 
-        // <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
-        //     <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled : waiting}>{name}</Button>
-        //     {waiting && (
-        //         <CircularProgress size={24} 
-        //             sx={{
-        //                 colour: 'primary', 
-        //                 position: 'absolute',
-        //                 top: '50%',
-        //                 left: '50%',
-        //                 marginTop: '-12px',
-        //                 marginLeft: '-12px',
-        //             }}
-        //         />
-        //     )}
-        // </Box>
     )
 }
 

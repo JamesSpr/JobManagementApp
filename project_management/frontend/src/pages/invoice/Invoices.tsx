@@ -26,7 +26,7 @@ const InvoiceList = ({invoices}: {
         {                
             accessorKey: 'amount',
             header: () => 'Amount',
-            cell: info => "$" + info.getValue(),
+            cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
             size: 150,
         },
         {

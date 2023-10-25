@@ -1,7 +1,7 @@
 
 import { FilterFn, } from '@tanstack/react-table'
 import { rankItem } from '@tanstack/match-sorter-utils'
-import { useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Column, Table as ReactTable } from '@tanstack/react-table'
 import DebouncedInput from './DebouncedInput'
 
@@ -25,6 +25,37 @@ export const inDateRange = (row: { getValue: (arg0: any) => string }, columnId: 
   
   const rowValue = row.getValue(columnId) ? Date.parse(row.getValue(columnId).split('/').reverse().join('-')) : 0
   return rowValue >= min && rowValue <= max
+}
+
+export const EditableCell = ({ getValue, row: { index }, column: { id }, table, setUpdateRequired, validation}: { 
+  getValue: any, 
+  row: { index: any }, 
+  column: { id: any }, 
+  table: any, 
+  setUpdateRequired?: React.Dispatch<React.SetStateAction<Boolean>>
+  validation?: (value: any) => void
+}) => {
+  const initialValue = getValue()
+  // We need to keep and update the state of the cell normally
+  const [value, setValue] = useState(initialValue)
+
+  // When the input is blurred, we'll call our table meta's updateData function
+  const onBlur = () => {
+      if(initialValue !== value) {
+        table.options.meta?.updateData(index, id, value)
+        setUpdateRequired && setUpdateRequired(true);
+        validation && validation(value);
+      }
+  }
+
+  // If the initialValue is changed external, sync it up with our state
+  useEffect(() => {
+      setValue(initialValue)
+  }, [initialValue])
+
+  return (
+      <input className="dataTableInput" value={value as any} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
+  )
 }
 
 export const dateSort = (rowA: { getValue: (arg0: any) => string }, rowB: { getValue: (arg0: any) => string }, columnId: any) => {

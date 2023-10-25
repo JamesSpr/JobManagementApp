@@ -304,10 +304,10 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
             const res = response?.data?.data?.create_quote
             
             if(res?.success) {
-                setSnack({active: true, variant:'success', message: 'Quote Created'})
+                setSnack({active: true, variant:'success', message: res.message})
             }
             else {
-                setSnack({active: true, variant:'error', message: 'Quote Error: ' + res.message})
+                setSnack({active: true, variant:'error', message: 'Error: ' + res.message})
             }
         }).catch((err) => {
             setSnack({active: true, variant:'error', message: 'Server Error. Please Contact Developer'})

@@ -108,8 +108,8 @@ export interface InvoiceType {
     number: string
     dateCreated: string
     dateIssued: string
-    datePaid: string
     amount?: number
+    datePaid: string
     job?: JobType
 }
 

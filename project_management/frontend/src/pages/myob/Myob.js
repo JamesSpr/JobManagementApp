@@ -592,8 +592,36 @@ const MyobActivate = () => {
             const res = response.data?.data?.myob_sync_bills;
             if(res.success) {
                 // console.log(res.message)
-                const invoices = JSON.parse(res.message);
-                console.log("Invoices:", invoices)
+                const bills = JSON.parse(res.message);
+                console.log("Bills:", bills)
+            }
+            else {
+                console.log("error!", JSON.parse(res.message) ?? "");
+            }
+        })
+    }
+    
+    const syncRemittance = async () => {
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation myobSyncRemittance($uid:String!) {
+                    remittance: myobSyncRemittance(uid:$uid) {
+                        success
+                        message
+                    }
+                }`,
+                variables: {
+                    uid: auth?.myob.id,
+                }
+            })
+        }).then((response) => {
+            // console.log("success", response);
+            const res = response.data?.data?.remittance;
+            if(res.success) {
+                // console.log(res.message)
+                const remittance = JSON.parse(res.message);
+                console.log("Remittance:", remittance)
             }
             else {
                 console.log("error!", JSON.parse(res.message) ?? "");
@@ -875,6 +903,7 @@ const MyobActivate = () => {
                         <Button style={{width: '150px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncContractors}>Contractors</Button>
                         <Button style={{width: '100px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncInvoices}>Invoices</Button>
                         <Button style={{width: '100px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncBills}>Bills</Button>
+                        <Button style={{width: '150px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={syncRemittance}>Remittance</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <Typography variant="h6">MYOB Imports</Typography>
