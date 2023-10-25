@@ -27,12 +27,13 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
     const [data, setData] = useState<InvoiceType[]>([blankInvoice]);
     const [client, setClient] = useState('');     
     const [remittanceDate, setRemittanceDate] = useState('');
-    const [invalidInvoices, setInvalidInvoices] = useState(true);     
+    const [invalidInvoices, setInvalidInvoices] = useState(true);
+    const [uploaded, setUploaded] = useState(false);
     const [snack, setSnack] = useState<SnackType>({active: false, message: '', variant:'info'})
     const [fieldError, setFieldError] = useState({})
     
     useEffect(() => {
-        if(data.length == 0) {
+        if(data?.length == 0) {
             setData([blankInvoice]);
         }
     }, [data])
@@ -75,18 +76,20 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             }),
             }).then((response) => {
                 const res = response?.data?.data?.remittance_advice;
-                console.log("Extraction", res);
+                // console.log("Extraction", res);
 
                 setWaiting(prev => ({...prev, 'remittance': false}));
-                setRemittanceDate(res.adviceDate);
-                setData(res.data);
-                setClient(res.client);
+                setUploaded(true);
 
                 if(res?.success) {
                     setSnack({'active': true, variant:'success', message: res.message});
+                    setRemittanceDate(res.adviceDate);
+                    setData(res.data);
+                    setClient(res.client);    
                 }
                 else {
                     setSnack({'active': true, variant:'error', message: res.message});
+                    setData([]);
                 }
             }).catch((err) => {
                 console.log("error:", err);
@@ -149,12 +152,13 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                         },
                 }),
                 }).then((response) => {
-                    console.log(response)
+                    // console.log(response)
                     const res = response?.data?.data?.process_payment; 
                     
                     setData([]);
                     setClient('');
                     setRemittanceDate('');
+                    setUploaded(false);
                     setWaiting(prev => ({...prev, 'submit': false}));
 
                     if(res.success) {
@@ -176,6 +180,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             }
             else {
                 onClose(false);
+                setUploaded(false);
                 setData([]);
                 setClient('');
                 setRemittanceDate('');
@@ -223,14 +228,14 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                 },
         }),
         }).then((response) => {
-            console.log(response)
+            // console.log(response)
             const res = response?.data?.data?.invoices; 
             
             if(res.success) {
                 const extInv = JSON.parse(res.message);
-                console.log(extInv)
 
                 if(extInv.length == externalInvoices.length) {
+                    setSnack({'active': true, variant:'success', message: "All invoices are valid."})
                     setInvalidInvoices(false);
                 }
                 else {
@@ -284,7 +289,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
         {                
             accessorKey: 'amount',
             header: () => 'Amount',
-            cell: EditableCell,
+            cell: props => EditableCell({...props, type: 'number'}),
             size: 120,
             footer: ({table}) => table?.options?.meta?.getMaintenanceTotal && table?.options?.meta?.getMaintenanceTotal(),
         },
@@ -323,11 +328,15 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             return 0;
         },
         getMaintenanceTotal: () => {
-            // console.log(row, invoices.find(inv => inv.number === row.invoice))
             let sum = 0.0
             data?.map(d => {
                 if(invoices.find(inv => inv.number === d.number)) {
-                    sum += d.amount ?? 0;
+                    if(typeof(d.amount) == 'string') {
+                        sum += parseFloat(d.amount ?? 0);
+                    }
+                    else {
+                        sum += d.amount ?? 0;
+                    }
                 }   
             })
             
@@ -348,7 +357,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             </DialogTitle>
             <DialogContent style={{padding: '4px 12px'}}>
                 <Grid container spacing={1} direction='column' alignItems='center'>
-                    { data && remittanceDate ? <>
+                    { uploaded ? <>
                         <Grid item xs={12}>
                             <InputField width={300}
                                 type="select"

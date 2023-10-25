@@ -2155,7 +2155,7 @@ class myobProcessPayment(graphene.Mutation):
     success = graphene.Boolean()
     message= graphene.String()
     error = graphene.String()
-    remittance_advice = graphene.List(RemittanceType)
+    remittance_advice = graphene.Field(RemittanceType)
     invoices = graphene.List(InvoiceType)
     
     @classmethod
@@ -2219,12 +2219,12 @@ class myobProcessPayment(graphene.Mutation):
                         return self(success=False, message='Error Finding External Invoice')
 
                     res = json.loads(response.text)
-                    ext_inv = res['Items']
+                    ext_inv = res['Items'][0]
 
                     paid_invoices.append({
                         "UID": ext_inv['UID'],
                         "Type": "Invoice",
-                        "AmountApplied": round(float(ext_inv['Amount']) * 1.1, 2),
+                        "AmountApplied": float(ext_inv['TotalAmount']),
                         "AmountAppliedForeign": None
                     })
 
@@ -2256,8 +2256,6 @@ class myobProcessPayment(graphene.Mutation):
             if(not response.status_code == 201):
                 return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
 
-            print(response.headers['Location'].replace(url, ""))
-            print(response.headers['Location'])
             remittance_advice.myob_uid = response.headers['Location'].replace(url, "")
             remittance_advice.save()
 

@@ -41,7 +41,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, file, filename, **kwargs):
-        debug = False
+        debug = True
         
         if not file: 
             return self(success=False)
@@ -86,7 +86,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         price_pattern = '-?[0-9]{0,3},*?[0-9]{0,3}\.[0-9]{2}'
         prices = re.findall(price_pattern, advice_text)
 
-        invoice_patterns = ['^0{0,4}[0-9]{4,8}', ' 0+[0-9]{4,8} ', ' 0{0,4}[0-9]{4,8} ']
+        invoice_patterns = ['^0{1,3}[0-9]{4,8}', ' 0{1,3}[0-9]{4,8}$', ' 0+[0-9]{4,8} ', ' 0{0,4}[0-9]{4,8} ']
         for invoice_pattern in invoice_patterns:
             invoices = re.findall(invoice_pattern, advice_text, re.MULTILINE)
             if len(invoices) > 0:

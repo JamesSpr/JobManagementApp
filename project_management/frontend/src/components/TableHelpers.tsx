@@ -27,11 +27,12 @@ export const inDateRange = (row: { getValue: (arg0: any) => string }, columnId: 
   return rowValue >= min && rowValue <= max
 }
 
-export const EditableCell = ({ getValue, row: { index }, column: { id }, table, setUpdateRequired, validation}: { 
+export const EditableCell = ({ getValue, row: { index }, column: { id }, table, type, setUpdateRequired, validation}: { 
   getValue: any, 
   row: { index: any }, 
   column: { id: any }, 
   table: any, 
+  type?: 'number' | 'text',
   setUpdateRequired?: React.Dispatch<React.SetStateAction<Boolean>>
   validation?: (value: any) => void
 }) => {
@@ -41,11 +42,16 @@ export const EditableCell = ({ getValue, row: { index }, column: { id }, table, 
 
   // When the input is blurred, we'll call our table meta's updateData function
   const onBlur = () => {
-      if(initialValue !== value) {
-        table.options.meta?.updateData(index, id, value)
-        setUpdateRequired && setUpdateRequired(true);
-        validation && validation(value);
-      }
+    let val = value
+    if(type == 'number') {
+      val = parseFloat(value).toFixed(2)
+    }
+
+    if(initialValue !== value) {
+      table.options.meta?.updateData(index, id, val)
+      setUpdateRequired && setUpdateRequired(true);
+      validation && validation(val);
+    }
   }
 
   // If the initialValue is changed external, sync it up with our state
@@ -54,7 +60,8 @@ export const EditableCell = ({ getValue, row: { index }, column: { id }, table, 
   }, [initialValue])
 
   return (
-      <input className="dataTableInput" value={value as any} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
+      <input type={type} className="dataTableInput" step={type == 'number' ? 0.01 : 0}
+        value={value} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
   )
 }
 
