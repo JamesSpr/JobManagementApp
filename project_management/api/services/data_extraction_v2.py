@@ -5,7 +5,7 @@ import numpy as np
 import re
 import base64
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from ..models import Contractor, Client
 
 from PIL import Image
@@ -139,7 +139,7 @@ class ExtractBillDetails(graphene.Mutation):
         if not file: 
             return self(success=False)
         
-        debug = False
+        debug = True
 
         file = file.replace("data:application/pdf;base64,", "")
         pdf = base64.b64decode(file, validate=True)
@@ -160,7 +160,7 @@ class ExtractBillDetails(graphene.Mutation):
 
         if debug: print(bill_text)
 
-        abn_regex = re.findall('[\b\s]abn:?\s*([0-9]{2}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3})', bill_text)
+        abn_regex = re.findall('[\b\s]?abn\s*:?\s*([0-9]{2}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3})', bill_text)
 
         for i, abn in enumerate(abn_regex):
             abn_regex[i] = abn.replace(" ", "")
@@ -190,25 +190,40 @@ class ExtractBillDetails(graphene.Mutation):
 
 
         if not data.get('invoiceDate'):
-            date_regex = re.findall('(?:\s?\d{1,2}[-/, ]{0,1}(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*[-/, ]{0,1}\s*\d{2,4})|(?:\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d{1,2}[-/, ]{0,1}\s*[-/, ]{0,1}\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2}', bill_text)
+            date_regex = re.findall('(?:\s?\d{1,2}[-/, ]{0,1}\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*[-/, ]{0,1}\s*\d{2,4})|(?:\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d{1,2}[-/, ]{0,1}\s*[-/, ]{0,1}\s?\d{4})|(?:3[01]|[12][0-9]|0?[1-9])\s?[/-]\s?(?:1[0-2]|0?[1-9])\s?[/-]\s?(?:[0-9]{2})?[0-9]{2}', bill_text)
             for i, val in enumerate(date_regex):
-                date_regex[i] = val.strip()
+                date_regex[i] = val.strip().replace(" ", "")
             
             date_set = set(date_regex)
             date_regex = list(date_set)
             if debug: print("Date:", date_regex)
+
             # If more than one date is found from the beginning, narrow down the search to look for an invoice date specifically. 
             if(len(date_regex) == 1):
                 date = try_parsing_date(date_regex[0].capitalize(), debug)
                 data.update({'invoiceDate': date})
+
             elif(len(date_regex) > 1):
-                date_regex = re.findall('(?:invoice\s?date[\r\n\s]*)((?:\s?\d*\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d*,{0,1}\s*\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2})', bill_text)
-                date_set = set(date_regex)
-                date_regex = list(date_set)
+                # Remove future dates that could be the due date.
+                for d in date_regex:
+                    if datetime.strptime(d, "%d/%m/%Y") > datetime.today() + timedelta(days=1):
+                        date_regex.remove(d)
+
                 if debug: print("Date:", date_regex)
                 if(len(date_regex) == 1):
                     date = try_parsing_date(date_regex[0].capitalize(), debug)
                     data.update({'invoiceDate': date})
+
+                else:
+                    # Try a different regex pattern
+                    date_regex = re.findall('(?:invoice\s?date[\r\n\s]*)((?:\s?\d*\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d*,{0,1}\s*\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2})', bill_text)
+                    date_set = set(date_regex)
+                    date_regex = list(date_set)
+                    if debug: print("Date:", date_regex)
+                    if(len(date_regex) == 1):
+                        date = try_parsing_date(date_regex[0].capitalize(), debug)
+                        data.update({'invoiceDate': date})
+                
 
         if not data.get('amount'):
             total_regex = re.findall('(?![\b[^\S\r\n]](?:total|amount|due)[: $aud]*?[^\S\r\n]*?)(-?[0-9]{0,3}[^\S\r\n]*,*?[0-9]{0,3}[^\S\r\n]*\.[^\S\r\n]*[0-9]{2})', bill_text)
