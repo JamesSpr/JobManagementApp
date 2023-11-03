@@ -328,7 +328,7 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
                 }
                 <h1
                     style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 104px)', textAlign: 'center', fontWeight: 'bold'}}>
-                    Accounts for PO{id}
+                    Accounts for {id}
                 </h1>
                 <IconButton onClick={handleClose} disabled={waiting.update} style={{float: 'right', right: '10px', padding: '0px 0px 4px 0px'}} >
                     <CloseIcon />

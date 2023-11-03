@@ -66,7 +66,7 @@ class PDFToImage(graphene.Mutation):
         return self(success=True, thumbnail_path=thumbnail_image_path, file_path=file_path)
 
 # Resize image and reduce quality to be emailed
-def compress_image_for_mail(b64_img, filename, mail):
+def compress_image_for_mail(b64_img, filename):
     image_bytes = BytesIO(b64_img)
  
     pil_image = Image.open(image_bytes)
@@ -83,6 +83,7 @@ def compress_image_for_mail(b64_img, filename, mail):
             temp_file = temp_file[:-4]
             temp_file = temp_file + ".jpg"
             
-        pil_image.save(temp_file, format="JPEG", quality=90)
-        mail.attachments.Add(temp_file)
+        img_byte_arr = BytesIO()
+        pil_image.save(img_byte_arr, format="JPEG", quality=90)
+        return img_byte_arr.getvalue()
 

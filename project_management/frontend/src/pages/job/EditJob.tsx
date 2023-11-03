@@ -73,20 +73,6 @@ const JobPage = () => {
             document.addEventListener('keydown', handleKeyPress)
         }
     }, [handleKeyPress]);
-    
-    let id_po = "";
-    let id_sr = "";
-    let id_other = "";
-
-    if(id.includes('PO')) {
-        id_po = id.substring(2);
-    } 
-    else if (id.includes('SR')) {
-        id_sr = id.substring(2);
-    } 
-    else {
-        id_other = id;
-    }
 
     useEffect(() => {
         const controller = new AbortController();
@@ -98,13 +84,14 @@ const JobPage = () => {
                 data: JSON.stringify({
                     query: jobAllQuery(),
                     variables: {
-                        po: id_po,
-                        sr: id_sr,
-                        otherId: id_other
+                        identifier: id,
+                        // sr: id_sr,
+                        // otherId: id_other
                     },
             }),
             }).then((response) => {
-                const job_data = response?.data?.data?.job_all?.edges[0]?.node;
+                console.log(response);
+                const job_data = response?.data?.data?.jobs[0];
                 const location_data = response?.data?.data?.locations;
                 const clients = response?.data?.data?.clients;
                 const clientContacts = response?.data?.data?.clientContacts;
@@ -336,13 +323,13 @@ const JobPage = () => {
     }
 
     const getJobName = () => {
-        let identifier = "PO" + job.po;
+        let identifier = job.po;
         if(job.po == ''){
             if(job.otherId && job.otherId.includes("VP")) {
                 identifier = job.otherId
             }
             else if ( job.sr != '') {
-                identifier = "SR" + job.sr;
+                identifier = job.sr;
             }
             else if (job.otherId != '') {
                 identifier = job.otherId;

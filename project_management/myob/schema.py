@@ -811,7 +811,7 @@ class myobRepairJobSync(graphene.Mutation):
             user = MyobUser.objects.get(id=uid)
             job = Job.objects.get(id=job_id)
 
-            job_filter = f"?$filter=Number eq 'PO{job.po}'"
+            job_filter = f"?$filter=Number eq '{job.po}'"
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job{job_filter}"
             
             headers = {                
@@ -836,7 +836,7 @@ class myobRepairJobSync(graphene.Mutation):
 
                 # url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
                 # payload = json.dumps({
-                #     "Number": "PO" + job.po,
+                #     "Number": job.po,
                 #     "Name": (job.location.name + " " + job.title)[0:30],
                 #     "Description": str(job),
                 #     "IsHeader": False,
@@ -935,7 +935,7 @@ class myobSyncJobs(graphene.Mutation):
                     if estimate:
                         url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
                         payload = json.dumps({
-                            "Number": "PO" + one_job.po,
+                            "Number": one_job.po,
                             "Name": (one_job.location.name + " " + one_job.title)[0:30],
                             "Description": str(one_job),
                             "IsHeader": False,
@@ -993,7 +993,7 @@ class myobCreateJob(graphene.Mutation):
 
             job_name = ""
             if job.po:
-                job_name = f"PO{job.po}"
+                job_name = job.po
             elif job.other_id:
                 job_name = job.other_id
 
@@ -1713,7 +1713,8 @@ class myobCreateInvoice(graphene.Mutation):
 
                     estimate_file = None
                     for files in os.listdir(estimate_folder):
-                        if "Approval" in files and not found['approval']:
+                        print(files)
+                        if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
                             found['approval'] = True
                             paths['approval'] = os.path.join(estimate_folder, files)
                         if "BGIS Estimate" in files and not found["estimate"]:
@@ -1721,19 +1722,20 @@ class myobCreateInvoice(graphene.Mutation):
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files)
                             else:
-                                estimate_file = files
+                                estimate_file = os.path.join(estimate_folder, files)
                     
-                    if not estimate_file == None and not found["estimate"]:
+                    if not found["estimate"] and not estimate_file == None :
+                        print("Converting Spreadsheet to PDF", estimate_file)
                         # Convert excel sheet to pdf
                         xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                        books = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
+                        books = xlApp.Workbooks.Open(estimate_file)
                         ws = books.Worksheets[0]
                         ws.Visible = 1
-                        ws.ExportAsFixedFormat(0, estimate_folder + "/" + files.strip(".xlsm") + ".pdf")
+                        ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
                         xlApp.ActiveWorkbook.Close()
 
                         found["estimate"] = True
-                        paths["estimate"] = os.path.join(estimate_folder, files.strip(".xlsm") + ".pdf")
+                        paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
 
                 else:
                     found['approval'] = True
@@ -1742,13 +1744,16 @@ class myobCreateInvoice(graphene.Mutation):
                 if estimate.price > 500.00 and not all(found.values()):
                     return self(success=False, message="Error. Not all required files can be found:" + str(found))
             
+            elif job.client.name == "CBRE Group Inc":
+                found = {"not_required": True}
+                paths = {"invoice": ""}
             else:
                 ## Check the required invoice files that are stored in the relevant estimate folder
                 found = {"purchaseOrder": False}
                 paths = {"invoice": "", "purchaseOrder": ""}
 
                 for files in os.listdir(estimate_folder):
-                    if "PO" + job.po in files:
+                    if job.po in files:
                         if files.endswith(".pdf"):
                             found["purchaseOrder"] = True
                             paths["purchaseOrder"] = os.path.join(estimate_folder, files)
@@ -1769,7 +1774,7 @@ class myobCreateInvoice(graphene.Mutation):
             payload = json.dumps({
                 "Date": datetime.today(), 
                 "Customer": {"UID": job.client.myob_uid},
-                "CustomerPurchaseOrderNumber": "PO" + job.po,
+                "CustomerPurchaseOrderNumber": job.po,
                 "Comment": f"Please find details of progress claim C001 attached.",
                 "ShipToAddress": shipToAddress,
                 "IsTaxInclusive": False,
@@ -1843,11 +1848,11 @@ class myobCreateInvoice(graphene.Mutation):
                 return self(success=False, message=json.loads(response.text))
             
             print("Writing Invoice to File")
-            with open(f"./myob/invoices/INV{invoice['Number']} - PO{job.po}.pdf", "wb") as f:
+            with open(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", "wb") as f:
                 f.write(pdf_response.content)
 
-            shutil.copyfile(f"./myob/invoices/INV{invoice['Number']} - PO{job.po}.pdf", f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - PO{job.po}.pdf")
-            paths['invoice'] = f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - PO{job.po}.pdf"
+            shutil.copyfile(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf")
+            paths['invoice'] = f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf"
 
             print("Invoice Saved")
 
@@ -2487,9 +2492,10 @@ class generateInvoice(graphene.Mutation):
                 if estimate.price > 500.00:
                     if not os.path.exists(estimate_folder):
                         return self(success=False, message="Estimate has not been created for this job. Please check the estimate folder.")
-                        
+                    
+                    estimate_file = None
                     for files in os.listdir(estimate_folder):
-                        if "Approval" in files:
+                        if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
                             found['approval'] = True
                             paths['approval'] = os.path.join(estimate_folder, files)
                         if "BGIS Estimate" in files and not found["estimate"]:
@@ -2497,22 +2503,33 @@ class generateInvoice(graphene.Mutation):
                                 found["estimate"] = True
                                 paths["estimate"] = os.path.join(estimate_folder, files)
                             else:
-                                # Convert excel sheet to pdf
-                                xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                                xlApp.Visible = True
-                                wb = xlApp.Workbooks.Open(os.path.join(estimate_folder, files))
-                                ws = wb.Sheets("Cost Breakdown")
-                                ws.ExportAsFixedFormat(0, estimate_folder + "/" + files.strip(".xlsm") + ".pdf")
-                                
-                                wb.Close(False)
-                                xlApp.Quit()
+                                estimate_file = os.path.join(estimate_folder, files)
+                    
+                    if not found["estimate"] and not estimate_file == None :
+                        print("Converting Spreadsheet to PDF", estimate_file)
+                        # Convert excel sheet to pdf
+                        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+                        books = xlApp.Workbooks.Open(estimate_file)
+                        ws = books.Worksheets[0]
+                        ws.Visible = 1
+                        ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
+                        xlApp.ActiveWorkbook.Close()
 
-                                found["estimate"] = True
-                                paths["estimate"] = os.path.join(estimate_folder, files.strip(".xlsm") + ".pdf")
+                        found["estimate"] = True
+                        paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
+
                 else:
                     found['approval'] = True
                     found['estimate'] = True
-                
+            elif job.client.name == "CBRE Group Inc":
+                found = {"invoice": False}
+                paths = {"invoice": ""}
+
+                for files in os.listdir(accounts_folder):
+                    if "INV" in files:
+                        found['invoice'] = True
+                        paths['invoice'] = os.path.join(accounts_folder, files)
+
             else:
                 ## Check the required invoice files that are stored in the relevant estimate folder
                 found = {"invoice": False, "purchaseOrder": False}
@@ -2524,7 +2541,7 @@ class generateInvoice(graphene.Mutation):
                         paths['invoice'] = os.path.join(accounts_folder, files)
 
                 for files in os.listdir(estimate_folder):
-                    if "PO" + job.po in files:
+                    if job.po in files:
                         if files.endswith(".pdf"):
                             found["purchaseOrder"] = True
                             paths["purchaseOrder"] = os.path.join(estimate_folder, files)
@@ -2562,11 +2579,11 @@ class generateInvoice(graphene.Mutation):
                     return self(success=False, message=json.loads(pdf_response.text))
                 else:
                     print("Writing Invoice to File")
-                    with open(f"./myob/invoices/INV{invoice_number} - PO{job.po}.pdf", "wb") as f:
+                    with open(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", "wb") as f:
                         f.write(pdf_response.content)
 
-                    shutil.copyfile(f"./myob/invoices/INV{invoice_number} - PO{job.po}.pdf", f"{accounts_folder}/INV{invoice_number} - PO{job.po}.pdf")
-                    paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - PO{job.po}.pdf"
+                    shutil.copyfile(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf")
+                    paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf"
                     found['invoice'] = True
 
                     print("Invoice Saved")

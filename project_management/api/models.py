@@ -3,7 +3,7 @@ from django.db.models.deletion import CASCADE, PROTECT, RESTRICT
 from accounts.models import CustomUser
 import datetime
 
-MAX_ID_SIZE = 12
+MAX_ID_SIZE = 20
 
 # CHOICES
 # Australian States and Territories
@@ -170,12 +170,13 @@ class Job(models.Model):
     cancel_reason = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
-        identifier = "PO" + self.po
+        identifier = self.po
+
         if self.po == '':
             if "VP" in self.other_id:
                 identifier = self.other_id
             elif self.sr != '':
-                identifier = "SR" + self.sr
+                identifier = self.sr
             elif self.other_id != '':
                 identifier = self.other_id
         

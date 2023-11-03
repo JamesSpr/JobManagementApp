@@ -13,9 +13,9 @@ from django.shortcuts import get_object_or_404
 from django.db import connection
 from accounts.models import CustomUser
 from api.services.create_completion_documents import CreateCompletionDocuments
-from .services.email import AllocateJobEmail, CloseOutEmail, EmailQuote
+from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote
 from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
-from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
+# from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 # from .services.data_extraction import ExtractBillDetails
 from .services.data_extraction_v2 import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote
@@ -1427,11 +1427,11 @@ class TransferInvoice(graphene.Mutation):
         except Exception as e:
             return self(success=False, message="Not found: " + str(e))
 
-        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for PO" + invoice.job.po + ".pdf")):
-            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for PO" + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "Invoice for PO" + new_job.po + ".pdf"))
+        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for " + invoice.job.po + ".pdf")):
+            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for " + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "Invoice for " + new_job.po + ".pdf"))
 
-        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - PO" + invoice.job.po + ".pdf")):
-            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - PO" + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "INV" + invoice.number + " - PO" + new_job.po + ".pdf"))
+        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - " + invoice.job.po + ".pdf")):
+            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - " + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "INV" + invoice.number + " - " + new_job.po + ".pdf"))
 
         invoice.job = new_job
         invoice.save()
@@ -1515,7 +1515,7 @@ class Query(graphene.ObjectType):
         return Job.objects.filter(Q(stage="CAN") | Q(stage="FIN"))
         # return Job.objects.all()
 
-    jobs = graphene.List(JobType, OnlyMyobJobs = graphene.Boolean())
+    jobs = graphene.List(JobType, identifier = graphene.String(), OnlyMyobJobs = graphene.Boolean())
     next_id = graphene.String(item=graphene.String())
     job_all = DjangoFilterConnectionField(JobType)
     estimates = graphene.List(EstimateType)
@@ -1533,13 +1533,26 @@ class Query(graphene.ObjectType):
     remittance_advice = graphene.List(RemittanceType)
 
     @login_required
-    def resolve_jobs(root, info, OnlyMyobJobs=False, **kwargs):
+    def resolve_jobs(root, info, OnlyMyobJobs=False, identifier=False, **kwargs):
         # if order_by:
         #     if order_by == "job":    
         #         return Job.objects.all().order_by('po', 'sr', 'other_id')
             
         #     return Job.objects.all().order_by(order_by)
 
+        if identifier:
+            print(identifier)
+            if Job.objects.filter(po=identifier).exists():
+                return [Job.objects.get(po=identifier)]
+            
+            if Job.objects.filter(sr=identifier).exists():
+                return [Job.objects.get(sr=identifier)]
+            
+            if Job.objects.filter(other_id=identifier).exists():
+                return [Job.objects.get(other_id=identifier)]
+        
+            return None
+            
         if OnlyMyobJobs:
             return Job.objects.exclude(myob_uid=None).order_by('po', 'sr', 'other_id')
 
@@ -1651,6 +1664,8 @@ class UpdateJobStatus(graphene.Mutation):
     
         return self(success=True)
 
+
+
 class TestFeature(graphene.Mutation):
     success = graphene.Boolean()
 
@@ -1676,12 +1691,12 @@ class TestFeature(graphene.Mutation):
 class Mutation(graphene.ObjectType):
     test_feature = TestFeature.Field()
     update_job_status = UpdateJobStatus.Field()
-    upload_clients_csv = UploadClientsCSV.Field()
-    upload_client_regions_csv = UploadRegionsCSV.Field()
-    upload_client_contacts_csv = UploadClientContactsCSV.Field()
-    upload_locations_csv = UploadLocationsCSV.Field()
-    upload_jobs_csv = UploadJobsCSV.Field()
-    upload_invoice_details_csv = UploadInvoiceDetailsCSV.Field()
+    # upload_clients_csv = UploadClientsCSV.Field()
+    # upload_client_regions_csv = UploadRegionsCSV.Field()
+    # upload_client_contacts_csv = UploadClientContactsCSV.Field()
+    # upload_locations_csv = UploadLocationsCSV.Field()
+    # upload_jobs_csv = UploadJobsCSV.Field()
+    # upload_invoice_details_csv = UploadInvoiceDetailsCSV.Field()
     
     extract_remittance_advice = ExtractRemittanceAdvice.Field()
     extract_bill_details = ExtractBillDetails.Field()

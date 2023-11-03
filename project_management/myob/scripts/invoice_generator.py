@@ -27,7 +27,7 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
             if paths['estimate'] == "":
                 return {'success': False, 'message': "Bad Estimate Path"}
     else:
-        if paths['purchaseOrder'] == "":
+        if 'purchaseOrder' in paths and paths['purchaseOrder'] == "":
             return {'success': False, 'message': "Bad Purchase Order Path"}
     
 
@@ -101,6 +101,7 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
     data = stat_dec_pdf.getPage(0)
     dictionary = stat_dec_pdf.getFields()
 
+    # print(paths['approval'])
     if job.client.name == "BGIS":
         if (invoice['Subtotal'] > 500.00):
             approval_pdf = PdfFileReader(paths['approval'])
@@ -135,11 +136,7 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
                 ins_page = ''
             writer.appendPagesFromReader(stat_dec_pdf)
             writer.updatePageFormFieldValues(data, addData)
-    else:
-        purchaseOrder_pdf = PdfFileReader(paths['purchaseOrder'])
-        po = purchaseOrder_pdf.getPage(0)
-        writer.appendPagesFromReader(invoice_pdf)
-        writer.addPage(po)
+    elif  job.client.name == "CBRE Group Inc":
         for i in insurances:
             ins_page = PdfFileReader(i.filename)
             writer.appendPagesFromReader(ins_page)
@@ -147,7 +144,33 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
         writer.appendPagesFromReader(stat_dec_pdf)
         writer.updatePageFormFieldValues(data, addData)
 
-    invoiceFile = os.path.join(accounts_folder, "Invoice for PO" + job.po + ".pdf")
+        invoiceFile = os.path.join(accounts_folder, "Supporting Documents for " + job.po + ".pdf")
+        with open(invoiceFile, "wb") as edited:
+            writer.write(edited)
+            edited.close()
+
+        ## Check insurances expiry date
+        if date.today() == insurance_expiry_date:
+            return {'success': True, 'message': "Generated Successfully.\nWarning: Insurances Expire Today, Please update!"}
+
+        return {'success': True, 'message': "Generated Successfully"}
+
+    else:
+        writer.appendPagesFromReader(invoice_pdf)
+
+        if 'purchaseOrder' in paths:
+            purchaseOrder_pdf = PdfFileReader(paths['purchaseOrder'])
+            po = purchaseOrder_pdf.getPage(0)
+            writer.addPage(po)
+
+        for i in insurances:
+            ins_page = PdfFileReader(i.filename)
+            writer.appendPagesFromReader(ins_page)
+            ins_page = ''
+        writer.appendPagesFromReader(stat_dec_pdf)
+        writer.updatePageFormFieldValues(data, addData)
+
+    invoiceFile = os.path.join(accounts_folder, "Invoice for " + job.po + ".pdf")
     with open(invoiceFile, "wb") as edited:
         writer.write(edited)
         edited.close()

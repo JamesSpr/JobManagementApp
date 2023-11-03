@@ -36,19 +36,15 @@ class CheckJobExists(graphene.Mutation):
     @login_required
     def mutate(self, root, info, job):
         # print(job)
-        if "PO" in job or "SR" in job:
-            job = re.search("\d+", job)[0]  
-            if Job.objects.filter(po = job):
-                found_job = Job.objects.get(po = job)
-                return self(exists=True, name=str(found_job), job=found_job)
-            if Job.objects.filter(sr = job):
-                found_job = Job.objects.get(sr = job)
-                return self(exists=True, name=str(found_job), job=found_job)
-        else:
-            if Job.objects.filter(other_id = job):
-                found_job = Job.objects.get(other_id = job)
-                print(found_job)
-                return self(exists=True, name=str(found_job), job=found_job)
+        if Job.objects.filter(po = job).exists():
+            found_job = Job.objects.get(po = job)
+            return self(exists=True, name=str(found_job), job=found_job)
+        if Job.objects.filter(sr = job).exists():
+            found_job = Job.objects.get(sr = job)
+            return self(exists=True, name=str(found_job), job=found_job)
+        if Job.objects.filter(other_id = job).exists():
+            found_job = Job.objects.get(other_id = job)
+            return self(exists=True, name=str(found_job), job=found_job)
 
         return self(exists=False, name='')
 
@@ -117,7 +113,7 @@ class ProcessApproval(graphene.Mutation):
     @login_required
     def mutate(self, root, info, job, uid, quote, date):
         print(job, uid, quote, date)
-        if "PO" in job: job = job[2:]
+
         if not Job.objects.filter(po = job).exists():
             return self(success = False)
             
@@ -141,7 +137,7 @@ class ProcessApproval(graphene.Mutation):
 
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
             payload = json.dumps({
-                "Number": "PO" + job.po,
+                "Number": job.po,
                 "Name": (job.location.name + " " + job.title)[0:30],
                 "Description": str(job),
                 "IsHeader": False,

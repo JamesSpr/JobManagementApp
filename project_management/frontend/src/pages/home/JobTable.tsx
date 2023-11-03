@@ -79,9 +79,10 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                         res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
-                        res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
-                        res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
-                       
+                        if(res.edges[i].node['estimateSet'].length > 0) {
+                            res.edges[i].node['estimateSet'][0]['issueDate'] = res.edges[i].node['estimateSet'][0]?.issueDate ? new Date(res.edges[i].node['estimateSet'][0]?.issueDate).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['estimateSet'][0]['approvalDate'] = res.edges[i].node['estimateSet'][0]?.approvalDate ? new Date(res.edges[i].node['estimateSet'][0]?.approvalDate).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        }
                         if(res.edges[i].node['invoiceSet'].length > 0) {
                             res.edges[i].node['invoiceSet'][0]['dateCreated'] = res.edges[i].node['invoiceSet'][0]?.dateCreated ? new Date(res.edges[i].node['invoiceSet'][0]?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                             res.edges[i].node['invoiceSet'][0]['dateIssued'] = res.edges[i].node['invoiceSet'][0]?.dateIssued ? new Date(res.edges[i].node['invoiceSet'][0]?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
@@ -147,14 +148,14 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             size: 120,
         },
         {
-            accessorFn: row => row.po ? "PO" + row.po : ' ',
+            accessorFn: row => row.po ?? ' ',
             id: 'po',
             header: () => 'PO',
             footer: '',
             size: 100,
         },
         {
-            accessorFn: row => row.sr ? "SR" + row.sr : ' ',
+            accessorFn: row => row.sr ?? ' ',
             id: 'sr',
             header: () => 'SR',
             footer: '',
@@ -233,6 +234,14 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             size: 80,
         },
         {
+            accessorKey: 'inspectionDate',
+            header: () => 'Inspection Date',
+            cell: info => info.getValue(),
+            filterFn: inDateRange,
+            sortingFn: dateSort,
+            size: 120,
+        },
+        {
             accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
                 if(element.issueDate) {
                     return true;
@@ -242,6 +251,8 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'issueDate',
             header: () => 'Date Quote Sent',
             cell: info => info.getValue(),
+            filterFn: inDateRange,
+            sortingFn: dateSort,
             size: 140,
         },
         {
@@ -295,14 +306,6 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
             footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 140,
-        },
-        {
-            accessorKey: 'inspectionDate',
-            header: () => 'Inspection Date',
-            cell: info => info.getValue(),
-            filterFn: inDateRange,
-            sortingFn: dateSort,
-            size: 120,
         },
         {
             accessorKey: 'commencementDate',
@@ -483,8 +486,17 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             }
 
                 <Grid item xs={12}>
+
                     <Button
                         variant='outlined'
+                        onClick={() => setColumnFilters([])}
+                    >
+                        Reset Filter
+                    </Button>
+                    
+                    <Button
+                        variant='outlined'
+                        sx={{margin: '0px 5px 0px 5px'}}
                         onClick={() => setSorting([{"id": "id", "desc": true}])}
                     >
                         Reset Sort

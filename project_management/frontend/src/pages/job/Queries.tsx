@@ -196,13 +196,9 @@ export const jobQueryData = `
 `
 
 export const jobAllQuery = () => {
-    return `query jobAll($po:String!, $sr:String!, $otherId:String!){
-            job_all: jobAll(po: $po, sr: $sr, otherId: $otherId){
-                edges {
-                    node {
-                        ${jobQueryData}
-                    }
-                }
+    return `query jobs($identifier:String!){
+            jobs: jobs(identifier: $identifier){
+                ${jobQueryData}
             }
             __type(name:"JobStage"){
                 name

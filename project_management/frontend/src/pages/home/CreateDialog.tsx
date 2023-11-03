@@ -5,7 +5,7 @@ import { Button, Grid, Box, Dialog, DialogTitle, DialogContent, DialogActions, C
 import { useNavigate } from 'react-router-dom';
 import {InputField, SnackBar} from '../../components/Components';
 import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
-import { blankJob } from '../job/Queries';
+import { blankJob, jobQueryData } from '../job/Queries';
 import { ClientType, ContactType, JobType, LocationType, SnackType } from '../../types/types';
 
 const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, locations }: {
@@ -70,53 +70,7 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
                         message
                         updated
                         job {
-                            id
-                            po
-                            sr
-                            otherId
-                            client {
-                                name
-                                displayName
-                            }
-                            location {
-                                name
-                                region {
-                                    shortName
-                                }
-                            }
-                            building
-                            title
-                            priority
-                            dateIssued
-                            overdueDate
-                            inspectionDate
-                            commencementDate
-                            completionDate
-                            closeOutDate
-                            stage
-                            description
-                            detailedLocation
-                            estimateSet {
-                                id
-                                name
-                                description
-                                price
-                                issueDate
-                                approvalDate
-                                quoteBy {
-                                    id
-                                }
-                            }
-                            invoiceSet {
-                                number
-                                dateCreated
-                                dateIssued
-                                datePaid
-                            }
-                            billSet {
-                                amount
-                            }
-                            bsafeLink             
+                            ${jobQueryData}   
                         }
                     } 
                 }`,
@@ -130,7 +84,6 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
             if(res.success) {
                 setSnack({active: true, variant: 'success', message: 'Job Created Successfully'})
 
-                console.log( res.job)
                 res.job['dateIssued'] = res.job['dateIssued'] ? new Date(res.job['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                 res.job['overdueDate'] = res.job['overdueDate'] ? new Date(res.job['overdueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
 

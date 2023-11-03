@@ -151,7 +151,7 @@ const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, ne
                 </IconButton>
                 <h1
                     style={{display: 'inline-block', position: 'relative', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
-                    Accounts for PO{id}
+                    Accounts for {id}
                 </h1>
                 <IconButton onClick={handleClose} style={{float: 'right', padding: '0px 0px 4px 0px'}} >
                     <CloseIcon />

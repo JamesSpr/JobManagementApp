@@ -99,12 +99,12 @@ class CreateCompletionDocuments(graphene.Mutation):
 
         document = None
 
-        swms_filename = os.path.join(JOBS_PATH, str(job).strip(), "Documentation", "PO" + job.po + " - SWMS.docx")
-        pra_filename = os.path.join(JOBS_PATH, str(job).strip(), "Documentation", "PO" + job.po + " - PRA.docx")
-        sdkt_filename = os.path.join(JOBS_PATH, str(job).strip(), "Documentation", "PO" + job.po + " - SDKT.docx")
+        swms_filename = os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - SWMS.docx")
+        pra_filename = os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - PRA.docx")
+        sdkt_filename = os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - SDKT.docx")
 
         try:
-            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", "PO" + job.po + " - SWMS.docx")):
+            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - SWMS.docx")):
                 if not job.site_manager == None or not job.site_manager == "":
                     # Open SWMS
                     document = word.Documents.Add(Template=templates_path + "/SWMS.dotx", NewTemplate=False, DocumentType=0)
@@ -140,7 +140,7 @@ class CreateCompletionDocuments(graphene.Mutation):
                     del word
                     return self(success=False, message="Site Manager Required for SWMS Creation")
                 
-            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", "PO" + job.po + " - PRA.docx")):
+            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - PRA.docx")):
                 if not job.site_manager == None or not job.site_manager == "":
                     # Open PRA
                     document = word.Documents.Add(Template=templates_path + "/PRA.dotx", NewTemplate=False, DocumentType=0)
@@ -149,7 +149,7 @@ class CreateCompletionDocuments(graphene.Mutation):
                     site_manager = document.Bookmarks("SiteManager").Range
                     site_manager.Text = job.site_manager.first_name + " " + job.site_manager.last_name
                     project = document.Bookmarks("Project").Range
-                    project.Text = "PO" + job.po + " - " + job.title
+                    project.Text = job.po + " - " + job.title
                     date = document.Bookmarks("Date").Range
                     date.Text = job.commencement_date.strftime('%d/%m/%Y') if job.commencement_date and not job.commencement_date == "" else datetime.now().strftime('%d/%m/%Y')
                     address = document.Bookmarks("Address").Range
@@ -168,7 +168,7 @@ class CreateCompletionDocuments(graphene.Mutation):
                     del word
                     return self(success=False, message="Site Manager Required for Pre-Start Risk Assessment Creation")
             
-            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", "PO" + job.po + " - SDKT.docx")):
+            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - SDKT.docx")):
                 if not job.completion_date == "" or not job.completion_date == None:
                     # Open Service Docket
                     document = word.Documents.Add(Template=templates_path + "/SDKT.dotx", NewTemplate=False, DocumentType=0)

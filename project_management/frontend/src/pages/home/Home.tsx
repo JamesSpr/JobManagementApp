@@ -87,9 +87,12 @@ const HomePage = () => {
                         res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
-                        res.edges[i].node['estimateSet']['issueDate'] = res.edges[i].node['estimateSet']['issueDate'] ? new Date(res.edges[i].node['estimateSet']['issueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
-                        res.edges[i].node['estimateSet']['approvalDate'] = res.edges[i].node['estimateSet']['approvalDate'] ? new Date(res.edges[i].node['estimateSet']['approvalDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         
+                        if(res.edges[i].node['estimateSet'].length > 0) {
+                            res.edges[i].node['estimateSet'][0]['issueDate'] = res.edges[i].node['estimateSet'][0]?.issueDate ? new Date(res.edges[i].node['estimateSet'][0]?.issueDate).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                            res.edges[i].node['estimateSet'][0]['approvalDate'] = res.edges[i].node['estimateSet'][0]?.approvalDate ? new Date(res.edges[i].node['estimateSet'][0]?.approvalDate).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        }
+
                         if(res.edges[i].node['invoiceSet'].length > 0) {
                             res.edges[i].node['invoiceSet'][0]['dateCreated'] = res.edges[i].node['invoiceSet'][0]?.dateCreated ? new Date(res.edges[i].node['invoiceSet'][0]?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                             res.edges[i].node['invoiceSet'][0]['dateIssued'] = res.edges[i].node['invoiceSet'][0]?.dateIssued ? new Date(res.edges[i].node['invoiceSet'][0]?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
