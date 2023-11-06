@@ -54,12 +54,12 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
         // Remove unwanted values from job state for backend
         let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = newJob
         // Define formats before sending to backend
-        newJob['inspectionDate'] === "" ? jobInput['inspectionDate'] = null : null;
-        newJob['commencementDate'] === "" ? jobInput['commencementDate'] = null : null;
-        newJob['completionDate'] === "" ? jobInput['completionDate'] = null : null;
-        newJob['overdueDate'] === "" ? jobInput['overdueDate'] = null : null;
-        newJob['closeOutDate'] === "" ? jobInput['closeOutDate'] = null : null;
-        newJob['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
+        newJob['inspectionDate'] === "" ? jobinput.inspectionDate = null : null;
+        newJob['commencementDate'] === "" ? jobinput.commencementDate = null : null;
+        newJob['completionDate'] === "" ? jobinput.completionDate = null : null;
+        newJob['overdueDate'] === "" ? jobinput.overdueDate = null : null;
+        newJob['closeOutDate'] === "" ? jobinput.closeOutDate = null : null;
+        newJob['totalHours'] === null ? jobinput.totalHours = 0 : null;
 
         await axiosPrivate({
             method: 'post',

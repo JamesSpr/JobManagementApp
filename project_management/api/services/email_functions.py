@@ -1,7 +1,7 @@
 import graphene
 import os
-import pytz
 import math
+from django.utils import timezone
 from datetime import date, datetime
 from ..models import Job, Estimate, EstimateHeader
 from graphql_jwt.decorators import login_required
@@ -16,14 +16,33 @@ from accounts.models import CustomUser
 EMAIL_STYLE="""<body style="font-size:11pt; font-family:'Calibri'; color: rgb(0,0,0)">"""
 JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
 
-from exchangelib import Credentials, Account, DELEGATE, Configuration, Message, HTMLBody, FileAttachment
+from exchangelib import Credentials, Account, DELEGATE, Configuration, Message, HTMLBody, FileAttachment, CalendarItem
+from exchangelib.items import (
+    MeetingRequest,
+    MeetingCancellation,
+    SEND_TO_NONE,
+    SEND_TO_ALL_AND_SAVE_COPY,
+)
 import environ
 
 class ExchangeEmail():
 
     email_account = None
 
-    def send_email(self, to, cc, subject, body, attachments):
+    def create_calendar_item(self, start, end, subject, body, attendees=[]):
+        item = CalendarItem(
+            account = self.email_account,
+            folder = self.email_account.calendar,
+            start = start,
+            end = end,
+            subject = subject,
+            body = HTMLBody(body),
+            required_attendees=attendees
+        )
+
+        item.save(send_meeting_invitations=SEND_TO_NONE)
+
+    def send_email(self, to, cc, subject, body, attachments, settings):
         if self.email_account is None:
             raise RuntimeError("Email account not connected")
 
@@ -32,6 +51,7 @@ class ExchangeEmail():
             to_recipients=to,
             cc_recipients=cc,
             subject=subject,
+            importance="High" if settings.urgent else "Normal",
             body=HTMLBody(body + html_signature),
         )
 
@@ -68,19 +88,24 @@ class ExchangeEmail():
             access_type=DELEGATE,
         )
 
+class EmailSettings(graphene.InputObjectType):
+    urgent = graphene.Boolean()
+    calendar = graphene.Boolean()
+
 class AllocateJobEmail(graphene.Mutation):
     class Arguments:
         jobs = graphene.List(graphene.String)
         recipient = graphene.List(graphene.String)
         attachments = graphene.List(graphene.String)
         attachmentNames = graphene.List(graphene.String)
+        settings = EmailSettings()
 
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(cls, root, info, jobs, recipient, attachments, attachmentNames):
+    def mutate(cls, root, info, jobs, recipient, attachments, attachmentNames, settings):
         count = 0
 
         email = ExchangeEmail()
@@ -106,7 +131,6 @@ class AllocateJobEmail(graphene.Mutation):
                 poc = f"<b>POC</b>: {job.poc_name} - {job.poc_phone}<br>" if job.poc_name or job.poc_phone else ""
                 alt_poc = f"<b>ALT POC</b>: {job.alt_poc_name} - {job.alt_poc_phone}<br>" if job.alt_poc_name or job.alt_poc_phone else ""
                 bsafe_link = f"<br><a href='{job.bsafe_link}'>BSAFE Link</a><br>" if job.bsafe_link else ""
-                
                 
                 # mail = outlook.CreateItem(0)
                 mail_attachments = []
@@ -135,10 +159,8 @@ class AllocateJobEmail(graphene.Mutation):
 
                 priority_title =  " " + job.priority if not job.priority == "" else "" 
 
-
                 mailTo = recipient
                 mailSubject = f"NEW{priority_title}: {str(job)}"
-                
                 mailBody = f"""{EMAIL_STYLE}
                                 Hi {addressee},<br><br>
                                 We have received this new work request. Could you please inspect and provide details/quote<br><br>
@@ -166,9 +188,38 @@ class AllocateJobEmail(graphene.Mutation):
                                 <br>
                                 </body>
                                 """
+                
+                eventSubject = f"{str(job)}"
+                eventBody = f"""{EMAIL_STYLE}
+                                {job_string}
+                                {location}
+                                {priority}
+                                {received_date}
+                                {overdue_date}
+                                {detailed_locaton}
+                                {description}
+                                {special_instructions}
+                                <br>
+                                {requester}
+                                {poc}
+                                {alt_poc}
+                                <br>
+                                <b>Time Inspected</b>: 
+                                <br>
+                                <b>Time Started</b>: 
+                                <br>
+                                <b>Time Completed</b>: 
+                                <br>
+                                {bsafe_link}
+                                <br>
+                                </body>"""
+                
 
-                # mail.Send()
-                email.send_email(to=mailTo, cc=[], subject=mailSubject, body=mailBody, attachments=mail_attachments)
+                # mail.Send()        
+                if settings.calendar:
+                    eventDate = job.overdue_date.replace(tzinfo=timezone.get_current_timezone())
+                    email.create_calendar_item(start=eventDate, end=eventDate, subject=eventSubject, body=eventBody, attendees=mailTo)
+                email.send_email(to=mailTo, cc=[], subject=mailSubject, body=mailBody, attachments=mail_attachments, settings=settings)
                 count += 1
 
                 job = ""
@@ -238,7 +289,7 @@ class CloseOutEmail(graphene.Mutation):
 
         email.send_email(to=mailTo, cc=mailCC, subject=mailSubject, body=mailHTMLBody, attachments=[])
 
-        closeout_datetime = datetime.today().replace(tzinfo=pytz.UTC)
+        closeout_datetime = datetime.today().replace(tzinfo=timezone.get_current_timezone())
         job.close_out_date = closeout_datetime
         job.save()
 

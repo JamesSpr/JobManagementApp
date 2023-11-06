@@ -13,7 +13,7 @@ import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { openInNewTab } from '../../components/Functions';
-import { blankJob, jobAllQuery, jobQueryData } from './Queries';
+import { blankInvoice, blankJob, jobAllQuery, jobQueryData } from './Queries';
 import SettingsDialog from './SettingsDialog';
 import { ClientType, ContactType, EmployeeType, InvoiceType, JobStageType, JobType, LocationType, SnackType } from '../../types/types';
 
@@ -38,7 +38,6 @@ const JobPage = () => {
     const [clientContacts, setClientContacts] = useState<ContactType[]>([]);
     const [locations, setLocations] = useState<LocationType[]>([]);
     const [jobStages, setJobStages] = useState<JobStageType[]>([]);
-    const [invoice, setInvoice] = useState<InvoiceType>({number: '', dateCreated: '', dateIssued:'', datePaid:''});
     const [stage, setStage] = useState<string>('')
 
     const [waiting, setWaiting] = useState({'save': false, 'invoice': false, 'invoiceSubmit': false, 'closeout': false, 'myobLink': false, 'compDocs': false, 'generateInvoice': false});
@@ -127,7 +126,7 @@ const JobPage = () => {
 
                 setJob(job_data);
                 
-                setInvoice(job_data?.invoiceSet[0] ?? null);
+                // setInvoice(job_data?.invoiceSet[0] ?? null);
                 jobStages.map((values: JobStageType) => {
                     if(job_data.stage === values['name']){
                         setStage(values['description'])
@@ -165,7 +164,7 @@ const JobPage = () => {
         // Remove unwanted values from job state for backend
         let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
         // Define formats before sending to backend
-        job['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
+        job['totalHours'] === null ? jobinput.totalHours = 0 : null;
 
         await axiosPrivate({
             method: 'post',
@@ -272,7 +271,7 @@ const JobPage = () => {
                 // console.log(res.message)
                 const result = JSON.parse(res.message);
                 setSnack({active: true, variant:'success', message:result})
-                setInvoice(prev => ({...prev, "number": res.number, "dateCreated": new Date().toISOString().slice(0, 10)}))
+                setJob(prev => ({...prev, invoiceSet: [{...prev.invoiceSet[0], number: res.number, dateCreated: new Date().toISOString().slice(0, 10)}]}))
             }
             else {
                 // console.log(response);
@@ -302,7 +301,7 @@ const JobPage = () => {
                 variables: {
                     uid: auth?.myob.id,
                     invoices: [{
-                        "number": invoice.number,
+                        "number": job.invoiceSet[0].number,
                         "dateIssued": new Date().toISOString().slice(0, 10)
                     }],
                 },
@@ -312,7 +311,7 @@ const JobPage = () => {
 
             if(res.success){
                 setSnack({active: true, variant:'success', message:"Invoice Converted & Submission Tracked"})
-                setInvoice(prev => ({...prev, "dateIssued": new Date().toISOString().slice(0, 10)}))
+                setJob(prev => ({...prev, invoiceSet: [{...prev.invoiceSet[0], dateIssued: new Date().toISOString().slice(0, 10)}]}))
             }
             else {
                 setSnack({active: true, variant:'error', message: "Error: " + res.message})
@@ -581,17 +580,17 @@ const JobPage = () => {
                                 buttonVariant='outlined' 
                                 waiting={waiting.invoice} 
                                 onClick={handleCreateInvoice} 
-                                disabled={invoice !== null || job.closeOutDate === null || updateRequired || waiting.invoice} 
+                                disabled={job.invoiceSet[0] !== blankInvoice || job.closeOutDate === null || updateRequired || waiting.invoice} 
                             />
                             
                         </Box>
                     </Tooltip>
-                    <InputField disabled={true} width={150} type="text" label="MYOB Invoice" value={invoice?.number}/>
-                    <InputField disabled={true} width={150} type="date" label="Date Invoice Created" value={invoice?.dateCreated}/>
+                    <InputField disabled={true} width={150} type="text" label="MYOB Invoice" value={job.invoiceSet[0]?.number ?? ''}/>
+                    <InputField disabled={true} width={150} type="date" label="Date Invoice Created" value={job.invoiceSet[0]?.dateCreated ?? null}/>
                 </Grid>
                 <Grid item xs={12} > {/* Accounts */}
-                    <InputField disabled={true} width={150} type="date" label="Date Invoice Issued" value={invoice?.dateIssued}/>
-                    <InputField disabled={true} width={150} type="date" label="Date Invoice Paid" value={invoice?.datePaid}/>
+                    <InputField disabled={true} width={150} type="date" label="Date Invoice Issued" value={job.invoiceSet[0]?.dateIssued ?? null}/>
+                    <InputField disabled={true} width={150} type="date" label="Date Invoice Paid" value={job.invoiceSet[0]?.datePaid ?? null}/>
                 </Grid>
                 <Grid item xs={12}  style={{paddingTop: '0px'}}> {/* Accounts */}
                     {job.client.id !== "1" ?
@@ -600,7 +599,7 @@ const JobPage = () => {
                                 <Button variant="outlined" 
                                     style={{margin: '5px'}}
                                     onClick={() => handleSubmitInvoice()}
-                                    disabled={invoice === null || updateRequired || invoice.dateIssued !== null}
+                                    disabled={job.invoiceSet[0] === null || updateRequired || job?.invoiceSet[0]?.dateIssued !== null}
                                     >
                                     Submitted Invoice
                                 </Button>

@@ -159,7 +159,7 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
         writer.appendPagesFromReader(invoice_pdf)
 
         if 'purchaseOrder' in paths:
-            purchaseOrder_pdf = PdfFileReader(paths['purchaseOrder'])
+            purchaseOrder_pdf = PdfFileReader(paths['purchaseOrder'], strict=False)
             po = purchaseOrder_pdf.getPage(0)
             writer.addPage(po)
 
@@ -167,6 +167,7 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
             ins_page = PdfFileReader(i.filename)
             writer.appendPagesFromReader(ins_page)
             ins_page = ''
+
         writer.appendPagesFromReader(stat_dec_pdf)
         writer.updatePageFormFieldValues(data, addData)
 

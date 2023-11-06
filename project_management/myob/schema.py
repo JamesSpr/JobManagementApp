@@ -1744,7 +1744,7 @@ class myobCreateInvoice(graphene.Mutation):
                 if estimate.price > 500.00 and not all(found.values()):
                     return self(success=False, message="Error. Not all required files can be found:" + str(found))
             
-            elif job.client.name == "CBRE Group Inc":
+            elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
                 found = {"not_required": True}
                 paths = {"invoice": ""}
             else:
@@ -2521,7 +2521,7 @@ class generateInvoice(graphene.Mutation):
                 else:
                     found['approval'] = True
                     found['estimate'] = True
-            elif job.client.name == "CBRE Group Inc":
+            elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
                 found = {"invoice": False}
                 paths = {"invoice": ""}
 

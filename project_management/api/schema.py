@@ -1,7 +1,7 @@
 import os
 import shutil
 import re
-import pytz
+from django.utils import timezone
 import graphene
 from datetime import datetime
 from graphene_django import DjangoObjectType
@@ -308,7 +308,7 @@ class CreateJob(graphene.Mutation):
         input.po = re.sub('\D', "", input.po) 
         input.sr = re.sub('\D', "", input.sr) 
 
-        if (input.po != "" and Job.objects.filter(po=input.po).exists()) or (input.sr != "" and Job.objects.filter(sr=input.sr).exists()) or (input["other_id"] != "" and Job.objects.filter(other_id=input["other_id"]).exists()):
+        if (input.po != "" and Job.objects.filter(po=input.po).exists()) or (input.sr != "" and Job.objects.filter(sr=input.sr).exists()) or (input.other_id != "" and Job.objects.filter(other_id=input.other_id).exists()):
             if input.po != "" and Job.objects.filter(po=input.po).exists():
                 job = Job.objects.get(po=input.po, client=Client.objects.get(id=input.client.id))
                 print("PO Found", end=' - ')
@@ -323,8 +323,8 @@ class CreateJob(graphene.Mutation):
                 print("Updating " + str(job))
                 old_folder_name = str(job)
                 ## Only update fields that are empty
-                # job.client = Client.objects.get(id=input["client_id"]) if not job.client else job.client
-                if input["date_issued"]: job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC) if not job.date_issued else job.date_issued
+                # job.client = Client.objects.get(id=input.client_id) if not job.client else job.client
+                if input.date_issued: job.date_issued = input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0)) if not job.date_issued else job.date_issued
                 job.po = input.po if not job.po else job.po
                 job.sr = input.sr if not job.sr else job.sr
                 job.other_id = input.other_id if not job.other_id else job.other_id
@@ -334,16 +334,16 @@ class CreateJob(graphene.Mutation):
                 job.requester = ClientContact.objects.get(id=input.requester.id) if not job.requester else job.requester
                 job.priority = input.priority if not job.priority else job.priority
                 job.special_instructions = input.special_instructions if not job.special_instructions else job.special_instructions
-                job.poc_name = input["poc_name"] if not job.poc_name else job.poc_name 
-                job.poc_phone = input["poc_phone"] if not job.poc_phone else job.poc_phone
-                job.poc_email = input["poc_email"] if not job.poc_email else job.poc_email
-                job.alt_poc_name = input["alt_poc_name"] if not job.alt_poc_name else job.alt_poc_name
-                job.alt_poc_phone = input["alt_poc_phone"] if not job.alt_poc_phone else job.alt_poc_phone
-                job.alt_poc_email = input["alt_poc_email"] if not job.alt_poc_email else job.alt_poc_email
-                job.title = input["title"] if not job.title else job.title
-                job.description = input["description"] if not job.description else job.description
-                if input["overdue_date"]: job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC) if not input["overdue_date"] == None else job.overdue_date
-                job.bsafe_link = input["bsafe_link"] if not input["bsafe_link"] == "" else job.bsafe_link
+                job.poc_name = input.poc_name if not job.poc_name else job.poc_name 
+                job.poc_phone = input.poc_phone if not job.poc_phone else job.poc_phone
+                job.poc_email = input.poc_email if not job.poc_email else job.poc_email
+                job.alt_poc_name = input.alt_poc_name if not job.alt_poc_name else job.alt_poc_name
+                job.alt_poc_phone = input.alt_poc_phone if not job.alt_poc_phone else job.alt_poc_phone
+                job.alt_poc_email = input.alt_poc_email if not job.alt_poc_email else job.alt_poc_email
+                job.title = input.title if not job.title else job.title
+                job.description = input.description if not job.description else job.description
+                if input.overdue_date: job.overdue_date = input.overdue_date.replace(tzinfo=timezone.get_fixed_timezone(0)) if not input.overdue_date == None else job.overdue_date
+                job.bsafe_link = input.bsafe_link if not input.bsafe_link == "" else job.bsafe_link
                 job.save()
 
                 # Check folder name and rename if they're different
@@ -363,7 +363,7 @@ class CreateJob(graphene.Mutation):
 
             job = Job()
             job.client = Client.objects.get(id=input.client.id)
-            if input["date_issued"]: job.date_issued = input["date_issued"].replace(tzinfo=pytz.UTC)
+            if input.date_issued: job.date_issued = input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0))
             job.po = input.po
             job.sr = input.sr
             job.other_id = input.other_id
@@ -373,16 +373,16 @@ class CreateJob(graphene.Mutation):
             job.requester = ClientContact.objects.get(id=input.requester.id)
             job.priority = input.priority
             job.special_instructions = input.special_instructions
-            job.poc_name = input["poc_name"]
-            job.poc_phone = input["poc_phone"]
-            job.poc_email = input["poc_email"]
-            job.alt_poc_name = input["alt_poc_name"]
-            job.alt_poc_phone = input["alt_poc_phone"]
-            job.alt_poc_email = input["alt_poc_email"]
-            job.title = input["title"]
-            job.description = input["description"]
-            if input["overdue_date"]: job.overdue_date = input["overdue_date"].replace(tzinfo=pytz.UTC)
-            job.bsafe_link = input["bsafe_link"]
+            job.poc_name = input.poc_name
+            job.poc_phone = input.poc_phone
+            job.poc_email = input.poc_email
+            job.alt_poc_name = input.alt_poc_name
+            job.alt_poc_phone = input.alt_poc_phone
+            job.alt_poc_email = input.alt_poc_email
+            job.title = input.title
+            job.description = input.description
+            if input.overdue_date: job.overdue_date = input.overdue_date.replace(tzinfo=timezone.get_fixed_timezone(0))
+            job.bsafe_link = input.bsafe_link
             job.stage = 'INS'
             job.save()
 
@@ -494,72 +494,72 @@ class UpdateJob(graphene.Mutation):
 
         # Name Checking
         illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-        if [char for char in illegal_characters if char in input['title']]:
+        if [char for char in illegal_characters if char in input.title]:
             message = "Title can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input['building']]:
+        if [char for char in illegal_characters if char in input.building]:
             message = "Building can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input['po']]:
+        if [char for char in illegal_characters if char in input.po]:
             message = "PO can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input['sr']]:
+        if [char for char in illegal_characters if char in input.sr]:
             message = "SR can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input['other_id']]:
+        if [char for char in illegal_characters if char in input.other_id]:
             message = "Other ID can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        # if Job.objects.filter(po = input['po']).exists():
+        # if Job.objects.filter(po = input.po).exists():
         #     return self(success=False)
  
-        # if Job.objects.filter(sr = input['sr']).exists():
+        # if Job.objects.filter(sr = input.sr).exists():
         #     return self(success=False)
  
-        # if Job.objects.filter(other_id = input['other_id']).exists():
+        # if Job.objects.filter(other_id = input.other_id).exists():
         #     return self(success=False)
     
-        job = Job.objects.get(id=input['id'])
+        job = Job.objects.get(id=input.id)
         old_folder_name = str(job)
         job.client = None if input.client == None else Client.objects.get(id=input.client.id)
-        job.date_issued = None if input['date_issued'] == None else input['date_issued'].replace(tzinfo=pytz.UTC)
-        job.po = input['po']
-        job.sr = input['sr']
-        job.other_id = input['other_id']
+        job.date_issued = None if input.date_issued == None else input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.po = input.po
+        job.sr = input.sr
+        job.other_id = input.other_id
         job.location = None if input.location == None else Location.objects.get(id=input.location.id)
-        job.building = input['building']
-        job.detailed_location = input['detailed_location']
+        job.building = input.building
+        job.detailed_location = input.detailed_location
         job.requester = None if input.requester == None or input.requester.id == None else ClientContact.objects.get(id=input.requester.id)
-        job.priority = input['priority']
-        job.special_instructions = input['special_instructions']
-        job.poc_name = input['poc_name']
-        job.poc_phone = input['poc_phone']
-        job.poc_email = input['poc_email']
-        job.alt_poc_name = input['alt_poc_name']
-        job.alt_poc_phone = input['alt_poc_phone']
-        job.alt_poc_email = input['alt_poc_email']
-        job.title = input['title']
-        job.description = input['description']
+        job.priority = input.priority
+        job.special_instructions = input.special_instructions
+        job.poc_name = input.poc_name
+        job.poc_phone = input.poc_phone
+        job.poc_email = input.poc_email
+        job.alt_poc_name = input.alt_poc_name
+        job.alt_poc_phone = input.alt_poc_phone
+        job.alt_poc_email = input.alt_poc_email
+        job.title = input.title
+        job.description = input.description
         job.inspection_by = None if input.inspection_by == None or input.inspection_by.id == None else CustomUser.objects.get(id=input.inspection_by.id)
-        job.inspection_date = None if input['inspection_date'] == None else input['inspection_date'].replace(tzinfo=pytz.UTC)
-        job.inspection_notes = input['inspection_notes']
-        job.scope = input['scope']
+        job.inspection_date = None if input.inspection_date == None else input.inspection_date.replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.inspection_notes = input.inspection_notes
+        job.scope = input.scope
         job.site_manager = None if input.site_manager == None or input.site_manager.id == None else CustomUser.objects.get(id=input.site_manager.id)
-        job.commencement_date = None if input['commencement_date'] == None else input['commencement_date'].replace(tzinfo=pytz.UTC)
-        job.completion_date = None if input['completion_date'] == None else input['completion_date'].replace(tzinfo=pytz.UTC)
-        job.total_hours = 0.0 if input['total_hours'] == "" else str(input['total_hours'])
-        job.work_notes = input['work_notes']
-        job.overdue_date = None if input['overdue_date'] == None else input['overdue_date'].replace(tzinfo=pytz.UTC)
-        job.close_out_date = None if input['close_out_date'] == None else input['close_out_date'].replace(tzinfo=pytz.UTC)
-        job.work_type = input['work_type']
-        job.opportunity_type = input['opportunity_type']
-        job.cancelled = input['cancelled']
-        job.cancel_reason = input['cancel_reason']
-        job.bsafe_link = input['bsafe_link']
+        job.commencement_date = None if input.commencement_date == None else input.commencement_date.replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.completion_date = None if input.completion_date == None else input.completion_date.replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.total_hours = 0.0 if input.total_hours == "" else str(input.total_hours)
+        job.work_notes = input.work_notes
+        job.overdue_date = None if input.overdue_date == None else input.overdue_date.replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.close_out_date = None if input.close_out_date == None else input.close_out_date.replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.work_type = input.work_type
+        job.opportunity_type = input.opportunity_type
+        job.cancelled = input.cancelled
+        job.cancel_reason = input.cancel_reason
+        job.bsafe_link = input.bsafe_link
         job.save()
 
         if old_folder_name != str(job):
@@ -657,10 +657,15 @@ class CreateEstimate(graphene.Mutation):
 
         job = Job.objects.get(id=job_id)
 
-        # Name Checking
+        # Name hecking
         illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         if [char for char in illegal_characters if char in estimate.name]:
             return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
+
+        try:
+            os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
+        except:
+            return self(success=True, message="Job Folder Cannot Be Found. Please Check OneDrive")
 
         est = Estimate()
         est.quote_by = CustomUser.objects.get(id=estimate.quote_by.id)
@@ -694,8 +699,6 @@ class CreateEstimate(graphene.Mutation):
                     estItem.markup = item.markup
                     estItem.gross = item.gross
                     estItem.save()
-
-        os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
 
         return self(success=True, estimate=est)
 

@@ -90,7 +90,7 @@ export const blankJob: JobType = {
     cancelReason: '',
     estimateSet: [],
     billSet: [],
-    invoiceSet: [],
+    invoiceSet: [blankInvoice],
 }
 
 export const jobQueryData = `

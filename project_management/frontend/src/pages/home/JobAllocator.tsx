@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Checkbox, Dialog, DialogContent, FormControlLabel, FormGroup, Grid, IconButton } from "@mui/material"
+import { Button, Checkbox, Dialog, DialogContent, Divider, FormControlLabel, FormGroup, Grid, IconButton } from "@mui/material"
 import { EmployeeType, SnackType, User } from "../../types/types";
 import { RowModel, Table } from "@tanstack/react-table";
 import CloseIcon from '@mui/icons-material/Close';
@@ -28,6 +28,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
 
     const axiosPrivate = useAxiosPrivate();
     const [emailRecipients, setEmailRecipients] = useState<emailRecipientType>({})
+    const [emailSettings, setEmailSettings] = useState({urgent: false, calendar: false})
     const [waiting, setWaiting] = useState(false);
     
     const [uploadedFiles, setUploadedFiles] = useState<Blob[]>([]);
@@ -94,20 +95,19 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation allocateJobEmail ( 
-                    $jobs: [String]!, $recipient: [String]!,
-                    $attachments: [String]!,$attachmentNames: [String]!,
-                ) { email: allocateJobEmail(jobs: $jobs, recipient: $recipient, attachments: $attachments, attachmentNames: $attachmentNames ) {
-                    success
-                    message
-                }
-            }`,
-            variables: {
-                jobs: selectedRows,
-                recipient: recipients,
-                attachments: attachments,
-                attachmentNames: attachmentNames,
-            },
+                query: `mutation allocateJobEmail ($jobs: [String]!, $recipient: [String]!, $settings: EmailSettings!, $attachments: [String]!,$attachmentNames: [String]! ) { 
+                    email: allocateJobEmail(jobs: $jobs, recipient: $recipient, attachments: $attachments, attachmentNames: $attachmentNames, settings: $settings ) {
+                        success
+                        message
+                    }
+                }`,
+                variables: {
+                    jobs: selectedRows,
+                    recipient: recipients,
+                    settings: emailSettings,
+                    attachments: attachments,
+                    attachmentNames: attachmentNames,
+                },
         }),
         }).then((response) => {
             const res = response?.data?.data?.email;
@@ -190,8 +190,25 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
     return (
         <>
         <BasicDialog open={open} close={handleClose} maxWidth="sm" title="Email Job Details" center action={handleJobAllocation} waiting={waiting} >
-            <FormGroup sx={{marginTop: '5px'}}>
-                <Grid container spacing={1}>
+            {/* <FormGroup sx={{marginTop: '5px'}}> */}
+                <Grid container spacing={1} justifyContent='center'>
+                    <Grid item xs={4} md={4}>
+                        <FormControlLabel 
+                            control={<Checkbox checked={emailSettings.urgent} 
+                            onChange={() => setEmailSettings((prev: any) => ({...prev, urgent: !emailSettings.urgent}))}/>} 
+                            label="Urgent"
+                        />
+                    </Grid>
+                    <Grid item xs={4} md={4}>
+                        <FormControlLabel 
+                            control={<Checkbox checked={emailSettings.calendar} 
+                            onChange={() => setEmailSettings((prev: any) => ({...prev, calendar: !emailSettings.calendar}))}/>} 
+                            label="Calendar Event"
+                        />
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Divider>Recipients</Divider> 
+                    </Grid>
                     {
                         users?.map((user: EmployeeType) => {
                             if(user.firstName) {
@@ -206,7 +223,10 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                                 )
                             }
                         })
-                    }                        
+                    }
+                    <Grid item xs={12}>
+                        <Divider>Attachments</Divider> 
+                    </Grid>
                     <Grid item xs={12} >
                         <input type="file" id="attachments" 
                             // Accept: images, PDFs, word documents
@@ -249,33 +269,8 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                         </Grid>
                     }   
                 </Grid>
-            </FormGroup>
-            {/* <Grid container spacing={1} direction="column" alignContent="center">
-                <Grid item xs={12}>
-                    <ProgressButton 
-                        disabled={Object.values(emailRecipients).every(value => value === false) || waiting} 
-                        onClick={handleJobAllocation}
-                        name="Send Email"
-                        waiting={waiting}
-                    />
-                </Grid>
-            </Grid> */}
+            {/* </FormGroup> */}
         </BasicDialog>
-            {/* Email Options
-            <Dialog open={open} onClose={handleClose} maxWidth='sm'>
-                <DialogContent>
-                    <span className="dialogTitle">
-                        <h1
-                            style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
-                            Email Job Details
-                        </h1>
-                        <IconButton onClick={e => {handleClose(e, 'close')}} style={{float: 'right', right: '10px', padding: '0px 0px 4px 0px'}} >
-                            <CloseIcon />
-                        </IconButton>
-                    </span>
-                    
-                </DialogContent>
-            </Dialog> */}
         </>
     )
 }
