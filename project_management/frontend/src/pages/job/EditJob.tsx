@@ -164,7 +164,7 @@ const JobPage = () => {
         // Remove unwanted values from job state for backend
         let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
         // Define formats before sending to backend
-        job['totalHours'] === null ? jobinput.totalHours = 0 : null;
+        job['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
 
         await axiosPrivate({
             method: 'post',

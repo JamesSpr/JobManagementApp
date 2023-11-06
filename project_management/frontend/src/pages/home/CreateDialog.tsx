@@ -54,12 +54,12 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
         // Remove unwanted values from job state for backend
         let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = newJob
         // Define formats before sending to backend
-        newJob['inspectionDate'] === "" ? jobinput.inspectionDate = null : null;
-        newJob['commencementDate'] === "" ? jobinput.commencementDate = null : null;
-        newJob['completionDate'] === "" ? jobinput.completionDate = null : null;
-        newJob['overdueDate'] === "" ? jobinput.overdueDate = null : null;
-        newJob['closeOutDate'] === "" ? jobinput.closeOutDate = null : null;
-        newJob['totalHours'] === null ? jobinput.totalHours = 0 : null;
+        newJob['inspectionDate'] === "" ? jobInput.inspectionDate = null : null;
+        newJob['commencementDate'] === "" ? jobInput.commencementDate = null : null;
+        newJob['completionDate'] === "" ? jobInput.completionDate = null : null;
+        newJob['overdueDate'] === "" ? jobInput.overdueDate = null : null;
+        newJob['closeOutDate'] === "" ? jobInput.closeOutDate = null : null;
+        newJob['totalHours'] === null ? jobInput.totalHours = 0 : null;
 
         await axiosPrivate({
             method: 'post',
@@ -70,7 +70,53 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
                         message
                         updated
                         job {
-                            ${jobQueryData}   
+                            id
+                            po
+                            sr
+                            otherId
+                            client {
+                                name
+                                displayName
+                            }
+                            location {
+                                name
+                                region {
+                                    shortName
+                                }
+                            }
+                            building
+                            title
+                            priority
+                            dateIssued
+                            overdueDate
+                            inspectionDate
+                            commencementDate
+                            completionDate
+                            closeOutDate
+                            stage
+                            description
+                            detailedLocation
+                            estimateSet {
+                                id
+                                name
+                                description
+                                price
+                                issueDate
+                                approvalDate
+                                quoteBy {
+                                    id
+                                }
+                            }
+                            invoiceSet {
+                                number
+                                dateCreated
+                                dateIssued
+                                datePaid
+                            }
+                            billSet {
+                                amount
+                            }
+                            bsafeLink
                         }
                     } 
                 }`,
@@ -84,6 +130,7 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
             if(res.success) {
                 setSnack({active: true, variant: 'success', message: 'Job Created Successfully'})
 
+                console.log(res)
                 res.job['dateIssued'] = res.job['dateIssued'] ? new Date(res.job['dateIssued']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                 res.job['overdueDate'] = res.job['overdueDate'] ? new Date(res.job['overdueDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
 
@@ -97,6 +144,7 @@ const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, l
                     }))
                 }
                 else {
+                    console.log(res.job)
                     setJobs(prev => [...prev, res.job])
                 }
                 setCreatedJob(res.job);

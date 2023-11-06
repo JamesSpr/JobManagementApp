@@ -198,6 +198,7 @@ class Job(models.Model):
             self.stage = "PRO"
         elif Invoice.objects.filter(job=self).exists():
             inv = Invoice.objects.filter(job=self)[0]
+
             if inv.date_paid:
                 self.stage = "FIN"
             elif inv.date_issued:

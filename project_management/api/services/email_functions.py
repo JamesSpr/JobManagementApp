@@ -30,17 +30,69 @@ class ExchangeEmail():
     email_account = None
 
     def create_calendar_item(self, start, end, subject, body, attendees=[]):
-        item = CalendarItem(
-            account = self.email_account,
-            folder = self.email_account.calendar,
-            start = start,
-            end = end,
-            subject = subject,
-            body = HTMLBody(body),
-            required_attendees=attendees
-        )
+        if self.email_account.calendar.filter(subject=subject).exists():
+            item = self.email_account.calendar.get(subject=subject)
+            item.start = start
+            item.end = end
+            item.body = HTMLBody(body)
+            item.required_attendees = attendees
+        else:
+            item = CalendarItem(
+                account = self.email_account,
+                folder = self.email_account.calendar,
+                start = start,
+                end = end,
+                subject = subject,
+                body = HTMLBody(body),
+                required_attendees=attendees
+            )
 
         item.save(send_meeting_invitations=SEND_TO_NONE)
+
+    def update_calendar_event(self, old, job, old_date, new_date):
+        for calendar_item in self.email_account.calendar.filter(subject=old):
+            job_string = f"<b>Job</b>: {str(job)}<br>"
+            location = f"<b>Location</b>: {job.location.name}, {job.location.address}, {job.location.locality} {job.location.state} {job.location.postcode}<br>"
+            description = f"<b>Description</b>: {job.description}<br>".replace('\n', '<br>') if job.description else ""
+            priority = f"<b>Priority</b>: {job.priority} <br>" if job.priority else ""
+            received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} <br>" if job.date_issued else ""
+            overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y @ %H:%M')} <br>" if job.overdue_date else ""
+            special_instructions = f"<b>Special Instructions</b>: {job.special_instructions}<br>" if job.special_instructions else ""
+            detailed_locaton = f"<b>Detailed Location</b>: {job.detailed_location}<br>" if job.detailed_location else ""
+            requester = f"<b>Requestor</b>: {job.requester.first_name} {job.requester.last_name} - {job.requester.phone}<br>" if job.requester.first_name else ""
+            poc = f"<b>POC</b>: {job.poc_name} - {job.poc_phone}<br>" if job.poc_name or job.poc_phone else ""
+            alt_poc = f"<b>ALT POC</b>: {job.alt_poc_name} - {job.alt_poc_phone}<br>" if job.alt_poc_name or job.alt_poc_phone else ""
+            bsafe_link = f"<br><a href='{job.bsafe_link}'>BSAFE Link</a><br>" if job.bsafe_link else ""
+            event_body = f"""{EMAIL_STYLE}
+                                {job_string}
+                                {location}
+                                {priority}
+                                {received_date}
+                                {overdue_date}
+                                {detailed_locaton}
+                                {description}
+                                {special_instructions}
+                                <br>
+                                {requester}
+                                {poc}
+                                {alt_poc}
+                                <br>
+                                <b>Time Inspected</b>: 
+                                <br>
+                                <b>Time Started</b>: 
+                                <br>
+                                <b>Time Completed</b>: 
+                                <br>
+                                {bsafe_link}
+                                <br>
+                                </body>"""
+
+            if calendar_item.start == old_date:
+                calendar_item.start = new_date
+                calendar_item.end = new_date
+                calendar_item.subject = str(job)
+                calendar_item.body = HTMLBody(event_body)
+                calendar_item.save(send_meeting_invitations=SEND_TO_NONE)
 
     def send_email(self, to, cc, subject, body, attachments, settings):
         if self.email_account is None:
@@ -51,7 +103,7 @@ class ExchangeEmail():
             to_recipients=to,
             cc_recipients=cc,
             subject=subject,
-            importance="High" if settings.urgent else "Normal",
+            importance="High" if settings and settings.urgent else "Normal",
             body=HTMLBody(body + html_signature),
         )
 
@@ -287,7 +339,7 @@ class CloseOutEmail(graphene.Mutation):
         <br>
         </body>"""
 
-        email.send_email(to=mailTo, cc=mailCC, subject=mailSubject, body=mailHTMLBody, attachments=[])
+        email.send_email(to=mailTo, cc=mailCC, subject=mailSubject, body=mailHTMLBody, attachments=[], settings=None)
 
         closeout_datetime = datetime.today().replace(tzinfo=timezone.get_current_timezone())
         job.close_out_date = closeout_datetime

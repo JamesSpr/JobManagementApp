@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404
 from django.db import connection
 from accounts.models import CustomUser
 from api.services.create_completion_documents import CreateCompletionDocuments
-from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote
+from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
 from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
 # from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 # from .services.data_extraction import ExtractBillDetails
@@ -196,6 +196,7 @@ class InvoiceUpdateInput(graphene.InputObjectType):
     date_created = graphene.Date()
     date_issued = graphene.Date()
     date_paid = graphene.Date()
+    job_id = graphene.String()
 
 class ClientContactInput(graphene.InputObjectType):
     id = graphene.String(required=False)
@@ -297,16 +298,17 @@ class CreateJob(graphene.Mutation):
             missing = True
             missingItems.append(" Title")
 
+        if input.po and input.po[0].isdigit():
+            input.po = f"PO{input.po}"
+        if input.sr and input.sr[0].isdigit():
+            input.sr = f"SR{input.sr}"
+
         if missing:
             return self(success=False, message=missingItems)
 
         # Clean the input elements
         for (key, value) in input.items():
             input[key] = value.strip() if type(input[key]) == str else value
-
-        # Remove letters from po and sr
-        input.po = re.sub('\D', "", input.po) 
-        input.sr = re.sub('\D', "", input.sr) 
 
         if (input.po != "" and Job.objects.filter(po=input.po).exists()) or (input.sr != "" and Job.objects.filter(sr=input.sr).exists()) or (input.other_id != "" and Job.objects.filter(other_id=input.other_id).exists()):
             if input.po != "" and Job.objects.filter(po=input.po).exists():
@@ -383,15 +385,8 @@ class CreateJob(graphene.Mutation):
             job.description = input.description
             if input.overdue_date: job.overdue_date = input.overdue_date.replace(tzinfo=timezone.get_fixed_timezone(0))
             job.bsafe_link = input.bsafe_link
-            job.stage = 'INS'
+            job.total_hours = "0.00"
             job.save()
-
-            # Create estimate for job
-            # estimate = Estimate.objects.get()
-            # estimate.job_id = job
-            # estimate.name = str(job).split('-')[0].strip()
-            # estimate.description = "Default Quote"
-            # estimate.save()
 
             ## Create new folder
             folder_name = str(job)
@@ -406,20 +401,8 @@ class CreateJob(graphene.Mutation):
                 if not os.path.exists(os.path.join(new_folder, folder)):
                     os.mkdir(os.path.join(new_folder, folder))
 
-            print("Folder Created", new_folder)       
-            # try:
-            #     os.mkdir(new_folder)
-            #     os.mkdir(os.path.join(new_folder, "Photos"))
-            #     os.mkdir(os.path.join(new_folder, "Photos", "Inspection"))
-            #     os.mkdir(os.path.join(new_folder, "Photos", "Onsite"))
-            #     os.mkdir(os.path.join(new_folder, "Estimates"))
-            #     os.mkdir(os.path.join(new_folder, "Documentation"))
-            #     os.mkdir(os.path.join(new_folder, "Accounts"))
-            #     os.mkdir(os.path.join(new_folder, "Accounts", "Aurify"))
-            #     print("Folder Created", new_folder)
-            # except FileExistsError:
-            #     print("Folder already exists")
-       
+            print("Folder Created", new_folder)
+
         return self(job=job, success=True, message=message, updated=updated)
 
 class CheckFolder(graphene.Mutation):
@@ -447,18 +430,6 @@ class CheckFolder(graphene.Mutation):
                 os.mkdir(os.path.join(new_folder, folder))
 
         return self(success=True, message="Folder Created")
-
-        # try:
-        #     os.mkdir(new_folder)
-        #     os.mkdir(os.path.join(new_folder, "Photos"))
-        #     os.mkdir(os.path.join(new_folder, "Photos", "Inspection"))
-        #     os.mkdir(os.path.join(new_folder, "Photos", "Onsite"))
-        #     os.mkdir(os.path.join(new_folder, "Estimates"))
-        #     os.mkdir(os.path.join(new_folder, "Documentation"))
-        #     os.mkdir(os.path.join(new_folder, "Accounts"))
-        #     os.mkdir(os.path.join(new_folder, "Accounts", "Aurify"))
-        # except FileExistsError:
-        #     return self(success=False, message="Folder already exists")
 
 class DeleteJob(graphene.Mutation):
     class Arguments:
@@ -522,9 +493,13 @@ class UpdateJob(graphene.Mutation):
  
         # if Job.objects.filter(other_id = input.other_id).exists():
         #     return self(success=False)
-    
+
         job = Job.objects.get(id=input.id)
-        old_folder_name = str(job)
+
+        email_update_required = not job == input
+        old_job_str = str(job)
+        old_job_date = job.overdue_date.replace(tzinfo=timezone.get_current_timezone())
+
         job.client = None if input.client == None else Client.objects.get(id=input.client.id)
         job.date_issued = None if input.date_issued == None else input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0))
         job.po = input.po
@@ -562,8 +537,17 @@ class UpdateJob(graphene.Mutation):
         job.bsafe_link = input.bsafe_link
         job.save()
 
-        if old_folder_name != str(job):
-            old_folder = os.path.join(main_folder_path, old_folder_name)
+        # Change Calendar Event
+        if email_update_required:
+            email = ExchangeEmail()
+            email.connect()
+            if email.email_account.calendar.filter(subject=old_job_str).exists():
+                email.update_calendar_event(old=old_job_str, job=job,
+                                            old_date=old_job_date, 
+                                            new_date=job.overdue_date.replace(tzinfo=timezone.get_current_timezone()))
+
+        if old_job_str != str(job):
+            old_folder = os.path.join(main_folder_path, old_job_str)
             new_folder = os.path.join(main_folder_path, str(job))
             try:
                 os.rename(old_folder, new_folder)
@@ -1357,6 +1341,7 @@ class UpdateInvoice(graphene.Mutation):
         if invoice.date_issued: inv.date_issued = invoice.date_issued
         if invoice.date_paid: inv.date_paid = invoice.date_paid
         if invoice.myob_uid: inv.myob_uid = invoice.myob_uid
+        if invoice.job_id: inv.job = Job.objects.get(id=invoice.job_id)
         inv.save()
 
         return self(success=True)

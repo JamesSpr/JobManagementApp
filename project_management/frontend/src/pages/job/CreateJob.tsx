@@ -137,12 +137,12 @@ const CreateJob = () => {
         // Remove unwanted values from job state for backend
         let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = newJob
         // Define formats before sending to backend
-        newJob['inspectionDate'] === "" ? jobinput.inspectionDate = null : null;
-        newJob['commencementDate'] === "" ? jobinput.commencementDate = null : null;
-        newJob['completionDate'] === "" ? jobinput.completionDate = null : null;
-        newJob['overdueDate'] === "" ? jobinput.overdueDate = null : null;
-        newJob['closeOutDate'] === "" ? jobinput.closeOutDate = null : null;
-        newJob['totalHours'] === null ? jobinput.totalHours = 0 : null;
+        newJob['inspectionDate'] === "" ? jobInput.inspectionDate = null : null;
+        newJob['commencementDate'] === "" ? jobInput.commencementDate = null : null;
+        newJob['completionDate'] === "" ? jobInput.completionDate = null : null;
+        newJob['overdueDate'] === "" ? jobInput.overdueDate = null : null;
+        newJob['closeOutDate'] === "" ? jobInput.closeOutDate = null : null;
+        newJob['totalHours'] === null ? jobInput.totalHours = 0 : null;
 
         await axiosPrivate({
             method: 'post',
@@ -153,7 +153,57 @@ const CreateJob = () => {
                         message
                         updated
                         job {
-                            ${jobQueryData}                    
+                            job {
+                                id
+                                po
+                                sr
+                                otherId
+                                client {
+                                    name
+                                    displayName
+                                }
+                                location {
+                                    name
+                                    region {
+                                        shortName
+                                    }
+                                }
+                                building
+                                title
+                                priority
+                                dateIssued
+                                overdueDate
+                                inspectionDate
+                                commencementDate
+                                completionDate
+                                closeOutDate
+                                stage
+                                description
+                                detailedLocation
+                                estimateSet {
+                                    id
+                                    name
+                                    description
+                                    price
+                                    issueDate
+                                    approvalDate
+                                    quoteBy {
+                                        id
+                                    }
+                                }
+                                invoiceSet {
+                                    number
+                                    dateCreated
+                                    dateIssued
+                                    datePaid
+                                }
+                                billSet {
+                                    amount
+                                }
+                                bsafeLink
+                                    }
+                                } 
+                            }             
                         }
                     } 
                 }`,
