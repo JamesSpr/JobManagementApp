@@ -35,9 +35,6 @@ const SideBar = () => {
                             openInNewTab('/' + text.toLowerCase());
                         } 
                     }}>
-                    {/* <ListItemIcon> */}
-                        {/* {index % 2 === 0 ? <InboxIcon /> : <MailIcon />} */}
-                    {/* </ListItemIcon> */}
                     <ListItemText primary={text} />
                     </ListItemButton>
                 </ListItem>
@@ -55,9 +52,6 @@ const SideBar = () => {
                             openInNewTab('/' + text.toLowerCase());
                         } 
                     }}>
-                    {/* <ListItemIcon> */}
-                        {/* {index % 2 === 0 ? <InboxIcon /> : <MailIcon />} */}
-                    {/* </ListItemIcon> */}
                     <ListItemText primary={text} />
                     </ListItemButton>
                 </ListItem>

@@ -271,7 +271,7 @@ const JobPage = () => {
                 // console.log(res.message)
                 const result = JSON.parse(res.message);
                 setSnack({active: true, variant:'success', message:result})
-                setJob(prev => ({...prev, invoiceSet: [{...prev.invoiceSet[0], number: res.number, dateCreated: new Date().toISOString().slice(0, 10)}]}))
+                setJob(prev => ({...prev, invoiceSet: [{...prev.invoiceSet[0], dateIssued: '', datePaid: '', number: res.number, dateCreated: new Date().toISOString().slice(0, 10)}]}))
             }
             else {
                 // console.log(response);
@@ -580,7 +580,7 @@ const JobPage = () => {
                                 buttonVariant='outlined' 
                                 waiting={waiting.invoice} 
                                 onClick={handleCreateInvoice} 
-                                disabled={job.invoiceSet[0] !== blankInvoice || job.closeOutDate === null || updateRequired || waiting.invoice} 
+                                disabled={(job.invoiceSet.length > 0 && job.invoiceSet[0] !== blankInvoice) || job.closeOutDate === null || updateRequired || waiting.invoice} 
                             />
                             
                         </Box>

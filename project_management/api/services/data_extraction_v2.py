@@ -200,18 +200,18 @@ class ExtractBillDetails(graphene.Mutation):
 
             # If more than one date is found from the beginning, narrow down the search to look for an invoice date specifically. 
             if(len(date_regex) == 1):
-                date = try_parsing_date(date_regex[0].capitalize(), debug)
+                date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
                 data.update({'invoiceDate': date})
 
             elif(len(date_regex) > 1):
                 # Remove future dates that could be the due date.
                 for d in date_regex:
-                    if datetime.strptime(d, "%d/%m/%Y") > datetime.today() + timedelta(days=1):
+                    if try_parsing_date(d) > datetime.today() + timedelta(days=1):
                         date_regex.remove(d)
 
                 if debug: print("Date:", date_regex)
                 if(len(date_regex) == 1):
-                    date = try_parsing_date(date_regex[0].capitalize(), debug)
+                    date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
                     data.update({'invoiceDate': date})
 
                 else:
@@ -221,7 +221,7 @@ class ExtractBillDetails(graphene.Mutation):
                     date_regex = list(date_set)
                     if debug: print("Date:", date_regex)
                     if(len(date_regex) == 1):
-                        date = try_parsing_date(date_regex[0].capitalize(), debug)
+                        date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
                         data.update({'invoiceDate': date})
                 
 
@@ -249,6 +249,17 @@ def abn_format(text):
 
 
 def try_parsing_date(text, debug=False):
+    text = text.strip().title()
+    if debug: print("Parsing:", text)
+    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %B %Y', '%d %b %Y', '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            pass
+
+    return None
+
+def try_parsing_date_to_string(text, debug=False):
     text = text.strip().title()
     if debug: print("Parsing:", text)
     for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %B %Y', '%d %b %Y', '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):

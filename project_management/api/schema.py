@@ -498,7 +498,7 @@ class UpdateJob(graphene.Mutation):
 
         email_update_required = not job == input
         old_job_str = str(job)
-        old_job_date = job.overdue_date.replace(tzinfo=timezone.get_current_timezone())
+        if job.overdue_date: old_job_date = job.overdue_date.replace(tzinfo=timezone.get_current_timezone())
 
         job.client = None if input.client == None else Client.objects.get(id=input.client.id)
         job.date_issued = None if input.date_issued == None else input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0))

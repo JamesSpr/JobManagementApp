@@ -70,10 +70,10 @@ function LoginPage() {
             }).then((response) => {
                 console.log(response);
                 const TA = response?.data?.data?.tokenAuth;
-                setWaiting(false);
                 if(!TA?.success) {
                     setPassword('');
-
+                    setWaiting(false);
+                    
                     if(TA?.errors.nonFieldErrors) {
                         setErrorMessage(TA.errors.nonFieldErrors[0]?.message);
                     } else {

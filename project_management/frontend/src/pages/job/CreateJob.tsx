@@ -153,57 +153,33 @@ const CreateJob = () => {
                         message
                         updated
                         job {
-                            job {
+                            id
+                            po
+                            sr
+                            otherId
+                            client {
                                 id
-                                po
-                                sr
-                                otherId
-                                client {
-                                    name
-                                    displayName
-                                }
-                                location {
-                                    name
-                                    region {
-                                        shortName
-                                    }
-                                }
-                                building
-                                title
-                                priority
-                                dateIssued
-                                overdueDate
-                                inspectionDate
-                                commencementDate
-                                completionDate
-                                closeOutDate
-                                stage
-                                description
-                                detailedLocation
-                                estimateSet {
-                                    id
-                                    name
-                                    description
-                                    price
-                                    issueDate
-                                    approvalDate
-                                    quoteBy {
-                                        id
-                                    }
-                                }
-                                invoiceSet {
-                                    number
-                                    dateCreated
-                                    dateIssued
-                                    datePaid
-                                }
-                                billSet {
-                                    amount
-                                }
-                                bsafeLink
-                                    }
-                                } 
-                            }             
+                            }
+                            location {
+                                id
+                            }
+                            requester {
+                                id
+                            }
+                            building
+                            title
+                            priority
+                            dateIssued
+                            overdueDate
+                            inspectionDate
+                            commencementDate
+                            completionDate
+                            closeOutDate
+                            stage
+                            description
+                            detailedLocation
+                            bsafeLink
+                             
                         }
                     } 
                 }`,
