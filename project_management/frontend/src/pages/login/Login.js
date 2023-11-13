@@ -20,7 +20,7 @@ function LoginPage() {
     const [registering, setRegistering] = useState(false);
     const [forgottenPassword, setForgottenPassword] = useState(false);
 
-    if(auth.user) {
+    if(auth?.user) {
         navigate(from, { replace: true });
     }
     

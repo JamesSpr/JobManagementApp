@@ -152,7 +152,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                         },
                 }),
                 }).then((response) => {
-                    // console.log(response)
+                    console.log(response)
                     const res = response?.data?.data?.process_payment; 
                     
                     setData([]);

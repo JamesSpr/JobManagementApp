@@ -112,7 +112,6 @@ class UpdateUser(graphene.Mutation):
         staff = graphene.Boolean()
         myobAccess = graphene.Boolean()
 
-
     user = graphene.Field(CustomUserType)
     success = graphene.Boolean()
 
@@ -121,18 +120,18 @@ class UpdateUser(graphene.Mutation):
     def mutate (self, root, info, id, first_name=None, last_name=None, email=None, phone=None, position=None, default_pagination_amount=None, role=None, staff=None, myobAccess=None):
         if CustomUser.objects.filter(pk=id).exists():
             user = CustomUser.objects.get(pk=id)
-            if first_name: user.first_name = first_name
-            if last_name: user.last_name = last_name
-            if phone: user.phone = phone
-            if position: user.position = position
-            if default_pagination_amount: user.default_pagination_amount = default_pagination_amount
+            if not first_name == None: user.first_name = first_name
+            if not last_name == None: user.last_name = last_name
+            if not phone == None: user.phone = phone
+            if not position == None: user.position = position
+            if not default_pagination_amount == None: user.default_pagination_amount = default_pagination_amount
             user.is_active = True
             if not staff == None: user.is_staff = staff
-            if email:
+            if not email == None:
                 user.email = email
                 user.username = email
-            if role: user.role = role
-            if myobAccess: user.myob_access = myobAccess
+            if not role == None: user.role = role
+            if not myobAccess == None: user.myob_access = myobAccess
             user.save()
 
             return self(success=True, user=user)

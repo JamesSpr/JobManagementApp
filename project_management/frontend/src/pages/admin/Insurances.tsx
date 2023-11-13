@@ -7,6 +7,7 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
 import CloseIcon from '@mui/icons-material/Close';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import { CheckboxCell, EditableCell, EditableDateCell } from "../../components/TableHelpers";
 
 const Insurances = ({insurances, setInsurances, setUpdateRequired}: {
     insurances: InsuranceType[],
@@ -24,68 +25,36 @@ const Insurances = ({insurances, setInsurances, setUpdateRequired}: {
         console.log(thumbnail)
     }
 
-    const EditableCell = ({ getValue, row: { index }, column: { id }, table }: 
-        { getValue: any, row: { index: any }, column: { id: any }, table: any }) => {
-        const initialValue = getValue()
-        // We need to keep and update the state of the cell normally
-        const [value, setValue] = useState(initialValue)
-
-        // When the input is blurred, we'll call our table meta's updateData function
-        const onBlur = () => {
-            if(initialValue !== value) {
-                setUpdateRequired(true);
-                table.options.meta?.updateData(index, id, value)
-            }
-        }
-
-        // If the initialValue is changed external, sync it up with our state
-        useEffect(() => {
-            setValue(initialValue)
-        }, [initialValue])
-
-        return (
-            <input className="dataTableInput" value={value as any} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
-        )
-    }
 
     const columns = useMemo<ColumnDef<InsuranceType>[]>(() => [
         {
             accessorKey: 'description',
             header: () => "Description",
-            cell: EditableCell,
-            // cell: info => info.getValue(),
+            cell: props => EditableCell({...props, setUpdateRequired}),
             size: 300,
         },
         {
             accessorKey: 'issueDate',
             header: () => "Issue Date",
-            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue() as string)) : '',
+            cell: props => EditableDateCell({...props, setUpdateRequired}),
             size: 150,
         },
         {
             accessorKey: 'startDate',
             header: () => "Start Date",
-            cell: info => info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue() as string)) : '',
+            cell: props => EditableDateCell({...props, setUpdateRequired}),
             size: 150,
         },
         {
             accessorKey: 'expiryDate',
             header: () => "Expiry Date",
-            cell: info => (<div style={{background: (new Date(info.getValue() as string) < new Date()) && info?.row?.original?.active ? 'red' : ''}}>
-                {info.getValue() ? new Intl.DateTimeFormat(['en-AU']).format(new Date(info.getValue() as string)) : ''}
-            </div>),
+            cell: props => EditableDateCell({...props, setUpdateRequired}),
             size: 150,
         },
         {
             accessorKey: 'active',
             header: () => "Active",
-            cell: info => {
-                const [checked, setChecked] = useState(info.getValue());
-
-                return (
-                    <input type="checkbox" checked={checked as boolean} onChange={() => {setChecked(!checked)}} /> 
-                )
-            },
+            cell: props => CheckboxCell({...props, setUpdateRequired}),
             size: 80,
         },
         {

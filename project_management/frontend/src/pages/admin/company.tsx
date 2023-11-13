@@ -2,11 +2,14 @@ import React, { FC, ReactNode, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import useAuth from "../auth/useAuth";
 import { Box, Tab, Tabs, Grid } from '@mui/material';
+import SaveIcon from '@mui/icons-material/Save';
 
-import Insurances from "./Insurances";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
-import { EmployeeType, InsuranceType, MYOBUserType } from "../../types/types";
+import Insurances from "./Insurances";
 import Employees from "./Employees";
+import { EmployeeType, InsuranceType, MYOBUserType, SnackType } from "../../types/types";
+import { Footer, ProgressIconButton, SnackBar } from "../../components/Components";
+
 
 type TabPanelProps = {
     children: ReactNode,
@@ -38,10 +41,15 @@ const CompanyAdmin = () => {
 
     const axiosPrivate = useAxiosPrivate();
     const [loading, setLoading] = useState(true);
-    const [updateRequired, setUpdateRequired] = useState(false);
     const [insurances, setInsurances] = useState<InsuranceType[]>([])
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [myobUsers, setMyobUsers] = useState<MYOBUserType[]>([])
+    const [userRoles, setUserRoles] = useState<string[]>([])
+    
+    const [snack, setSnack] = useState<SnackType>({variant: 'info', active: false, message: ''});
+
+    const [updateRequired, setUpdateRequired] = useState(false);
+    const [waiting, setWaiting] = useState(false);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -81,6 +89,7 @@ const CompanyAdmin = () => {
                                         username
                                     }
                                     role
+                                    isStaff
                                     isActive
                                 }
                             }
@@ -89,16 +98,25 @@ const CompanyAdmin = () => {
                             id
                             username
                         }
+                        __type(name:"CustomUserRole"){
+                            name
+                            enumValues {
+                                name
+                                description
+                            }
+                        }
                     }`,
                     variables: {},
                 }),
             }).then((response) => {
                 const res = response?.data?.data; 
+                console.log(res);
                 
                 setInsurances(res.insurances);
                 const employees = res.users.edges.map((emp: any) => {return emp?.node});
                 setEmployees(employees);
                 setMyobUsers(res.myobUsers);
+                setUserRoles(res.__type.enumValues)
             }).catch((err) => {
                 console.log("error fetching data:", err);
             }).finally(() => {
@@ -116,12 +134,53 @@ const CompanyAdmin = () => {
 
     }, [])
 
+    const handleSave = async () => {
+        setWaiting(true);
+
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                mutation updateCompany($employees: [UserInputType]!, $insurances: [InsuranceInputType]!) {
+                    update: updateCompany(employees: $employees, insurances: $insurances) {
+                        success
+                        message
+                    }
+                }`,
+                variables: {
+                    employees: employees,
+                    insurances: insurances
+                },
+        }),
+        }).then((response) => {
+            console.log(response)
+            const res = response?.data?.data?.update; 
+            
+            setWaiting(false);
+
+            if(res.success) {
+                console.log("Response", res.invoices)
+                setSnack({'active': true, variant:'success', message: res.message})
+            }
+            else {
+                console.log(res.error)
+                setSnack({'active': true, variant:'error', message: res.message})
+            }
+
+        }).catch((err) => {
+            console.log("error:", err);
+            setSnack({'active': true, variant:'error', message: 'Error Connecting to Server. Please try again or contact admin.'})
+        });
+
+    }
     
     const [tabValue, setTabValue] = useState(1); // Active Tab Value
     const tabLabels = ["Home", "Employees", "Insurances"]
     const tabPanels = [
         <About />,
-        <Employees employees={employees} setEmployees={setEmployees} setUpdateRequired={setUpdateRequired} myobUsers={myobUsers} />,
+        <Employees employees={employees} setEmployees={setEmployees} 
+            userRoles={userRoles}
+            setUpdateRequired={setUpdateRequired} myobUsers={myobUsers} />,
         <Insurances insurances={insurances} setInsurances={setInsurances} setUpdateRequired={setUpdateRequired}/>,
     ]
     const a11yProps = (index: number) => {
@@ -133,24 +192,6 @@ const CompanyAdmin = () => {
 
     return (
     <>
-        {/* <h2 style={{textAlign: "center", paddingBottom: '15px'}}>Company Admin Page for {auth?.user?.company?.name}</h2> */}
-        {/* <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={value} onChange={ (event, newValue) => {setValue(newValue)}} indicatorColor="primary" centered>
-                <Tab label={'About'} {...a11yProps(0)}/>
-                <Tab label={'Employees'} {...a11yProps(1)}/>
-                <Tab label={'Insurances'} {...a11yProps(2)}/>
-            </Tabs>
-        </Box>
-        
-        <TabPanel key={0} value={value} index={0}>
-            <About />
-        </TabPanel>         
-        <TabPanel key={1} value={value} index={1}>
-            <Employees employees={employees} setEmployees={setEmployees} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired}/>
-        </TabPanel>         
-        <TabPanel key={2} value={value} index={2}>
-            <Insurances insurances={insurances} setInsurances={setInsurances} updateRequired={updateRequired} setUpdateRequired={setUpdateRequired}/>
-        </TabPanel>      */}
         {!loading && <>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={tabValue} onChange={ (event, val) => {setTabValue(val)}} indicatorColor="primary" centered>
@@ -164,8 +205,18 @@ const CompanyAdmin = () => {
                 <TabPanel key={i} value={tabValue} index={i}>
                     {item}
                 </TabPanel>        
-            ))}</>
+            ))}
+
+            <Footer>
+                <ProgressIconButton onClick={handleSave} waiting={waiting} disabled={!updateRequired}><SaveIcon /></ProgressIconButton>
+            </Footer>
+            
+
+            <SnackBar snack={snack} setSnack={setSnack} />
+            </>
+        
         }
+        
     </>    
 
     )

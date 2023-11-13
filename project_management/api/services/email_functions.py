@@ -323,7 +323,7 @@ class CloseOutEmail(graphene.Mutation):
             finishTime = str( math.ceil(finishTime) ).zfill(2) + ":00"
 
         mailTo = [job.location.region.email]
-        mailCC = ["Colin@aurify.com.au", "James@aurify.com.au", "Vivian@aurify.com.au"]
+        mailCC = ["Colin@aurify.com.au", "James@aurify.com.au", "Safiya@aurify.com.au"]
         mailSubject = "Close out: " + str(job)
         mailHTMLBody = f"""{EMAIL_STYLE}
         Hi {job.location.region.short_name} EMOS,<br><br>

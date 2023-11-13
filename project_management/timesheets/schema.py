@@ -65,7 +65,7 @@ class GetEmployees(graphene.Mutation):
         if not MyobUser.objects.filter(id=uid).exists():
             return self(success=False, message="MYOB Connection Error - Not User Assigned")
         
-        if not checkTokenAuth(uid):
+        if not checkTokenAuth(uid, info.context.user):
             return self(success=False, message="MYOB Authentication Error")
         
         user = MyobUser.objects.get(id=uid)
@@ -115,7 +115,7 @@ class GetPayrollCategories(graphene.Mutation):
         env.read_env(env.str('ENV_PATH', '../myob/.env'))
 
         if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             payroll_types = ['wage', 'entitlement', 'deduction', 'expense', 'superannuation', 'tax', 'taxtable']
@@ -348,7 +348,7 @@ class GetMyobJob(graphene.Mutation):
         if not MyobUser.objects.filter(id=uid).exists():
             return self(success=False, message="MYOB Connection Error - Not User Assigned")
         
-        if not checkTokenAuth(uid):
+        if not checkTokenAuth(uid,info.context.user):
             return self(success=False, message="MYOB Authentication Error")
         user = MyobUser.objects.get(id=uid)
 
@@ -415,7 +415,7 @@ class GetPayrollDetails(graphene.Mutation):
         if not MyobUser.objects.filter(id=uid).exists():
             return self(success=False, message="MYOB Connection Error - Not User Assigned")
         
-        if not checkTokenAuth(uid):
+        if not checkTokenAuth(uid, info.context.user):
             return self(success=False, message="MYOB Authentication Error")
         user = MyobUser.objects.get(id=uid)
 
@@ -480,7 +480,7 @@ class SubmitTimesheets(graphene.Mutation):
         if not MyobUser.objects.filter(id=uid).exists():
             return self(success=False, message="MYOB Connection Error - Not User Assigned")
         
-        if not checkTokenAuth(uid):
+        if not checkTokenAuth(uid, info.context.user):
             return self(success=False, message="MYOB Authentication Error")
         
         user = MyobUser.objects.get(id=uid)

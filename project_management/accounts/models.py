@@ -52,7 +52,7 @@ class CustomUser(AbstractBaseUser):
         ('SMU', 'Site Manager'),
         ('PMU', 'Project Manager'),
         ('EST', 'Estimator'),
-        ('ADM', 'System Administrator'),
+        ('ADM', 'Administrator'),
         ('DEV', 'Developer'),
     ]
 

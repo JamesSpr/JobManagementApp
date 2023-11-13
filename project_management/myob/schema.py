@@ -19,11 +19,64 @@ from django.utils import timezone
 import environ
 import requests
 import urllib.parse
+import inspect
 
-insurance_expiry_date = date(2023, 3, 31)
+
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
 MAIN_FOLDER_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
 
+def is_valid_myob_user(uid, user):
+    if MyobUser.objects.filter(id=uid).exists():
+        
+        myob_user = MyobUser.objects.get(id=uid)
+        if not user: user = CustomUser.objects.get(email=user, myob_user=myob_user)
+        return user.myob_access
+    
+    return False
+
+# Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
+def checkTokenAuth(uid, usr):
+    env = environ.Env()
+    environ.Env.read_env()
+
+    print(f'Checking MYOB Auth from {inspect.stack()[1][0].f_locals["self"].__name__}')
+
+    if is_valid_myob_user(uid, usr):
+        user = MyobUser.objects.get(id=uid)
+
+        if timezone.now() >= (user.access_expires_at - timedelta(minutes=2)):
+            
+            link = "https://secure.myob.com/oauth2/v1/authorize"
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            payload = {
+                'client_id': env('CLIENT_ID'),
+                'client_secret': env('CLIENT_SECRET'),
+                'refresh_token': user.refresh_token,
+                'grant_type':'refresh_token',
+            }
+            # print(payload)
+            response = requests.post(link, data=payload, headers=headers)
+
+            if not response.status_code == 200:
+                print("MYOB Authentication error for", user.username)
+                print(response)
+                return False
+
+            res = json.loads(response.text)
+
+            user.access_token = res['access_token']
+            user.refresh_token = res['refresh_token']
+            user.access_expires_at = timezone.now() + timedelta(seconds=int(res['expires_in']))
+            user.save()
+            
+            print('MYOB Auth Refreshed By', user.username)
+            return True
+        else:
+            print('MYOB Auth Active')
+            return True
+    else:
+        print('Error with MYOB User Auth')
+        return False
 class MyobUserType(DjangoObjectType):
     class Meta:
         model = MyobUser
@@ -84,14 +137,14 @@ class updateOrCreateMyobAccount(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
-    user = graphene.Field(MyobUserType)
+    # user = graphene.Field(MyobUserType)
 
     @classmethod
     @login_required
     def mutate(self, root, info, access_token, expires_in, refresh_token, uid, user_id, username=None):
 
-        user = MyobUser.objects.get(id=uid) if MyobUser.objects.filter(id=uid).exists() else False
         app_user = CustomUser.objects.get(id=user_id) if CustomUser.objects.filter(id=user_id).exists() else False
+        user = MyobUser.objects.get(id=uid) if is_valid_myob_user(uid, info.context.user) else False
         
         if not app_user:
             return self(success=False, message="User Account Not Provided")
@@ -112,7 +165,7 @@ class updateOrCreateMyobAccount(graphene.Mutation):
         app_user.myob_user = user
         app_user.save()
 
-        return self(success=True, message="Account Updated", user=user)
+        return self(success=True, message="Account Updated")
 
 class DeleteMyobUser(graphene.Mutation):
     class Arguments:
@@ -135,51 +188,6 @@ class DeleteMyobUser(graphene.Mutation):
 
         return self(success=True)
 
-import inspect
-# Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
-def checkTokenAuth(uid):
-    env = environ.Env()
-    environ.Env.read_env()
-
-    print(f'Checking MYOB Auth from {inspect.stack()[1][0].f_locals["self"].__name__}')
-
-    if MyobUser.objects.filter(id=uid).exists():
-        user = MyobUser.objects.get(id=uid)
-
-        if timezone.now() >= (user.access_expires_at - timedelta(minutes=2)):
-            
-            link = "https://secure.myob.com/oauth2/v1/authorize"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            payload = {
-                'client_id': env('CLIENT_ID'),
-                'client_secret': env('CLIENT_SECRET'),
-                'refresh_token': user.refresh_token,
-                'grant_type':'refresh_token',
-            }
-            # print(payload)
-            response = requests.post(link, data=payload, headers=headers)
-
-            if not response.status_code == 200:
-                print("MYOB Authentication error for", user.username)
-                print(response)
-                return False
-
-            res = json.loads(response.text)
-
-            user.access_token = res['access_token']
-            user.refresh_token = res['refresh_token']
-            user.access_expires_at = timezone.now() + timedelta(seconds=int(res['expires_in']))
-            user.save()
-            
-            print('MYOB Auth Refreshed By', user.username)
-            return True
-        else:
-            print('MYOB Auth Active')
-            return True
-    else:
-        print('Error with User Auth')
-        return False
-
 
 class myobRefreshToken(graphene.Mutation):
     class Arguments:
@@ -194,8 +202,8 @@ class myobRefreshToken(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             link = "https://secure.myob.com/oauth2/v1/authorize"
@@ -228,8 +236,8 @@ class myobGetClients(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             client_filter = "" if client == "" else "?$filter=" + client
@@ -264,8 +272,8 @@ class myobCreateClient(graphene.Mutation):
         if(Client.objects.filter(name=name).exists()):
             return self(success=False, message="Client Already Exists")
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             # html_name = urllib.parse.quote(name)
@@ -330,8 +338,8 @@ class myobGetContractors(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             
             contractor_filter = "" if contractor == "" else "?$filter=" + contractor
@@ -375,8 +383,8 @@ class myobCreateContractor(graphene.Mutation):
         if Contractor.objects.filter(abn=contractor.abn).exists():
             return self(success=False, message="Contractor Already Exists. Check ABN")
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/"
@@ -438,8 +446,8 @@ class myobUpdateContractor(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             for contractor in contractors:
@@ -513,8 +521,8 @@ class myobGetInvoices(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             invoice_filter = "" if inv == "" else "?$filter=" + inv
@@ -594,8 +602,8 @@ class myobGetOrders(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             filter = "" if query == "" else "?$filter=" + query
@@ -628,8 +636,8 @@ class myobGetJobs(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             job_filter = "" if job == "" else "?$filter=" + job
@@ -661,8 +669,8 @@ class myobGetBills(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             bill_filter = "" if bill == "" else "?$filter=" + bill
@@ -693,8 +701,8 @@ class myobGetAccounts(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Account?$top=1000"
@@ -724,8 +732,8 @@ class myobGetTaxCodes(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/TaxCode?$top=1000"
@@ -755,8 +763,8 @@ class myobGetGeneralJournal(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction"
@@ -806,8 +814,8 @@ class myobRepairJobSync(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             job = Job.objects.get(id=job_id)
 
@@ -876,8 +884,8 @@ class myobSyncJobs(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             jobs = []
             
@@ -979,8 +987,8 @@ class myobCreateJob(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             job = Job.objects.get(id=job_id)
@@ -1040,8 +1048,8 @@ class myobSyncClients(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             clients = []
 
@@ -1096,8 +1104,8 @@ class myobSyncContractors(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             contractors = []
 
@@ -1159,8 +1167,8 @@ class myobSyncInvoices(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             invoices = []
 
@@ -1224,8 +1232,8 @@ class myobSyncBills(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             bills = []
 
@@ -1306,8 +1314,8 @@ class myobSyncRemittance(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             remittance = []
 
@@ -1383,8 +1391,8 @@ class myobImportContractorsFromBills(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             ## Get Bills
@@ -1477,8 +1485,8 @@ class myobImportClientFromABN(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             ## Get Contractor by ABN
@@ -1527,8 +1535,8 @@ class myobImportContractorFromABN(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             ## Get Contractor by ABN
@@ -1579,10 +1587,10 @@ class myobImportBGISInvoices(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
+        if is_valid_myob_user(uid, info.context.user):
             print("Importing BGIS Invoices")
 
-            checkTokenAuth(uid)
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             invoices = []
 
@@ -1652,8 +1660,8 @@ class myobCreateInvoice(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             print("Creating Invoice")
 
@@ -1858,7 +1866,7 @@ class myobCreateInvoice(graphene.Mutation):
 
             # Create Full Invoice using function from invoice_generator.py
             print("Invoice Generation Starting")
-            result = generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date)
+            result = generate_invoice(job, paths, invoice, accounts_folder)
             if not result['success']:
                 return self(success=False, message=result['message'])
 
@@ -1903,8 +1911,8 @@ class myobUpdateBill(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             
             if not Bill.objects.filter(id = bill.id).exists():
@@ -2004,8 +2012,8 @@ class myobCreateBill(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             supplier = Contractor.objects.get(id=newBill['contractor'])
             job = Job.objects.get(po=jobId)
@@ -2169,17 +2177,19 @@ class myobProcessPayment(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             client = Client.objects.get(id=client)
-
+    
             total_amount = 0
             for inv in invoices:
                 total_amount += inv.amount
 
             if RemittanceAdvice.objects.filter(client = client, date=payment_date, amount=total_amount).exists():
                 return self(success=False, message="Remittance Advice Already Exists")
+            
+            print("Creating Remittance Advice")
             
             remittance_advice = RemittanceAdvice()
             remittance_advice.client = client
@@ -2258,6 +2268,9 @@ class myobProcessPayment(graphene.Mutation):
             }
             response = requests.request("POST", url, headers=headers, data=payload)
 
+    
+            print("Remittance Advice Uploaded")
+
             if(not response.status_code == 201):
                 return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
 
@@ -2265,6 +2278,7 @@ class myobProcessPayment(graphene.Mutation):
             remittance_advice.save()
 
             # Update invoices after the payment is processed in myob
+            print("Updaing Invoices")
             updatedInvoices = []
             for inv in invoices:
                 invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
@@ -2274,9 +2288,13 @@ class myobProcessPayment(graphene.Mutation):
                     invoice.remittance = remittance_advice
                     invoice.save()
                     updatedInvoices.append(invoice)
+            
+            print("Invoices Updated")
 
             return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
 
+
+        print("Not Valid MYOB User")
         return self(success=False, message="Error connecting to MYOB.", error=json.loads("MYOB Connection Error"))
 
 class InvoiceInput(graphene.InputObjectType):
@@ -2300,8 +2318,8 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             converted = []
             _invoices = invoices.copy()
@@ -2417,8 +2435,8 @@ class myobCustomFunction(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
         return self(success=False, message="MYOB Auth Error")
@@ -2437,8 +2455,8 @@ class generateInvoice(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             print("Creating Invoice")
@@ -2612,7 +2630,7 @@ class generateInvoice(graphene.Mutation):
                 invoice = res[0]
                 
                 # Create Full Invoice using function from invoice_generator.py
-                result = generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date)
+                result = generate_invoice(job, paths, invoice, accounts_folder)
 
                 print("Invoice Generation Finished")
                 
@@ -2634,8 +2652,8 @@ class myobGetTimesheets(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             timesheet_filter = "" if timesheet == "" else "?$filter=" + timesheet
@@ -2664,8 +2682,8 @@ class myobCustomQuery(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+        if is_valid_myob_user(uid, info.context.user):
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{query}"

@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.db import connection
 from accounts.models import CustomUser
+from myob.models import MyobUser
 from api.services.create_completion_documents import CreateCompletionDocuments
 from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
 from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
@@ -1425,10 +1426,22 @@ class TransferInvoice(graphene.Mutation):
         invoice.save()
         return self(success=True, message="Invoice & Folder successfully transferred")
 
-class InsuranceType(DjangoObjectType):
-    class Meta:
-        model = Insurance
-        fields = '__all__'
+class MYOBUserInputType(graphene.InputObjectType):
+    id = graphene.String()
+    username = graphene.String()
+
+class UserInputType(graphene.InputObjectType):
+    id = graphene.String()
+    email = graphene.String()
+    first_name = graphene.String()
+    last_name = graphene.String()
+    role = graphene.String()
+    position = graphene.String()
+    is_staff = graphene.Boolean()
+    is_active = graphene.Boolean()
+    myob_access = graphene.Boolean()
+    myob_user = graphene.Field(MYOBUserInputType)
+
 
 class InsuranceInputType(graphene.InputObjectType):
     id = graphene.String()
@@ -1439,6 +1452,46 @@ class InsuranceInputType(graphene.InputObjectType):
     active = graphene.Boolean()
     filename = graphene.String()
     thumbnail = graphene.String()
+
+class UpdateCompany(graphene.Mutation):
+    class Arguments:
+        employees = graphene.List(UserInputType)
+        insurances = graphene.List(InsuranceInputType)
+
+    success = graphene.String()
+    message = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, employees, insurances):
+        for emp in employees:
+            if CustomUser.objects.filter(email=emp.email).exists():
+                user = CustomUser.objects.get(email=emp.email)
+                user.first_name = emp.first_name
+                user.last_name = emp.last_name
+                user.is_active = emp.is_active
+                user.is_staff = emp.is_staff
+                user.role = emp.role
+                user.myob_user = MyobUser.objects.get(id=emp.myob_user.id) if emp.myob_user and MyobUser.objects.filter(id=emp.myob_user.id).exists() else None
+                user.myob_access = emp.myob_access
+                user.save()
+
+        for ins in insurances:
+            if Insurance.objects.filter(id=ins.id).exists():
+                insurance = Insurance.objects.get(id=ins.id)
+                insurance.description = ins.description
+                insurance.issue_date = ins.issueDate
+                insurance.start_date = ins.startDate
+                insurance.expiry_date = ins.expiryDate
+                insurance.active = ins.active
+                insurance.save()
+            
+        return self(success=True, message="Company Details Updated")
+
+class InsuranceType(DjangoObjectType):
+    class Meta:
+        model = Insurance
+        fields = '__all__'
 
 class CreateInsurance(graphene.Mutation):
     class Arguments:
@@ -1660,6 +1713,7 @@ class TestFeature(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info):
+        print(info.context.user)
         # ## Merge Contractors
         # primary_contrator = Contractor.objects.get(id=34)
         # secondary_contractor = Contractor.objects.get(id=94)
@@ -1745,5 +1799,6 @@ class Mutation(graphene.ObjectType):
     create_quote = CreateQuote.Field()
     create_completion_documents = CreateCompletionDocuments.Field()
 
+    update_company = UpdateCompany.Field()
     create_insurance = CreateInsurance.Field()
     update_insurance = UpdateInsurance.Field()

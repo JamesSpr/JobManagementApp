@@ -33,8 +33,8 @@ export const EditableCell = ({ getValue, row: { index }, column: { id }, table, 
   column: { id: any }, 
   table: any, 
   type?: 'number' | 'text',
-  setUpdateRequired?: React.Dispatch<React.SetStateAction<Boolean>>
-  validation?: (value: any) => void
+  setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>>,
+  validation?: (value: any) => void,
 }) => {
   const initialValue = getValue()
   // We need to keep and update the state of the cell normally
@@ -62,6 +62,74 @@ export const EditableCell = ({ getValue, row: { index }, column: { id }, table, 
   return (
       <input type={type} className="dataTableInput" step={type == 'number' ? 0.01 : 0}
         value={value} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
+  )
+}
+
+export const CheckboxCell  = ({ getValue, row: {index}, column: { id }, table, setUpdateRequired}:
+  { getValue: any, 
+    row: { index: any }, 
+    column: { id: any }, 
+    table: any, 
+    setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>> 
+  }) => {
+    const initialValue = getValue()
+    // We need to keep and update the state of the cell normally
+    const [value, setValue] = useState(initialValue)
+
+    const onSelection = (e: { target: { value: any; }; }) => {
+        setValue(!value)
+        setUpdateRequired && setUpdateRequired(true);
+        table.options.meta?.updateData(index, id, !value);
+    }
+    
+    useEffect(() => {
+        setValue(initialValue)
+    }, [initialValue])
+
+    return (
+        <input type="checkbox" checked={value as boolean} onChange={onSelection} /> 
+    )
+}
+
+export const EditableDateCell = ({ getValue, row: { index }, column: { id }, table, setUpdateRequired }: 
+  {
+    getValue: any,
+    row: { index: any },
+    column: { id: any },
+    table: any,
+    setUpdateRequired?: React.Dispatch<React.SetStateAction<boolean>> 
+  }) => {
+  const initialValue = getValue()
+  // We need to keep and update the state of the cell normally
+  const [value, setValue] = useState(initialValue ?? null)
+
+  // When the input is blurred, we'll call our table meta's updateData function
+  const onBlur = () => {
+      const val = (value === "" ? null : value)
+      
+      // Dont update if the value has not changed
+      if(!(!initialValue && val === null) && !(initialValue === val)) {
+        table.options.meta?.updateData(index, id, val)
+          // setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((es, i) => {
+          //     if(i === index) {
+          //         const newEstimateSet = produce(prev.estimateSet[i], (draft: { [x: string]: { id: any; }; }) => {
+          //             draft[id] = val
+          //         })
+          //         return newEstimateSet;
+          //     }
+          //     return es
+          // })}))
+        setUpdateRequired && setUpdateRequired(true);
+      }
+  }
+  
+  // If the initialValue is changed external, sync it up with our state
+  useEffect(() => {
+      setValue(initialValue ?? null)
+  }, [initialValue])
+
+  return (
+      <input type="date" max="9999-12-31" className="estimateTableInput" value={value} onChange={e => setValue(e.target.value)} onBlur={onBlur} />
   )
 }
 

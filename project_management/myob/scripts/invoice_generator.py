@@ -15,7 +15,7 @@ from api.models import Insurance
 def get_insurances():
     return Insurance.objects.filter(active=True).order_by('expiry_date')
 
-def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date):
+def generate_invoice(job, paths, invoice, accounts_folder):
     if paths['invoice'] == "":
         return {'success': False, 'message': "Bad Invoice Path"}
 
@@ -150,7 +150,7 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
             edited.close()
 
         ## Check insurances expiry date
-        if date.today() == insurance_expiry_date:
+        if date.today() ==  insurances[0].expiry_date:
             return {'success': True, 'message': "Generated Successfully.\nWarning: Insurances Expire Today, Please update!"}
 
         return {'success': True, 'message': "Generated Successfully"}
@@ -177,7 +177,7 @@ def generate_invoice(job, paths, invoice, accounts_folder, insurance_expiry_date
         edited.close()
 
     ## Check insurances expiry date
-    if date.today() == insurance_expiry_date:
+    if date.today() ==  insurances[0].expiry_date:
         return {'success': True, 'message': "Invoice Generated Successfully.\nWarning: Insurances Expire Today, Please update!"}
 
     return {'success': True, 'message': "Invoice Generated Successfully"}
