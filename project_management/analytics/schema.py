@@ -123,7 +123,7 @@ class SyncTransactions(graphene.Mutation):
         environ.Env.read_env()
 
         if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             last_sync_date = Sync.objects.filter(sync_type="TRA").order_by('-sync_date_time').values()[0]['sync_date_time']
@@ -171,7 +171,7 @@ class SyncAccounts(graphene.Mutation):
         environ.Env.read_env()
 
         if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Account"

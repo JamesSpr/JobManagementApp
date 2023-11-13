@@ -39,10 +39,10 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
     const [columnVisibility, setColumnVisibility] = useState({
         'id': false, 'client': true, 'jobNumber':true, 
         'po': false, 'sr': false, 'otherId': false, 
-        'location': true, 'building': true, 'title': true, 
-        'dateIssued': true, 'priority': true, 'overdueDate': true, 'stage': true, 
-        'issueDate': false, 'quotedPrice': false, 'approvalDate': false, 'approvedQuote': false, 'approvedPrice': false, 
-        'inspectionDate': false, 'commencementDate': false, 'completionDate': false, 'closeOutDate': false,
+        'location': true, 'building': true, 'title': true, 'dateIssued': true, 'priority': true, 
+        'overdueDate': true, 'stage': true, 'issueDate': false, 'inspectionDate': false, 'inspectionBy': false, 
+        'quotedPrice': false, 'approvalDate': false, 'approvedQuote': false, 'approvedPrice': false, 
+        'siteManager': false, 'commencementDate': false, 'completionDate': false, 'closeOutDate': false,
         'invoice': false, 'invoiceCreatedDate': false,  'invoiceDate': false, 'billSum': false, 'grossProfit': false, 
         'region': false, 'detailedLocation': false, 'description': false
     });
@@ -79,10 +79,12 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
                         res.edges[i].node['completionDate'] = res.edges[i].node['completionDate'] ? new Date(res.edges[i].node['completionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         res.edges[i].node['inspectionDate'] = res.edges[i].node['inspectionDate'] ? new Date(res.edges[i].node['inspectionDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         res.edges[i].node['closeOutDate'] = res.edges[i].node['closeOutDate'] ? new Date(res.edges[i].node['closeOutDate']).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
+                        
                         if(res.edges[i].node['estimateSet'].length > 0) {
                             res.edges[i].node['estimateSet'][0]['issueDate'] = res.edges[i].node['estimateSet'][0]?.issueDate ? new Date(res.edges[i].node['estimateSet'][0]?.issueDate).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                             res.edges[i].node['estimateSet'][0]['approvalDate'] = res.edges[i].node['estimateSet'][0]?.approvalDate ? new Date(res.edges[i].node['estimateSet'][0]?.approvalDate).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                         }
+
                         if(res.edges[i].node['invoiceSet'].length > 0) {
                             res.edges[i].node['invoiceSet'][0]['dateCreated'] = res.edges[i].node['invoiceSet'][0]?.dateCreated ? new Date(res.edges[i].node['invoiceSet'][0]?.dateCreated).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
                             res.edges[i].node['invoiceSet'][0]['dateIssued'] = res.edges[i].node['invoiceSet'][0]?.dateIssued ? new Date(res.edges[i].node['invoiceSet'][0]?.dateIssued).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : ""
@@ -242,6 +244,13 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             size: 120,
         },
         {
+            id: "inspectionBy",
+            accessorFn: row => row?.inspectionBy?.firstName ?? " ",
+            header: () => 'Inspection By',
+            cell: info => info.getValue(),
+            size: 120,
+        },
+        {
             accessorFn: row => row.estimateSet ? row?.estimateSet[row?.estimateSet?.findIndex(element => {
                 if(element.issueDate) {
                     return true;
@@ -306,6 +315,13 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
             footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 140,
+        },
+        {
+            id: "siteManager",
+            accessorFn: row => row?.siteManager?.firstName ??  " ",
+            header: () => 'Site Manager',
+            cell: info => info.getValue(),
+            size: 120,
         },
         {
             accessorKey: 'commencementDate',

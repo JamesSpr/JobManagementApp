@@ -20,8 +20,8 @@ import Dashboard from "./pages/analytics/Dashboard";
 import Bills from "./pages/bill/Bills";
 import Wizard from "./pages/wizard/Wizard";
 import WizQuote from "./pages/wizard/WizQuote";
-import CompanyDashboard from "./pages/analytics/CompanyDashboard";
 import CompanyAdmin from "./pages/admin/Company";
+import CompanyDashboard from "./pages/analytics/CompanyDashboard";
 import Timesheets from "./pages/timesheets/Timesheets";
 
 import ClientList from "./pages/clients/ClientList";

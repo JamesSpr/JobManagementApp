@@ -1209,8 +1209,9 @@ class myobSyncInvoices(graphene.Mutation):
                         inv = Invoice.objects.get(number=invoice['Number']) if Invoice.objects.filter(number=invoice['Number']).exists() else False
                         if inv:
                             if not invoice['UID'] == inv.myob_uid: inv.myob_uid = invoice['UID']
+                            if not inv.date_issued: inv.date_issued = datetime.strptime(invoice['Date'].split('T')[0], '%Y-%m-%d')
                             if invoice['Status'] == "Closed" and invoice['LastPaymentDate']:
-                                inv.date_paid = datetime.strptime(invoice['LastPaymentDate'].split('T')[0], '%Y-%m-%d')
+                                if not inv.date_paid: inv.date_paid = datetime.strptime(invoice['LastPaymentDate'].split('T')[0], '%Y-%m-%d')
 
                             inv.save()
                             print(invoice['Number'], invoice['Status'])

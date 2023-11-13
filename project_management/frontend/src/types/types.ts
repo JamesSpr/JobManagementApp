@@ -38,12 +38,14 @@ export interface JobType {
     specialInstructions: string
     inspectionBy: {
         id: string
+        firstName?: string
     }
     inspectionNotes: string
     scope: string
     workNotes: string
     siteManager: {
         id: string
+        firstName?: string
     }
     estimateSet: EstimateType[]
     invoiceSet: InvoiceType[]

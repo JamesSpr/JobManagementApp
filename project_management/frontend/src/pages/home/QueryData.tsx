@@ -28,6 +28,12 @@ export const fetchData = (number: number, next: String) => (
                     dateIssued
                     overdueDate
                     inspectionDate
+                    inspectionBy {
+                        firstName
+                    }
+                    siteManager {
+                        firstName
+                    }
                     commencementDate
                     completionDate
                     closeOutDate
@@ -87,6 +93,12 @@ export const fetchArchivedData = () => (JSON.stringify({
                     dateIssued
                     overdueDate
                     inspectionDate
+                    inspectionBy {
+                        firstName
+                    }
+                    siteManager {
+                        firstName
+                    }
                     commencementDate
                     completionDate
                     closeOutDate

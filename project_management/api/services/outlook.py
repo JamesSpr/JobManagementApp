@@ -127,7 +127,7 @@ class ProcessApproval(graphene.Mutation):
         environ.Env.read_env()
 
         if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
             job = Job.objects.get(po=job)
@@ -180,7 +180,7 @@ class ProcessInvoice(graphene.Mutation):
         environ.Env.read_env()
 
         if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             invoice = Invoice.objects.get(number=invoice)
 
@@ -273,7 +273,7 @@ class ProcessInvoices(graphene.Mutation):
         environ.Env.read_env()
 
         if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid)
+            checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
             converted = {}
             _invoices = invoices.copy()
