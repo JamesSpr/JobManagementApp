@@ -179,7 +179,7 @@ const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setT
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     bill: bill,
                 },
             }),

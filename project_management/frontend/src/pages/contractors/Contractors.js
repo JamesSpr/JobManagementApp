@@ -263,7 +263,7 @@ const Contractors = () => {
                     }
                 }`,
                 variables: { 
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     contractor: newContractor,
                 },
             }),
@@ -353,7 +353,7 @@ const Contractors = () => {
                     }
                 }`,
                 variables: { 
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     contractors: changedContractors,
                 },
             }),

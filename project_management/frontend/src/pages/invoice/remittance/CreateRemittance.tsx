@@ -145,7 +145,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                             }
                         }`,
                         variables: {
-                            uid: auth?.myob.id,
+                            uid: auth?.myob?.id,
                             invoices: data,
                             client: client,
                             paymentDate: remittanceDate,
@@ -223,7 +223,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     inv: queryString,
                 },
         }),

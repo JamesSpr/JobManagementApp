@@ -160,6 +160,7 @@ const CompanyAdmin = () => {
 
             if(res.success) {
                 console.log("Response", res.invoices)
+                setUpdateRequired(false);
                 setSnack({'active': true, variant:'success', message: res.message})
             }
             else {

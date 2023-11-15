@@ -1,7 +1,7 @@
 import graphene
 from graphene_django import DjangoObjectType
-import win32com.client as win32
-import pythoncom
+# import win32com.client as win32
+# import pythoncom
 from datetime import datetime
 from django.utils import timezone
 import re

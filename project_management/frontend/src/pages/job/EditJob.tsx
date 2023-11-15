@@ -259,7 +259,7 @@ const JobPage = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     job: job.id,
                 }
             })
@@ -299,7 +299,7 @@ const JobPage = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     invoices: [{
                         "number": job.invoiceSet[0].number,
                         "dateIssued": new Date().toISOString().slice(0, 10)
@@ -368,7 +368,7 @@ const JobPage = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     jobId: job.id
                 }
             })

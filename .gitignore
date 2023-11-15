@@ -17,6 +17,8 @@ cert.key
 */frontend/static/frontend/main.js
 */frontend/static/frontend/main.js*.txt
 
+/external/*
+
 # Microsoft Office
 *.docx
 *.dotx

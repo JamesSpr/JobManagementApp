@@ -168,7 +168,7 @@ const Timesheets = () => {
                         }
                     }`,
                     variables: {
-                        uid: auth?.myob.id
+                        uid: auth?.myob?.id
                     }
                 }),
             }).then((response) => {

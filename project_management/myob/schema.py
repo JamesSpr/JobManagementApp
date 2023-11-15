@@ -9,8 +9,7 @@ from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 import json
 import os
-import win32com.client as win32
-import pythoncom
+from subprocess import Popen, PIPE
 import base64
 from pandas import isna
 from myob.scripts.invoice_generator import generate_invoice
@@ -20,6 +19,7 @@ import environ
 import requests
 import urllib.parse
 import inspect
+import time
 
 
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
@@ -1736,12 +1736,25 @@ class myobCreateInvoice(graphene.Mutation):
                     if not found["estimate"] and not estimate_file == None :
                         print("Converting Spreadsheet to PDF", estimate_file)
                         # Convert excel sheet to pdf
-                        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                        books = xlApp.Workbooks.Open(estimate_file)
-                        ws = books.Worksheets[0]
-                        ws.Visible = 1
-                        ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
-                        xlApp.ActiveWorkbook.Close()
+                        # df = pd.read_excel(estimate_file)
+                        # df.to_html(estimate_file.strip(".xlsm") + ".html")
+                        # pdfkit.from_file(estimate_file.strip(".xlsm") + ".html", estimate_file.strip(".xlsm") + ".pdf")
+                        
+                        p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
+                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}".replace("\\", '/').replace(" ", "\\ ") 
+                        estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
+                        p.communicate(input=f"""cd {bash_folder_path}\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
+
+                        # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+                        # time.sleep(1)
+                        # books = xlApp.Workbooks.Open(estimate_file)
+                        # ws = books.Worksheets[0]
+                        # ws.Visible = 1
+                        # ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
+                        # xlApp.ActiveWorkbook.Close()
+
+                        # xlApp.Quit()
+                        # del xlApp
 
                         found["estimate"] = True
                         paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
@@ -2527,12 +2540,15 @@ class generateInvoice(graphene.Mutation):
                     if not found["estimate"] and not estimate_file == None :
                         print("Converting Spreadsheet to PDF", estimate_file)
                         # Convert excel sheet to pdf
-                        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                        books = xlApp.Workbooks.Open(estimate_file)
-                        ws = books.Worksheets[0]
-                        ws.Visible = 1
-                        ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
-                        xlApp.ActiveWorkbook.Close()
+                        # workbook = load_workbook(filename=estimate_file)
+                        # sheet = workbook.active
+                        # sheet["C5"] = estimate.name
+                        # workbook.save(filename=estimate_file.strip(".xlsm") + ".pdf") 
+
+                        p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
+                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}".replace("\\", '/').replace(" ", "\\ ") 
+                        estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
+                        p.communicate(input=f"""cd {bash_folder_path}\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
 
                         found["estimate"] = True
                         paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 

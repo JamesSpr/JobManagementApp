@@ -8,8 +8,9 @@ from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.shared import Cm
 
 
-import win32com.client as win32
-import pythoncom
+# import win32com.client as win32
+# import pythoncom
+from openpyxl import load_workbook
 
 from datetime import datetime
 import os
@@ -22,47 +23,51 @@ from accounts.models import CustomUser
 
 JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
 
-class CreateBGISEstimate(graphene.Mutation):
-    class Arguments:
-        job_id = graphene.String()
-        selected_estimate = graphene.String()
+# class CreateBGISEstimate(graphene.Mutation):
+#     class Arguments:
+#         job_id = graphene.String()
+#         selected_estimate = graphene.String()
 
-    success = graphene.Boolean()
-    message = graphene.String()
+#     success = graphene.Boolean()
+#     message = graphene.String()
 
-    @classmethod
-    @login_required
-    def mutate(self, root, info, job_id, selected_estimate):
+#     @classmethod
+#     @login_required
+#     def mutate(self, root, info, job_id, selected_estimate):
         
-        job = Job.objects.get(id=job_id)
-        estimate = Estimate.objects.get(job_id=job_id, name=selected_estimate)
+#         job = Job.objects.get(id=job_id)
+#         estimate = Estimate.objects.get(job_id=job_id, name=selected_estimate)
 
-        # Check to see if file already exists
-        # This will have to be removed when we move to pdf only quotes
+#         # Check to see if file already exists
+#         # This will have to be removed when we move to pdf only quotes
         
-        if os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx")):
-            return self(success=False, message="Estimate Already Exists")
+#         if os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx")):
+#             return self(success=False, message="Estimate Already Exists")
 
-        ## Create folder for the selected estimate
-        try:
-            os.mkdir(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
-        except FileExistsError:
-            pass
+#         ## Create folder for the selected estimate
+#         try:
+#             os.mkdir(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
+#         except FileExistsError:
+#             pass
 
-        ## Save to new folder
-        shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
+#         ## Save to new folder
+#         shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
 
-        xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-        xlApp.Visible = False
-        wb = xlApp.Workbooks.Open(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
-        ws = wb.Sheets("Cost Breakdown")
-        ws.Range("C5").Value = estimate.name 
+#         xl_file = os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx")
+#         workbook = load_workbook(filename=xl_file)
+#         sheet = workbook.active
+#         sheet["C5"] = estimate.name
+#         workbook.save(filename=xl_file) 
 
-        wb.Close(True)
-        xlApp.Quit()
-        del xlApp
+#         # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+#         # xlApp.Visible = False
+#         # wb = xlApp.Workbooks.Open(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
+#         # ws = wb.Sheets("Cost Breakdown")
+#         # wb.Close(True)
+#         # xlApp.Quit()
+#         # del xlApp
 
-        return self(success=True, message="Estimate Created Successfully")
+#         return self(success=True, message="Estimate Created Successfully")
 
 
 class CreateCompletionDocuments(graphene.Mutation):

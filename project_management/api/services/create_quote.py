@@ -1,8 +1,9 @@
 import shutil
 import graphene
 
-import win32com.client as win32
-import pythoncom
+# import win32com.client as win32
+# import pythoncom
+from openpyxl import load_workbook
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -180,17 +181,24 @@ class CreateQuote(graphene.Mutation):
 
         # Create BGIS Estimate for BGIS Quotes
         if job.client.name == "BGIS":
-            if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx")):
-                xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                xlApp.Visible = True
-                wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
-                ws = wb.Sheets("Cost Breakdown")
-                ws.Range("C5").Value = estimate.name 
+            xl_file = os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx")
+            xl_template = r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx"
+            if not os.path.exists(xl_file):
+                workbook = load_workbook(filename=xl_template)
+                sheet = workbook.active
+                sheet["C5"] = estimate.name
+                workbook.save(filename=xl_file) 
 
-                wb.SaveAs(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"), 51)
-                wb.Close()
-                xlApp.Quit()
-                del xlApp
+                # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+                # xlApp.Visible = True
+                # wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
+                # ws = wb.Sheets("Cost Breakdown")
+                # ws.Range("C5").Value = estimate.name 
+
+                # wb.SaveAs(os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"), 51)
+                # wb.Close()
+                # xlApp.Quit()
+                # del xlApp
 
                 return self(success=True, message="Quote and Estimate Created Successfully")
 

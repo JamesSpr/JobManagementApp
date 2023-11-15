@@ -114,7 +114,7 @@ const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, ne
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     jobId: id,
                     newBill: bill,
                     attachment: billAttachment.data,

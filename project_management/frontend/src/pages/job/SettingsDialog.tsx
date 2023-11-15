@@ -65,7 +65,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     jobId: job.id,
                 }
             })
@@ -98,7 +98,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     job: job.id,
                 }
             })

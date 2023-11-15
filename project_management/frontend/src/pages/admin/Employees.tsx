@@ -50,10 +50,10 @@ const Employees = ({employees, setEmployees, setUpdateRequired, myobUsers, userR
             
             // When the input is blurred, we'll call our table meta's updateData function
             const onSelection = (e: { target: { value: any; }; }) => {
-                if(initialValue !== value) {
-                    setValue(value)
+                if(initialValue !== e.target.value) {
+                    setValue(e.target.value)
                     setUpdateRequired(true);
-                    table.options.meta?.updateData(index, id, value);
+                    table.options.meta?.updateData(index, id, e.target.value);
                 }
             }
             
@@ -87,10 +87,12 @@ const Employees = ({employees, setEmployees, setUpdateRequired, myobUsers, userR
         
         // When the input is blurred, we'll call our table meta's updateData function
         const onSelection = (e: { target: { value: any; }; }) => {
-            if(initialValue !== value) {
-                setValue(value)
+            console.log(index, id, e.target.value)
+            if(initialValue !== e.target.value) {
+                const val = myobUsers.find(element => element.id == e.target.value) ?? null
+                setValue(val)
                 setUpdateRequired(true);
-                table.options.meta?.updateData(index, id, value);
+                table.options.meta?.updateData(index, id, val);
             }
         }
         

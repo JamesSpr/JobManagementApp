@@ -103,7 +103,7 @@ const MyobActivate = () => {
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 },
             })
         }).then((response) => {
@@ -131,7 +131,7 @@ const MyobActivate = () => {
                             accessToken: token.access_token,
                             expiresIn: token.expires_in,
                             refreshToken: token.refresh_token,
-                            uid: auth?.myob.id,
+                            uid: auth?.myob?.id,
                             userId: auth?.user?.pk,
                         },
                     })
@@ -158,7 +158,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -186,7 +186,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -214,7 +214,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -242,7 +242,7 @@ const MyobActivate = () => {
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     client: queries?.client,
                 },
             })
@@ -272,7 +272,7 @@ const MyobActivate = () => {
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     inv: queries.invoice,
                 },
             })
@@ -306,7 +306,7 @@ const MyobActivate = () => {
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     query: queries.order,
                 },
             })
@@ -334,7 +334,7 @@ const MyobActivate = () => {
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     bill: queries.bill,
                 },
             })
@@ -362,7 +362,7 @@ const MyobActivate = () => {
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     timesheet: queries.timesheet,
                 },
             })
@@ -390,7 +390,7 @@ const MyobActivate = () => {
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     query: queries.custom,
                 },
             })
@@ -417,7 +417,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     job: queries.job,
                 }
             })
@@ -444,7 +444,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     contractor: queries.contractor,
                 }
             })
@@ -472,7 +472,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -500,7 +500,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -529,7 +529,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -556,7 +556,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -584,7 +584,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -612,7 +612,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -640,7 +640,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -668,7 +668,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     name: queries.clientName,
                 }
             })
@@ -697,7 +697,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     name: queries.contractorName,
                     abn: queries.contractorABN
                 }
@@ -727,7 +727,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -757,7 +757,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                 }
             })
         }).then((response) => {
@@ -791,7 +791,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     job: fields.invoice,
                 }
             })
@@ -820,7 +820,7 @@ const MyobActivate = () => {
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob.id,
+                    uid: auth?.myob?.id,
                     job: fields.invoice,
                 }
             })
