@@ -99,8 +99,24 @@ class CreateCompletionDocuments(graphene.Mutation):
         if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation")):
             return self(success=False, message="File System Folders are not correct. Please check Documentation Folder Exists")
 
-        word = win32.DispatchEx("Word.Application", pythoncom.CoInitialize())
-        word.Visible = False
+        # word = win32.DispatchEx("Word.Application", pythoncom.CoInitialize())
+        # word.Visible = False
+
+        table_items = {
+            '[Job]': str(job),
+            '[JobNumber]': job.po,
+            '[JobTitle]': job.title,
+            '[SiteManager]': job.site_manager.first_name.title().strip() + " " + job.site_manager.last_name.capitalize().strip(),
+            '[Date]': datetime.now().strftime("%d/%m/%Y"), 
+            '[Address]': job.location.getFullAddress(),
+            '[Scope]': job.scope,
+        }
+
+        paragraph_items = {
+            '[JobNumber]': job.po,
+            '[Scope]': job.scope,
+            '[Date]': datetime.now().strftime("%d/%m/%Y"), 
+        }
 
         document = None
 
@@ -112,102 +128,66 @@ class CreateCompletionDocuments(graphene.Mutation):
             if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - SWMS.docx")):
                 if not job.site_manager == None or not job.site_manager == "":
                     # Open SWMS
-                    document = word.Documents.Add(Template=templates_path + "/SWMS.dotx", NewTemplate=False, DocumentType=0)
+                    document = Document(os.path.join(templates_path, "SWMS.docx"))
+                    # document = word.Documents.Add(Template=templates_path + "/SWMS.dotx", NewTemplate=False, DocumentType=0)
                     
-                    # Add relevant job data to bookmark positions
-                    title = document.Bookmarks("ProjectTitle").Range
-                    title.Text = job.title
-                    project_number = document.Bookmarks("ProjectNo").Range
-                    project_number.Text = job.po
-                    scope = document.Bookmarks("SOW").Range
-                    scope.Text = job.scope
-                    address = document.Bookmarks("Address").Range
-                    address.Text = job.location.getFullAddress()
-                    site_manager = document.Bookmarks("SiteManager").Range
-                    site_manager.Text = job.site_manager.first_name + " " + job.site_manager.last_name
-                    site_manager1 = document.Bookmarks("SiteManager1").Range
-                    site_manager1.Text = job.site_manager.first_name + " " + job.site_manager.last_name
-                    date = document.Bookmarks("Date").Range
-                    date.Text = job.commencement_date.strftime('%d/%m/%Y') if job.commencement_date and not job.commencement_date == "" else datetime.now().strftime('%d/%m/%Y')
-                    date1 = document.Bookmarks("Date1").Range
-                    date1.Text = job.commencement_date.strftime('%d/%m/%Y') if job.commencement_date and not job.commencement_date == "" else datetime.now().strftime('%d/%m/%Y')
-
-                    # Remove Bookmarks
-                    for bookmark in document.Bookmarks:
-                        bookmark.Delete()
+                    for item in table_items:
+                        for table in document.tables:
+                            for row in table.rows:
+                                for cell in row.cells:
+                                    for paragraph in cell.paragraphs:
+                                        if item in paragraph.text:
+                                            paragraph.font = document.styles['Normal']
+                                            paragraph.text = paragraph.text.replace(item, table_items[item])
+                                 
 
                     # Save and close word document
-                    document.SaveAs(swms_filename)
-                    print(swms_filename)
-                    document.Close()
+                    document.save(swms_filename)
+
                 else:
-                    word.Quit()
-                    del word
                     return self(success=False, message="Site Manager Required for SWMS Creation")
                 
             if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - PRA.docx")):
                 if not job.site_manager == None or not job.site_manager == "":
                     # Open PRA
-                    document = word.Documents.Add(Template=templates_path + "/PRA.dotx", NewTemplate=False, DocumentType=0)
+                    document = Document(os.path.join(templates_path, "PRA.docx"))
                     
-                    # Add relevant job data to bookmark positions
-                    site_manager = document.Bookmarks("SiteManager").Range
-                    site_manager.Text = job.site_manager.first_name + " " + job.site_manager.last_name
-                    project = document.Bookmarks("Project").Range
-                    project.Text = job.po + " - " + job.title
-                    date = document.Bookmarks("Date").Range
-                    date.Text = job.commencement_date.strftime('%d/%m/%Y') if job.commencement_date and not job.commencement_date == "" else datetime.now().strftime('%d/%m/%Y')
-                    address = document.Bookmarks("Address").Range
-                    address.Text = job.location.getFullAddress()
+                    for item in table_items:
+                        for table in document.tables:
+                            for row in table.rows:
+                                for cell in row.cells:
+                                    for paragraph in cell.paragraphs:
+                                        if item in paragraph.text:
+                                            paragraph.font = document.styles['Normal']
+                                            paragraph.text = paragraph.text.replace(item, table_items[item])
 
-                    # Remove Bookmarks
-                    for bookmark in document.Bookmarks:
-                        bookmark.Delete()
+
 
                     # Save and close word document
-                    document.SaveAs(pra_filename)
-                    print(pra_filename)
-                    document.Close()
+                    document.save(pra_filename)
+
                 else:
-                    word.Quit()
-                    del word
                     return self(success=False, message="Site Manager Required for Pre-Start Risk Assessment Creation")
             
             if not os.path.exists(os.path.join(JOBS_PATH, str(job).strip(), "Documentation", job.po + " - SDKT.docx")):
                 if not job.completion_date == "" or not job.completion_date == None:
                     # Open Service Docket
-                    document = word.Documents.Add(Template=templates_path + "/SDKT.dotx", NewTemplate=False, DocumentType=0)
-                    
-                    # Add relevant job data to bookmark positions
-                    po_number = document.Bookmarks("PONumber").Range
-                    po_number.Text = job.po
-                    po_number1 = document.Bookmarks("PONumber1").Range
-                    po_number1.Text = job.po
-                    date = document.Bookmarks("Date").Range
-                    date.Text = job.completion_date.strftime('%d/%m/%Y') if job.completion_date and not job.completion_date == "" else datetime.now().strftime('%d/%m/%Y')
-                    scope = document.Bookmarks("SOW").Range
-                    scope.Text = job.scope
-                    
-                    # Remove Bookmarks
-                    for bookmark in document.Bookmarks:
-                        bookmark.Delete()
+                    document = Document(os.path.join(templates_path, "SDKT.docx"))
+
+                    for item in paragraph_items:
+                        for paragraph in document.paragraphs:
+                            if item in paragraph.text:
+                                paragraph.text = paragraph.text.replace(item, paragraph_items[item])
 
                     # Save and close word document
-                    document.SaveAs(sdkt_filename)
-                    print(sdkt_filename)
-                    document.Close()
+                    document.save(sdkt_filename)
+                    
                 else:
-                    word.Quit()
-                    del word
                     return self(success=False, message="Completion Date required for Service Docket.")
+                
         except BaseException as err:
             print(err)
             print(swms_filename, "\n", pra_filename, "\n", sdkt_filename)
             return self(success=False, message="An Error has occured, please contact admin.")
-
-        finally: 
-            if word:
-                word.Quit()
-                del word
 
         return self(success=True, message="Completion Documents Saved to Folder. Please fill out the SWMS and PRA")

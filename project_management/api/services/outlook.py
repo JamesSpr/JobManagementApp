@@ -67,7 +67,7 @@ class UpdateInspectionDetails(graphene.Mutation):
         job = Job.objects.get(id=jobId)
 
         job.inspection_by = CustomUser.objects.get(email=updatedBy)
-        job.inspection_date = datetime.strptime(inspectionDate + " " + inspectionTime, '%Y-%m-%d %H:%M').replace(tzinfo=timezone.get_fixed_timezone())
+        job.inspection_date = datetime.strptime(inspectionDate + " " + inspectionTime, '%Y-%m-%d %H:%M').replace(tzinfo=timezone.get_fixed_timezone(0))
         job.inspection_notes = inspectionNotes
         job.save()
 

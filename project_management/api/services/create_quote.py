@@ -64,7 +64,7 @@ class CreateQuote(graphene.Mutation):
         contact_phone = job.requester.phone.strip()
 
         # Fill File
-        mailMergeTableItems = {
+        table_items = {
             '[QuoteDate]': quote_date, 
             '[EstimateDescription]': estimate_name, 
             '[ClientName]': client_name, 
@@ -80,7 +80,7 @@ class CreateQuote(graphene.Mutation):
             '[QuoterEmail]': estimate.quote_by.email.capitalize().strip(),
         }
 
-        mailMergeParagraphItems = {
+        paragraph_items = {
             '[ClientName]' : client_name, 
             '[Location]': location,
             '[Scope]': scope,
@@ -90,30 +90,30 @@ class CreateQuote(graphene.Mutation):
             '[QuoterRole]': estimate.quote_by.position.title().strip(),
         }
 
-        for item in mailMergeTableItems:
+        for item in table_items:
             for table in document.tables:
                 for row in table.rows:
                     for cell in row.cells:
                         for paragraph in cell.paragraphs:
                             if item in paragraph.text:
                                 paragraph.font = document.styles['Normal']
-                                paragraph.text = paragraph.text.replace(item, mailMergeTableItems[item])
+                                paragraph.text = paragraph.text.replace(item, table_items[item])
                                 # print(paragraph.text)
 
-        for item in mailMergeParagraphItems:
+        for item in paragraph_items:
             for paragraph in document.paragraphs:
                 if item in paragraph.text:
                     if item == '[QuoterSignature]':
                         paragraph.text = paragraph.text.replace(item, '')
                         paragraph.left_indent = 0.5
                         sig_width = 2.25 if estimate.quote_by.first_name.lower() == "mark" else 4.75
-                        paragraph.add_run().add_picture(mailMergeParagraphItems[item],  width=Cm(sig_width))
+                        paragraph.add_run().add_picture(paragraph_items[item],  width=Cm(sig_width))
                     elif item == '[CompanyLogo]':
                         paragraph.text = paragraph.text.replace(item, '')
                         paragraph.left_indent = 0.5
-                        paragraph.add_run().add_picture(mailMergeParagraphItems[item], width=Cm(5.4))
+                        paragraph.add_run().add_picture(paragraph_items[item], width=Cm(5.4))
                     else:
-                        paragraph.text = paragraph.text.replace(item, mailMergeParagraphItems[item])
+                        paragraph.text = paragraph.text.replace(item, paragraph_items[item])
                         paragraph.left_indent = 0.5
 
         # Create estimate table

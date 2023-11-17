@@ -272,37 +272,37 @@ class CreateJob(graphene.Mutation):
 
         # Error Checking
         illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-        if [char for char in illegal_characters if char in input.title]:
+        if [char for char in illegal_characters if char in input['title']]:
             return self(success=False, message=["Title can not contain the characters:"] + illegal_characters)
-        if [char for char in illegal_characters if char in input.building]:
+        if [char for char in illegal_characters if char in input['building']]:
             return self(success=False, message=["Building can not contain the characters:"] + illegal_characters)
-        if [char for char in illegal_characters if char in input.po]:
+        if [char for char in illegal_characters if char in input['po']]:
             return self(success=False, message=["PO can not contain the characters:"] + illegal_characters)
-        if [char for char in illegal_characters if char in input.sr]:
+        if [char for char in illegal_characters if char in input['sr']]:
             return self(success=False, message=["SR can not contain the characters:"] + illegal_characters)
-        if [char for char in illegal_characters if char in input.other_id]:
+        if [char for char in illegal_characters if char in input['other_id']]:
             return self(success=False, message=["Other ID can not contain the characters:"] + illegal_characters)
 
-        if input.client.id == "":
+        if input['client'].id == "":
             missing = True
             missingItems.append(" Client")
-        if input.po == "" and input.sr == "" and input.other_id == "":
+        if input['po'] == "" and input['sr'] == "" and input['other_id'] == "":
             missing = True
             missingItems.append(" Job Identifier")
-        if input.location.id == "":
+        if input['location'].id == "":
             missing = True
             missingItems.append(" Location")
-        if input.requester.id == "":
+        if input['requester'].id == "":
             missing = True
             missingItems.append(" Requester")
-        if input.title == "":
+        if input['title'] == "":
             missing = True
             missingItems.append(" Title")
 
-        if input.po and input.po[0].isdigit():
-            input.po = f"PO{input.po}"
-        if input.sr and input.sr[0].isdigit():
-            input.sr = f"SR{input.sr}"
+        if input['po'] and input['po'][0].isdigit():
+            input['po'] = f"PO{input['po']}"
+        if input['sr'] and input['sr'][0].isdigit():
+            input['sr'] = f"SR{input['sr']}"
 
         if missing:
             return self(success=False, message=missingItems)
@@ -311,15 +311,15 @@ class CreateJob(graphene.Mutation):
         for (key, value) in input.items():
             input[key] = value.strip() if type(input[key]) == str else value
 
-        if (input.po != "" and Job.objects.filter(po=input.po).exists()) or (input.sr != "" and Job.objects.filter(sr=input.sr).exists()) or (input.other_id != "" and Job.objects.filter(other_id=input.other_id).exists()):
-            if input.po != "" and Job.objects.filter(po=input.po).exists():
-                job = Job.objects.get(po=input.po, client=Client.objects.get(id=input.client.id))
+        if (input['po'] != "" and Job.objects.filter(po=input['po']).exists()) or (input['sr'] != "" and Job.objects.filter(sr=input['sr']).exists()) or (input['other_id'] != "" and Job.objects.filter(other_id=input['other_id']).exists()):
+            if input['po'] != "" and Job.objects.filter(po=input['po']).exists():
+                job = Job.objects.get(po=input['po'], client=Client.objects.get(id=input['client'].id))
                 print("PO Found", end=' - ')
-            elif input.sr != "" and Job.objects.filter(sr=input.sr).exists():
-                job = Job.objects.get(sr=input.sr, client=Client.objects.get(id=input.client.id))
+            elif input['sr'] != "" and Job.objects.filter(sr=input['sr']).exists():
+                job = Job.objects.get(sr=input['sr'], client=Client.objects.get(id=input['client'].id))
                 print("SR Found", end=' - ')
-            elif input.other_id != "" and Job.objects.filter(other_id=input.other_id).exists():
-                job = Job.objects.get(other_id=input.other_id, client=Client.objects.get(id=input.client.id))
+            elif input['other_id'] != "" and Job.objects.filter(other_id=input['other_id']).exists():
+                job = Job.objects.get(other_id=input['other_id'], client=Client.objects.get(id=input['client'].id))
                 print("otherID Found", end=' - ')
             
             if job:
@@ -327,26 +327,26 @@ class CreateJob(graphene.Mutation):
                 old_folder_name = str(job)
                 ## Only update fields that are empty
                 # job.client = Client.objects.get(id=input.client_id) if not job.client else job.client
-                if input.date_issued: job.date_issued = input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0)) if not job.date_issued else job.date_issued
-                job.po = input.po if not job.po else job.po
-                job.sr = input.sr if not job.sr else job.sr
-                job.other_id = input.other_id if not job.other_id else job.other_id
-                job.location = Location.objects.get(id=input.location.id) if not job.location else job.location
-                job.building = input.building if not job.building else job.building
-                job.detailed_location = input.detailed_location if not job.detailed_location else job.detailed_location
-                job.requester = ClientContact.objects.get(id=input.requester.id) if not job.requester else job.requester
-                job.priority = input.priority if not job.priority else job.priority
-                job.special_instructions = input.special_instructions if not job.special_instructions else job.special_instructions
-                job.poc_name = input.poc_name if not job.poc_name else job.poc_name 
-                job.poc_phone = input.poc_phone if not job.poc_phone else job.poc_phone
-                job.poc_email = input.poc_email if not job.poc_email else job.poc_email
-                job.alt_poc_name = input.alt_poc_name if not job.alt_poc_name else job.alt_poc_name
-                job.alt_poc_phone = input.alt_poc_phone if not job.alt_poc_phone else job.alt_poc_phone
-                job.alt_poc_email = input.alt_poc_email if not job.alt_poc_email else job.alt_poc_email
-                job.title = input.title if not job.title else job.title
-                job.description = input.description if not job.description else job.description
-                if input.overdue_date: job.overdue_date = input.overdue_date.replace(tzinfo=timezone.get_fixed_timezone(0)) if not input.overdue_date == None else job.overdue_date
-                job.bsafe_link = input.bsafe_link if not input.bsafe_link == "" else job.bsafe_link
+                if input['date_issued']: job.date_issued = input['date_issued'].replace(tzinfo=timezone.get_fixed_timezone(0)) if not job.date_issued else job.date_issued
+                job.po = input['po'] if not job.po else job.po
+                job.sr = input['sr'] if not job.sr else job.sr
+                job.other_id = input['other_id'] if not job.other_id else job.other_id
+                job.location = Location.objects.get(id=input['location'].id) if not job.location else job.location
+                job.building = input['building'] if not job.building else job.building
+                job.detailed_location = input['detailed_location'] if not job.detailed_location else job.detailed_location
+                job.requester = ClientContact.objects.get(id=input['requester'].id) if not job.requester else job.requester
+                job.priority = input['priority'] if not job.priority else job.priority
+                job.special_instructions = input['special_instructions'] if not job.special_instructions else job.special_instructions
+                job.poc_name = input['poc_name'] if not job.poc_name else job.poc_name 
+                job.poc_phone = input['poc_phone'] if not job.poc_phone else job.poc_phone
+                job.poc_email = input['poc_email'] if not job.poc_email else job.poc_email
+                job.alt_poc_name = input['alt_poc_name'] if not job.alt_poc_name else job.alt_poc_name
+                job.alt_poc_phone = input['alt_poc_phone'] if not job.alt_poc_phone else job.alt_poc_phone
+                job.alt_poc_email = input['alt_poc_email'] if not job.alt_poc_email else job.alt_poc_email
+                job.title = input['title'] if not job.title else job.title
+                job.description = input['description'] if not job.description else job.description
+                if input['overdue_date']: job.overdue_date = input['overdue_date'].replace(tzinfo=timezone.get_fixed_timezone(0)) if not input['overdue_date'] == None else job.overdue_date
+                job.bsafe_link = input['bsafe_link'] if not input['bsafe_link'] == "" else job.bsafe_link
                 job.save()
 
                 # Check folder name and rename if they're different
@@ -361,31 +361,31 @@ class CreateJob(graphene.Mutation):
                 message.append("Job found and Updated")
                 updated = True
 
-        else:            
+        else:
             message.append("New Job Created")
 
             job = Job()
-            job.client = Client.objects.get(id=input.client.id)
-            if input.date_issued: job.date_issued = input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0))
-            job.po = input.po
-            job.sr = input.sr
-            job.other_id = input.other_id
-            job.location = Location.objects.get(id=input.location.id)
-            job.building = input.building
-            job.detailed_location = input.detailed_location
-            job.requester = ClientContact.objects.get(id=input.requester.id)
-            job.priority = input.priority
-            job.special_instructions = input.special_instructions
-            job.poc_name = input.poc_name
-            job.poc_phone = input.poc_phone
-            job.poc_email = input.poc_email
-            job.alt_poc_name = input.alt_poc_name
-            job.alt_poc_phone = input.alt_poc_phone
-            job.alt_poc_email = input.alt_poc_email
-            job.title = input.title
-            job.description = input.description
-            if input.overdue_date: job.overdue_date = input.overdue_date.replace(tzinfo=timezone.get_fixed_timezone(0))
-            job.bsafe_link = input.bsafe_link
+            job.client = Client.objects.get(id=input['client'].id)
+            if input['date_issued']: job.date_issued = input['date_issued'].replace(tzinfo=timezone.get_fixed_timezone(0))
+            job.po = input['po']
+            job.sr = input['sr']
+            job.other_id = input['other_id']
+            job.location = Location.objects.get(id=input['location'].id)
+            job.building = input['building']
+            job.detailed_location = input['detailed_location']
+            job.requester = ClientContact.objects.get(id=input['requester'].id)
+            job.priority = input['priority']
+            job.special_instructions = input['special_instructions']
+            job.poc_name = input['poc_name']
+            job.poc_phone = input['poc_phone']
+            job.poc_email = input['poc_email']
+            job.alt_poc_name = input['alt_poc_name']
+            job.alt_poc_phone = input['alt_poc_phone']
+            job.alt_poc_email = input['alt_poc_email']
+            job.title = input['title']
+            job.description = input['description']
+            if input['overdue_date']: job.overdue_date = input['overdue_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
+            job.bsafe_link = input['bsafe_link']
             job.total_hours = "0.00"
             job.save()
 
@@ -458,31 +458,32 @@ class UpdateJob(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, input):
-        if input.id == "":
+        if input['id'] == "":
             return self(success=False, message="Job ID Not Found!")
 
         for (key, value) in input.items():
-            input[key] = value.strip() if type(input[key]) == str else input[key]
+            input[key] = value.strip() if type(input[key]) == str else value
+            # input[key] = value.strip() if type(input[key]) == str else input[key]
 
         # Name Checking
         illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-        if [char for char in illegal_characters if char in input.title]:
+        if [char for char in illegal_characters if char in input['title']]:
             message = "Title can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input.building]:
+        if [char for char in illegal_characters if char in input['building']]:
             message = "Building can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input.po]:
+        if [char for char in illegal_characters if char in input['po']]:
             message = "PO can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input.sr]:
+        if [char for char in illegal_characters if char in input['sr']]:
             message = "SR can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
-        if [char for char in illegal_characters if char in input.other_id]:
+        if [char for char in illegal_characters if char in input['other_id']]:
             message = "Other ID can not contain the characters: " + str(illegal_characters)
             return self(success=False, message=message)
         
@@ -501,41 +502,41 @@ class UpdateJob(graphene.Mutation):
         old_job_str = str(job)
         if job.overdue_date: old_job_date = job.overdue_date.replace(tzinfo=timezone.get_current_timezone())
 
-        job.client = None if input.client == None else Client.objects.get(id=input.client.id)
-        job.date_issued = None if input.date_issued == None else input.date_issued.replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.po = input.po
-        job.sr = input.sr
-        job.other_id = input.other_id
-        job.location = None if input.location == None else Location.objects.get(id=input.location.id)
-        job.building = input.building
-        job.detailed_location = input.detailed_location
-        job.requester = None if input.requester == None or input.requester.id == None else ClientContact.objects.get(id=input.requester.id)
-        job.priority = input.priority
-        job.special_instructions = input.special_instructions
-        job.poc_name = input.poc_name
-        job.poc_phone = input.poc_phone
-        job.poc_email = input.poc_email
-        job.alt_poc_name = input.alt_poc_name
-        job.alt_poc_phone = input.alt_poc_phone
-        job.alt_poc_email = input.alt_poc_email
-        job.title = input.title
-        job.description = input.description
-        job.inspection_by = None if input.inspection_by == None or input.inspection_by.id == None else CustomUser.objects.get(id=input.inspection_by.id)
-        job.inspection_date = None if input.inspection_date == None else input.inspection_date.replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.inspection_notes = input.inspection_notes
-        job.scope = input.scope
-        job.site_manager = None if input.site_manager == None or input.site_manager.id == None else CustomUser.objects.get(id=input.site_manager.id)
-        job.commencement_date = None if input.commencement_date == None else input.commencement_date.replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.completion_date = None if input.completion_date == None else input.completion_date.replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.total_hours = 0.0 if input.total_hours == "" else str(input.total_hours)
-        job.work_notes = input.work_notes
-        job.overdue_date = None if input.overdue_date == None else input.overdue_date.replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.close_out_date = None if input.close_out_date == None else input.close_out_date.replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.work_type = input.work_type
-        job.opportunity_type = input.opportunity_type
-        job.cancelled = input.cancelled
-        job.cancel_reason = input.cancel_reason
-        job.bsafe_link = input.bsafe_link
+        job.client = None if input['client'] == None else Client.objects.get(id=input['client'].id)
+        job.date_issued = None if input['date_issued'] == None else input['date_issued'].replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.po = input['po']
+        job.sr = input['sr']
+        job.other_id = input['other_id']
+        job.location = None if input['location'] == None else Location.objects.get(id=input['location'].id)
+        job.building = input['building']
+        job.detailed_location = input['detailed_location']
+        job.requester = None if input['requester'] == None or input['requester'].id == None else ClientContact.objects.get(id=input['requester'].id)
+        job.priority = input['priority']
+        job.special_instructions = input['special_instructions']
+        job.poc_name = input['poc_name']
+        job.poc_phone = input['poc_phone']
+        job.poc_email = input['poc_email']
+        job.alt_poc_name = input['alt_poc_name']
+        job.alt_poc_phone = input['alt_poc_phone']
+        job.alt_poc_email = input['alt_poc_email']
+        job.title = input['title']
+        job.description = input['description']
+        job.inspection_by = None if input['inspection_by'] == None or input['inspection_by'].id == None else CustomUser.objects.get(id=input['inspection_by'].id)
+        job.inspection_date = None if input['inspection_date'] == None else input['inspection_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.inspection_notes = input['inspection_notes']
+        job.scope = input['scope']
+        job.site_manager = None if input['site_manager'] == None or input['site_manager'].id == None else CustomUser.objects.get(id=input['site_manager'].id)
+        job.commencement_date = None if input['commencement_date'] == None else input['commencement_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.completion_date = None if input['completion_date'] == None else input['completion_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.total_hours = 0.0 if input['total_hours'] == "" else str(input['total_hours'])
+        job.work_notes = input['work_notes']
+        job.overdue_date = None if input['overdue_date'] == None else input['overdue_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.close_out_date = None if input['close_out_date'] == None else input['close_out_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.work_type = input['work_type']
+        job.opportunity_type = input['opportunity_type']
+        job.cancelled = input['cancelled']
+        job.cancel_reason = input['cancel_reason']
+        job.bsafe_link = input['bsafe_link']
         job.save()
 
         # Change Calendar Event
@@ -557,7 +558,7 @@ class UpdateJob(graphene.Mutation):
 
         message = ""
         # Update the Job Estimate
-        for est in input.estimate_set:
+        for est in input['estimate_set']:
 
             if [char for char in illegal_characters if char in est.name]:
                 return self(success=False, message="Estimate name can not contain the characters:" + str(illegal_characters))
