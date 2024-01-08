@@ -32,6 +32,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
     const [waiting, setWaiting] = useState(false);
     
     const [uploadedFiles, setUploadedFiles] = useState<Blob[]>([]);
+    const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([]);
     const [fileLimit, setFileLimit] = useState(false);
 
     const handleJobAllocation = async () => {
@@ -87,10 +88,6 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
         })
 
         const attachments: string[] = await Promise.all(attachmentPromises);
-        let attachmentNames: string[] = []
-        for(var attachment of uploadedFiles) {
-            attachmentNames.push(attachment.name);
-        }
 
         await axiosPrivate({
             method: 'post',
@@ -106,7 +103,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
                     recipient: recipients,
                     settings: emailSettings,
                     attachments: attachments,
-                    attachmentNames: attachmentNames,
+                    attachmentNames: uploadedFileNames,
                 },
         }),
         }).then((response) => {
@@ -138,6 +135,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
         const MAX_FILE_SIZE = 20971520 // 20 MB
 
         const uploaded:any[] = [...uploadedFiles]
+        const uploadedNames:string[] = [...uploadedFileNames]
         let limitExceeded = false
 
         const acceptedTypes = ["image/jpeg", "image/png", "image/ico", 
@@ -167,6 +165,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
 
                 if(acceptedTypes.includes(file.type)) {
                     uploaded.push(file);
+                    uploadedNames.push(file.name);
                 }
                 else {
                     setSnack({active: true, variant: 'error', message:"Some files not uploaded due to file type. Contact Developer."})
@@ -175,6 +174,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
         }))
         if(!limitExceeded) {
             setUploadedFiles(uploaded);
+            setUploadedFileNames(uploadedNames)
         }
     }
 
@@ -185,6 +185,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
 
     const removeAttachment = (idx: number) => {
         setUploadedFiles(prev => ([...prev.filter((_, i) => i !== idx)]))
+        setUploadedFileNames(prev => ([...prev.filter((_, i) => i !== idx)]))
     }
     
     return (

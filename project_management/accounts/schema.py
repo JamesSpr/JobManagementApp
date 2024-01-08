@@ -179,6 +179,12 @@ class Query(UserQuery, MeQuery, graphene.ObjectType):
     def resolve_companies(root, info):
         return Company.objects.all()
 
+    # users = graphene.List(CustomUserType)
+    # def resolve_users(root, info, is_staff=None):
+    #     if not is_staff == None:
+    #         return CustomUser.objects.filter(is_staff=is_staff)
+
+    #     return CustomUser.objects.all()
 
     user_refresh_token = graphene.List(CustomUserType)
 

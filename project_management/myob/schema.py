@@ -30,6 +30,7 @@ def is_valid_myob_user(uid, user):
         
         myob_user = MyobUser.objects.get(id=uid)
         if not user: user = CustomUser.objects.get(email=user, myob_user=myob_user)
+    
         return user.myob_access
     
     return False
@@ -313,7 +314,7 @@ class myobCreateClient(graphene.Mutation):
             if not response.status_code == 201:
                 return self(success=False, message=response.text)
             
-            myob_uid = response.headers['Location'].replace(link, "")
+            myob_uid = response.headers['Location'][-36:]
             
             client = Client()
             client.name = name
@@ -417,7 +418,7 @@ class myobCreateContractor(graphene.Mutation):
             if not response.status_code == 201:
                 return self(success=False, message=response.text)
 
-            myob_uid = response.headers['Location'].replace(link, "")
+            myob_uid = response.headers['Location'][-36:]
 
             new_contractor = Contractor()
             new_contractor.myob_uid = myob_uid
@@ -862,8 +863,8 @@ class myobRepairJobSync(graphene.Mutation):
                 #     print("Error:", job)
                 #     return self(success=False, message=json.dumps(post_response.text))
                 # else:
-                #     print("Uploaded:", job, post_response.headers['Location'].replace(url, ""))
-                #     job.myob_uid = post_response.headers['Location'].replace(url, "")
+                #     print("Uploaded:", job, post_response.headers['Location'][-36:])
+                #     job.myob_uid = post_response.headers['Location'][-36:]
                 #     job.save()
                 #     return self(success=True, message=json.dumps("Job Linked to MYOB"), uid=job.myob_uid)
 
@@ -961,8 +962,8 @@ class myobSyncJobs(graphene.Mutation):
                             print("Error:", one_job)
                             error_responses.update({one_job.po: json.loads(post_response.text)})
                         else:
-                            print("Uploaded:", one_job, post_response.headers['Location'].replace(url, ""))
-                            one_job.myob_uid = post_response.headers['Location'].replace(url, "")
+                            print("Uploaded:", one_job, post_response.headers['Location'][-36:])
+                            one_job.myob_uid = post_response.headers['Location'][-36:]
                             one_job.save()
 
             
@@ -1028,8 +1029,8 @@ class myobCreateJob(graphene.Mutation):
                 print("Error:", job)
                 return self(success=False, message=json.dumps(post_response.text))
             else:
-                print("Uploaded:", job, post_response.headers['Location'].replace(url, ""))
-                job.myob_uid = post_response.headers['Location'].replace(url, "")
+                print("Uploaded:", job, post_response.headers['Location'][-36:])
+                job.myob_uid = post_response.headers['Location'][-36:]
                 job.save()
                 return self(success=True, message=json.dumps("Job Linked to MYOB"), uid=job.myob_uid)
         
@@ -1741,9 +1742,9 @@ class myobCreateInvoice(graphene.Mutation):
                         # pdfkit.from_file(estimate_file.strip(".xlsm") + ".html", estimate_file.strip(".xlsm") + ".pdf")
                         
                         p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
-                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}".replace("\\", '/').replace(" ", "\\ ") 
+                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
                         estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
-                        p.communicate(input=f"""cd {bash_folder_path}\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
+                        p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
 
                         # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
                         # time.sleep(1)
@@ -1827,7 +1828,7 @@ class myobCreateInvoice(graphene.Mutation):
                 return self(success=False, message=json.loads(response.text))
 
             # Get the invoice number and create new invoice model
-            invoice_uid = response.headers['Location'].replace(url, "")
+            invoice_uid = response.headers['Location'][-36:]
             print("Invoice Created for", str(job), " - UID =", invoice_uid)
 
             ## Confirm Creation and get details (number)
@@ -1841,8 +1842,8 @@ class myobCreateInvoice(graphene.Mutation):
             }
             res = requests.request("GET", url, headers=headers, data={})
             res = json.loads(res.text)
-            invoice = res['Items']
-            invoice = invoice[0]
+
+            invoice = res['Items'][0]
 
             new_invoice, created = Invoice.objects.get_or_create(myob_uid=invoice_uid)
             new_invoice.number = invoice['Number']
@@ -2126,7 +2127,8 @@ class myobCreateBill(graphene.Mutation):
                 return self(success=False, message="Issue creating bill in MYOB", error=json.loads(response.text))
 
             # Get the bill uid
-            bill_uid = response.headers['Location'].replace(url, "")
+            bill_uid = response.headers['Location'][-36:]
+            print(bill_uid)
 
             job = Job.objects.get(po=jobId)
 
@@ -2260,7 +2262,7 @@ class myobProcessPayment(graphene.Mutation):
 
             if len(paid_invoices) < 1:
                 return self(success=False, message="No Invoices Found")
-
+            
             # POST Payment to MYOB
             # ANZ Online-Saver UID: "7c6557f4-d684-41f2-9e0b-2f53c06828d3"
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment/"
@@ -2288,7 +2290,7 @@ class myobProcessPayment(graphene.Mutation):
             if(not response.status_code == 201):
                 return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
 
-            remittance_advice.myob_uid = response.headers['Location'].replace(url, "")
+            remittance_advice.myob_uid = response.headers['Location'][-36:]
             remittance_advice.save()
 
             # Update invoices after the payment is processed in myob
@@ -2413,7 +2415,7 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
                     if not response.status_code == 201:
                         return self(success=False, message=response.text)
                     
-                    invoice_uid = response.headers['Location'].replace(url, "")
+                    invoice_uid = response.headers['Location'][-36:]
                     new_uids.update({order['Number']: invoice_uid})
                     
                     converted.append(order['Number'])
@@ -2539,16 +2541,11 @@ class generateInvoice(graphene.Mutation):
                     
                     if not found["estimate"] and not estimate_file == None :
                         print("Converting Spreadsheet to PDF", estimate_file)
-                        # Convert excel sheet to pdf
-                        # workbook = load_workbook(filename=estimate_file)
-                        # sheet = workbook.active
-                        # sheet["C5"] = estimate.name
-                        # workbook.save(filename=estimate_file.strip(".xlsm") + ".pdf") 
 
                         p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
-                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}".replace("\\", '/').replace(" ", "\\ ") 
+                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
                         estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
-                        p.communicate(input=f"""cd {bash_folder_path}\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
+                        p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
 
                         found["estimate"] = True
                         paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 

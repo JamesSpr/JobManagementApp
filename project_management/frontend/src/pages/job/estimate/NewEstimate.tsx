@@ -69,6 +69,7 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
                 query: `mutation createEstimate($jobId:String!, $estimate: EstimateInput!) {
                     create: createEstimate(jobId:$jobId, estimate:$estimate) {
                         success
+                        message
                         estimate {
                             id
                             name

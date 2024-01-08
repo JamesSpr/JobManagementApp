@@ -643,7 +643,7 @@ class CreateEstimate(graphene.Mutation):
 
         job = Job.objects.get(id=job_id)
 
-        # Name hecking
+        # Name checking
         illegal_characters = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         if [char for char in illegal_characters if char in estimate.name]:
             return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
@@ -651,7 +651,7 @@ class CreateEstimate(graphene.Mutation):
         try:
             os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
         except:
-            return self(success=True, message="Job Folder Cannot Be Found. Please Check OneDrive")
+            return self(success=False, message="Job Folder Cannot Be Found. Please Check OneDrive")
 
         est = Estimate()
         est.quote_by = CustomUser.objects.get(id=estimate.quote_by.id)
@@ -1583,7 +1583,10 @@ class Query(graphene.ObjectType):
         #     return Job.objects.all().order_by(order_by)
 
         if identifier:
-            print(identifier)
+            print(identifier, type(identifier))
+            if identifier.isnumeric() and Job.objects.filter(id=identifier).exists():
+                return [Job.objects.get(id=identifier)]
+
             if Job.objects.filter(po=identifier).exists():
                 return [Job.objects.get(po=identifier)]
             

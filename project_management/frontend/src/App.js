@@ -28,6 +28,7 @@ import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
 import EditBill from "./pages/bill/EditBill";
 
+
 const App = () => {
     return ( 
         <Layout>

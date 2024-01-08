@@ -51,24 +51,51 @@ class CheckJobExists(graphene.Mutation):
 class UpdateInspectionDetails(graphene.Mutation):
     class Arguments:
         jobId = graphene.String()
-        updatedBy = graphene.String()
         inspectionDate = graphene.String()
-        inspectionTime = graphene.String()
         inspectionNotes = graphene.String()
 
     success = graphene.Boolean()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, jobId, updatedBy, inspectionDate, inspectionTime, inspectionNotes):
+    def mutate(self, root, info, jobId, inspectionDate, inspectionNotes):
         if not Job.objects.filter(id=jobId).exists():
             return self(Success=False)
         
         job = Job.objects.get(id=jobId)
 
-        job.inspection_by = CustomUser.objects.get(email=updatedBy)
-        job.inspection_date = datetime.strptime(inspectionDate + " " + inspectionTime, '%Y-%m-%d %H:%M').replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.inspection_by = CustomUser.objects.get(email=info.context.user)
+        job.inspection_date = datetime.strptime(inspectionDate, '%Y-%m-%d %H:%M').replace(tzinfo=timezone.get_fixed_timezone(0))
         job.inspection_notes = inspectionNotes
+        job.save()
+
+        return self(success=True)
+
+class UpdateCloseOffDetails(graphene.Mutation):
+    class Arguments:
+        jobId = graphene.String()
+        inspectionDate = graphene.String()
+        startDate = graphene.String()
+        finishDate = graphene.String()
+        hours = graphene.String()
+        scope = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, jobId, inspectionDate, startDate, finishDate, hours, scope):
+        if not Job.objects.filter(id=jobId).exists():
+            return self(Success=False)
+        
+        job = Job.objects.get(id=jobId)
+
+        job.inspection_by = CustomUser.objects.get(email=info.context.user)
+        job.inspection_date = datetime.strptime(inspectionDate, '%Y-%m-%d %H:%M').replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.commencement_date = datetime.strptime(startDate, '%Y-%m-%d %H:%M').replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.completion_date = datetime.strptime(finishDate, '%Y-%m-%d %H:%M').replace(tzinfo=timezone.get_fixed_timezone(0))
+        job.total_hours = hours
+        job.scope = scope
         job.save()
 
         return self(success=True)
@@ -77,7 +104,6 @@ class QuoteType(DjangoObjectType):
     class Meta:
         model = Estimate
         fields = '__all__'
-    
     
 class GetQuotes(graphene.Mutation):
     class Arguments:
@@ -155,8 +181,8 @@ class ProcessApproval(graphene.Mutation):
                 print("Error:", job)
                 return self(success=False, message=post_response.text)
                 
-            print("Uploaded:", job, post_response.headers['Location'].replace(url, ""))
-            job.myob_uid = post_response.headers['Location'].replace(url, "")
+            print("Uploaded:", job, post_response.headers['Location'][-36:])
+            job.myob_uid = post_response.headers['Location'][-36:]
             job.save()
             return self(success=True, message="Job Linked to MYOB")
         
@@ -244,7 +270,7 @@ class ProcessInvoice(graphene.Mutation):
                     return self(success=False, message=response.text)
                 
                 # Get uid of the invoice created by conversion process and update invoice
-                myob_uid = response.headers['Location'].replace(url, "")
+                myob_uid = response.headers['Location'][-36:]
                 invoice.myob_uid = myob_uid
 
             invoice.date_issued = issue_date
@@ -354,7 +380,7 @@ class ProcessInvoices(graphene.Mutation):
                         return self(success=False, message=response.text)
                     
                     # Get uid of the invoice created by conversion process
-                    myob_uid = response.headers['Location'].replace(url, "")
+                    myob_uid = response.headers['Location'][-36:]
                     converted.update({order['Number']: myob_uid})
 
                 del invoices[:query_limit]
@@ -515,4 +541,5 @@ class Mutation(graphene.ObjectType):
     process_invoice = ProcessInvoice.Field()
     process_invoices = ProcessInvoices.Field()
     update_inspection_details = UpdateInspectionDetails.Field()
+    update_close_off_details = UpdateCloseOffDetails.Field()
     # send_invoices = SendInvoices.Field()

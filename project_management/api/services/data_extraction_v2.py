@@ -206,7 +206,7 @@ class ExtractBillDetails(graphene.Mutation):
             elif(len(date_regex) > 1):
                 # Remove future dates that could be the due date.
                 for d in date_regex:
-                    if try_parsing_date(d) > datetime.today() + timedelta(days=1):
+                    if not try_parsing_date(d) == None and try_parsing_date(d) > datetime.today() + timedelta(days=1):
                         date_regex.remove(d)
 
                 if debug: print("Date:", date_regex)
@@ -251,14 +251,18 @@ def abn_format(text):
 def try_parsing_date(text, debug=False):
     text = text.strip().title()
     if debug: print("Parsing:", text)
-    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %B %Y', '%d %b %Y', '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
+    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', 
+                '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %B %', '%d %b %Y',
+                '%B%d,%Y', '%b%d,%Y', '%B%d%Y', '%b%d%Y', '%d%B%Y', '%d%b%Y',
+                '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y',
+                '%-d-%b-%Y'):
         try:
             return datetime.strptime(text, fmt)
         except ValueError:
             pass
 
     return None
-
+ 
 def try_parsing_date_to_string(text, debug=False):
     text = text.strip().title()
     if debug: print("Parsing:", text)
