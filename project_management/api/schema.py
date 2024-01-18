@@ -191,6 +191,7 @@ class LocationInputType(graphene.InputObjectType):
     postcode = graphene.String()    
 
 class InvoiceUpdateInput(graphene.InputObjectType):
+    id = graphene.String()
     myob_uid = graphene.String()
     number = graphene.String()
     amount = graphene.Float()

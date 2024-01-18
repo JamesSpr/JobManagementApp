@@ -13,7 +13,9 @@ project_management/api/services/email_resources/**
 !*/myob/scripts/*.py
 */myob/invoices/**
 cert.crt
+cert.csr
 cert.key
+cert.pem
 */frontend/static/frontend/main.js
 */frontend/static/frontend/main.js*.txt
 

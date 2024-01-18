@@ -215,8 +215,7 @@ class ImportTimesheets(graphene.Mutation):
                 work_day.work_type = day['work_type']
                 work_day.notes = day['notes']
                 isWeekend = parse_date(work_date).weekday() >= 5
-                work_day.allow_overtime = employee.pay_basis == "Hourly" or isWeekend
-
+                
                 if " - " in day['job']:
                     if MyobJob.objects.filter(number=day['job'].split(" - ")[0]).exists():
                         work_day.job = MyobJob.objects.get(number=day['job'].split(" - ")[0])
@@ -224,6 +223,9 @@ class ImportTimesheets(graphene.Mutation):
                     work_day.job = MyobJob.objects.get(number=day['job'])
                 else:
                     work_day.job = None
+
+                allowed_overtime = not(day['work_type'] == "PH" and work_day.job == None) and (employee.pay_basis == "Hourly" or isWeekend)
+                work_day.allow_overtime = allowed_overtime
 
                 work_day.save()
 
@@ -268,7 +270,6 @@ class ImportTimesheets(graphene.Mutation):
                 work_day.allow_overtime = employee.pay_basis == "Hourly"
                 work_day.save()
 
-        
         return self(success=True)
 
 def parse_date(dateString):
@@ -441,8 +442,25 @@ class GetPayrollDetails(graphene.Mutation):
                 #emp.pay_basis = employee['Wage']['PayBasis']
                 emp.save()
 
-        return self(success=True, message="Successfully Retrieved Payroll Details", 
-                    details=json.dumps(res))    
+        return self(success=True, message="Successfully Retrieved Payroll Details", details=json.dumps(res))    
+
+class DeleteTimesheetEntry(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, id):
+        timesheet = Timesheet.objects.get(id=id)
+        
+        for workday in WorkDay.objects.filter(timesheet=timesheet):
+            workday.delete()
+
+        timesheet.delete()
+
+        return self(success=True)
 
 class ClearAllTimesheetExamples(graphene.Mutation):
     success = graphene.Boolean()
@@ -554,7 +572,7 @@ class SubmitTimesheets(graphene.Mutation):
 
                     if worktype == "PH" or datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 6: # Sunday:
                         # Add 2x Overtime for working on public holiday
-                        prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][1]).myob_uid
+                        prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][2]).myob_uid
                         timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
 
                     elif datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 5: # Saturday
@@ -663,10 +681,11 @@ class SubmitTimesheets(graphene.Mutation):
         return self(success=True, message=message, timesheets=processed, submissionError=submissionError) #, debug=json.dumps(all_timesheet_data)
 
 def add_to_timesheets(timesheet_lines, workday, prc_uid):   
-    lines_idx = check_pay_category_exists(prc_uid, timesheet_lines)
+    pr_lines_idx = check_item_exists(prc_uid, timesheet_lines)
+    job_lines_idx = check_item_exists(workday['job'], timesheet_lines)
 
     # Add data to myob timesheet lines
-    if lines_idx == -1:
+    if pr_lines_idx == -1 or job_lines_idx == -1:
         job = {'UID': workday['job'].myob_uid} if workday['job'] else None
 
         # Create a new line
@@ -675,31 +694,32 @@ def add_to_timesheets(timesheet_lines, workday, prc_uid):
                 'UID': prc_uid
             },
             'Notes': workday['notes'],
+            'Job': job,
             'Entries': [{
                 'Date': workday['date'],
                 'Hours': workday['hours'],
-                'Job': job
             }]
         })
     else:
         job = {'UID': workday['job'].myob_uid} if workday['job'] else None
+        line_idx = timesheet_lines.index(lambda val: val[pr_lines_idx] == val[job_lines_idx])
+        print(line_idx)
 
         # Append timesheet to line entries
-        timesheet_lines[lines_idx]['Entries'].append({
+        timesheet_lines[line_idx]['Entries'].append({
             'Date': workday['date'],
-            'Hours': workday['hours'],
-            'Job': job
+            'Hours': workday['hours']
         })
 
     return timesheet_lines
 
 # Check if pay category exists in a list
-def check_pay_category_exists(pay_category, list):
+def check_item_exists(item, list):
     for i, dictionary in enumerate(list):
         for val in dictionary.values():
             if type(val) is dict:
                 if 'UID' in val:
-                    if pay_category == val['UID']:
+                    if item == val['UID']:
                         return i
     return -1
 
@@ -756,7 +776,9 @@ class Mutation(graphene.ObjectType):
     get_payroll_details = GetPayrollDetails.Field()
     get_myob_employees = GetEmployees.Field()
     
-    delete_all_timesheets = ClearAllTimesheetExamples.Field()
+    delete_timesheet_entry = DeleteTimesheetEntry.Field()
+
+    # delete_all_timesheets = ClearAllTimesheetExamples.Field()
     # get_employee_count = GetEmployeeCount.Field()
     
     import_timesheets = ImportTimesheets.Field()

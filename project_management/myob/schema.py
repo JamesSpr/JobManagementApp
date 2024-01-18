@@ -1765,7 +1765,12 @@ class myobCreateInvoice(graphene.Mutation):
                     found['estimate'] = True
 
                 if estimate.price > 500.00 and not all(found.values()):
-                    return self(success=False, message="Error. Not all required files can be found:" + str(found))
+                    error_str = " "
+                    for [key, val] in found.items():
+                        if not val:
+                            error_str += key.capitalize() + ", "
+
+                    return self(success=False, message="Not all required invoice files can be found:" + error_str[:-2])
             
             elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
                 found = {"not_required": True}
@@ -2259,7 +2264,6 @@ class myobProcessPayment(graphene.Mutation):
                         "AmountAppliedForeign": None
                     })
 
-
             if len(paid_invoices) < 1:
                 return self(success=False, message="No Invoices Found")
             
@@ -2288,6 +2292,7 @@ class myobProcessPayment(graphene.Mutation):
             print("Remittance Advice Uploaded")
 
             if(not response.status_code == 201):
+                print(response.text)
                 return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
 
             remittance_advice.myob_uid = response.headers['Location'][-36:]
@@ -2303,6 +2308,7 @@ class myobProcessPayment(graphene.Mutation):
                     invoice.date_paid = payment_date
                     invoice.remittance = remittance_advice
                     invoice.save()
+                    invoice.job.save()
                     updatedInvoices.append(invoice)
             
             print("Invoices Updated")
@@ -2454,6 +2460,26 @@ class myobCustomFunction(graphene.Mutation):
         if is_valid_myob_user(uid, info.context.user):
             checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
+
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+
+            response = getAllData(url, headers)
+            # res = json.loads(response.text)
+            res = response['Items']
+
+            for invoice in res:
+                if Invoice.objects.filter(number=invoice['Number']).exists():
+                    inv = Invoice.objects.get(number=invoice['Number'])
+                    if not inv.myob_uid == invoice['UID']:
+                        print(invoice['Number'])
+                        inv.myob_uid = invoice['UID']
+                        inv.save()
 
         return self(success=False, message="MYOB Auth Error")
 
@@ -2621,7 +2647,12 @@ class generateInvoice(graphene.Mutation):
                     print("Invoice Saved")
 
             if not all(found.values()):
-                return self(success=False, message="Not all required files can be found - " + str(found))
+                error_str = " "
+                for key, val in found.items():
+                    if not val:
+                        error_str += key.capitalize() + ", "
+
+                return self(success=False, message="Not all required invoice files can be found - " + error_str[:-2])
 
             print("Invoice: ", invoice_number)
             url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service?$filter=Number eq '{invoice_number}'"
