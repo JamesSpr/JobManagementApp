@@ -4,7 +4,7 @@ import { EmployeeType, SnackType, User } from "../../types/types";
 import { RowModel, Table } from "@tanstack/react-table";
 import CloseIcon from '@mui/icons-material/Close';
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
-import { BasicDialog, FileUploadSection, ProgressButton } from "../../components/Components";
+import { BasicDialog  } from "../../components/Components";
 
 import ArticleIcon from '@mui/icons-material/Article';
 import PhotoIcon from '@mui/icons-material/Photo';

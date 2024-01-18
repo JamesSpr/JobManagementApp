@@ -1,9 +1,19 @@
-import { ClientType, ContactType, InvoiceType, JobType, LocationType, RegionType } from "../../types/types"
+import { ClientType, ContactType, ContractorType, InvoiceType, JobType, LocationType, RegionType } from "../../types/types"
 
 export const blankClient: ClientType = {
     id: '',
     name: '',
     displayName: ''
+}
+
+export const blankContractor: ContractorType = {
+    id: '',
+    myobUid: '',
+    name: '',
+    abn: '',
+    bsb: '',
+    bankAccountName: '',
+    bankAccountNumber: '',
 }
 
 export const blankRegion: RegionType = {

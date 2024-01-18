@@ -1,5 +1,4 @@
-import React, { FC, ReactNode, useEffect, useState } from "react"
-import { StepperContext, useStepperContext } from "./StepperContext";
+import React, { FC, ReactNode, useEffect, useState, useContext, createContext } from "react"
 
 export interface StepperProps {
     children: ReactNode;
@@ -86,3 +85,16 @@ export const Step:FC<StepProps> = ({name, description, children}) => {
     </>
     );
 }
+
+// Context
+interface StepperContent {
+    content: ReactNode[];
+    setContent: (rn: (value: ReactNode[]) => ReactNode[]) => void;
+}
+
+const StepperContext = createContext<StepperContent>({
+    content: [],
+    setContent: () => {},
+})
+
+const useStepperContext = () => useContext(StepperContext)

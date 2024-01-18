@@ -435,7 +435,7 @@ export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=f
 
     return (
         <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
-            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled : waiting}>{name}</Button>
+            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled && waiting: waiting}>{name}</Button>
             {waiting && (
                 <CircularProgress size={24} 
                     sx={{
@@ -456,7 +456,7 @@ export const ProgressIconButton = ({waiting, onClick, children, disabled, style}
 {waiting: boolean, onClick?: () => void, children: ReactNode, disabled?: boolean, style?: {} }) => {
     return (
         <Box sx={{display: 'inline-block'}}>
-            <IconButton disabled={disabled ? disabled : waiting} onClick={onClick} style={style}>
+            <IconButton disabled={disabled ? disabled && waiting : waiting} onClick={onClick} style={style}>
                 <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
                     {children}
                     {waiting && (

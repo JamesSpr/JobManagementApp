@@ -10,7 +10,8 @@ import AddIcon from '@mui/icons-material/Add';
 import { fuzzyFilter } from '../../components/TableHelpers';
 import DebouncedInput from '../../components/DebouncedInput';
 import useAuth from '../auth/useAuth';
-import { Footer, InputField, PaginationControls, SnackBar, useSkipper } from '../../components/Components';
+import { Footer, InputField, PaginationControls, ProgressIconButton, SnackBar, useSkipper } from '../../components/Components';
+import { blankContractor } from '../job/Queries';
 
 const Contractors = () => {
 
@@ -21,45 +22,13 @@ const Contractors = () => {
     const [updateRequired, setUpdateRequired] = useState(false);
     const [changedRows, setChangedRows] = useState({});
     const [createContractor, setCreateContractor] = useState(false);
-    const [newContractor, setNewContractor] = useState({
-        'name': '',
-        'abn': '',
-        'bsb': '',
-        'bankAccountName': '',
-        'bankAccountNumber': '',
-    });
+    const [newContractor, setNewContractor] = useState(blankContractor);
 
     const [waiting, setWaiting] = useState(false);
-
     const [snack, setSnack] = useState({active: false, variant: 'info', message:''})
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
-
-    // Keyboard shortcuts
-    const handleKeyPress = useCallback((e) => {
-        if (e.code === 'KeyS' && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-            e.preventDefault();
-            // console.log(saveCommand)
-            // if(!saveCommand) {
-                
-            //     console.log("Updating")
-            //     saveCommand = true;
-            //     handleUploadChanges();
-            // }
-        }
-    }, [])
-
-    useEffect(() => {
-        // Attach event listener
-        document.addEventListener('keydown', handleKeyPress);
-        
-        // Remove event listener
-        return () => {
-            document.addEventListener('keydown', handleKeyPress)
-        }
-    }, [handleKeyPress]);
-
         
     // Dialog Controls
     const handleDialogClose = (event, reason, value) => {
@@ -271,51 +240,10 @@ const Contractors = () => {
             // console.log(response);
             const res = response?.data?.data?.myob_create;
 
-            // TODO: Add Snackbar
-            if(res.success){
-                // // Upon successful response from myob, send to backend
-                // newContractor['myobUid'] = res.myobUid
-                // if(res.success) {
-                //     axiosPrivate({
-                //         method: 'post',
-                //         data: JSON.stringify({
-                //             query: `
-                //             mutation createContractor($contractor: ContractorInput!) { 
-                //                 create: createContractor(contractor: $contractor) {
-                //                     success
-                //                     contractor {
-                //                         id
-                //                         myobUid
-                //                         name
-                //                         abn
-                //                         bsb
-                //                         bankAccountName
-                //                         bankAccountNumber
-                //                     }
-                //                 }
-                //             }`,
-                //             variables: { 
-                //                 contractor: newContractor,
-                //             },
-                //         }),
-                //     }).then((response) => {
-                //         // console.log(response);
-                //         const res = response?.data?.data?.create;
-                        
-                //     }).catch((e) => {
-                //         console.log("error", e);
-                //         setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
-                //     });
-                // }     
+            if(res.success){    
                 setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
                 // Clear Dialog Content
-                setNewContractor({
-                    'name': '',
-                    'abn': '',
-                    'bsb': '',
-                    'bankAccountName': '',
-                    'bankAccountNumber': '',
-                });
+                setNewContractor(blankContractor);
                 setCreateContractor(false);
                 setData(oldArray => [...oldArray, res.contractor]);
             }
@@ -452,10 +380,11 @@ const Contractors = () => {
         {/* Footer AppBar with Controls */}
         <Footer>
             <Tooltip title="Save Changes">
-                <span>
-                    <IconButton disabled={!updateRequired} onClick={handleSave}>
+                <ProgressIconButton waiting={waiting} disabled={!updateRequired} onClick={handleSave}>
+                    <SaveIcon />
+                </ProgressIconButton>
+                    {/* <IconButton disabled={!updateRequired} onClick={handleSave}>
                         <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
-                            <SaveIcon />
                             {waiting && (
                                 <CircularProgress size={24} 
                                     sx={{
@@ -469,8 +398,7 @@ const Contractors = () => {
                                 />
                             )}
                         </Box>
-                    </IconButton>
-                </span>
+                    </IconButton> */}
             </Tooltip>
             <Tooltip title="Create New Contractor">
                 <IconButton onClick={(e) => setCreateContractor(true)}><AddIcon /></IconButton>
@@ -480,11 +408,11 @@ const Contractors = () => {
         <SnackBar snack={snack} setSnack={setSnack} />
 
         {/* Create Contractor Dialog Box */}
-        <CreateDialog createObject={newContractor} open={createContractor} onCreate={handleDialogCreate} onClose={handleDialogClose}/>
+        <CreateContractorDialog createObject={newContractor} open={createContractor} onCreate={handleDialogCreate} onClose={handleDialogClose}/>
     </>);
 }
 
-export const CreateDialog = ({ createObject, open, onCreate, onClose }) => {
+const CreateContractorDialog = ({ createObject, open, onCreate, onClose }) => {
 
     const [value, setValue] = useState(createObject);
     const [fieldError, setFieldError] = useState({'name': false, 'abn': false,'bsb': false,'bankAccountName': false,'bankAccountNumber': false});
