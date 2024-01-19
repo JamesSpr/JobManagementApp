@@ -17,7 +17,11 @@ declare module '@tanstack/react-table' {
     }
 }
 
-export const InputField:FC<InputFieldType> = ({type="text", label, children, multiline=false, rows=0, halfWidth=false, wide=false, width=0, error=false, noMargin=false, ...props}) => {
+export const InputField:FC<InputFieldType> = ({
+    type="text", label, children, multiline=false, rows=0, halfWidth=false, 
+    wide=false, width=0, error=false, noMargin=false, ...props
+}) => {
+
     let boxStyle = "inputBox"
     let styleClass = "inputField";
     error ? styleClass += " inputFieldError" : '';
@@ -435,7 +439,7 @@ export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=f
 
     return (
         <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
-            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled && waiting: waiting}>{name}</Button>
+            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled || !waiting: waiting}>{name}</Button>
             {waiting && (
                 <CircularProgress size={24} 
                     sx={{
@@ -456,7 +460,7 @@ export const ProgressIconButton = ({waiting, onClick, children, disabled, style}
 {waiting: boolean, onClick?: () => void, children: ReactNode, disabled?: boolean, style?: {} }) => {
     return (
         <Box sx={{display: 'inline-block'}}>
-            <IconButton disabled={disabled ? disabled && waiting : waiting} onClick={onClick} style={style}>
+            <IconButton disabled={disabled ? disabled || !waiting : waiting} onClick={onClick} style={style}>
                 <Box sx={{position: 'relative', display: 'inline-block', width: '24px', height: '24px'}} >
                     {children}
                     {waiting && (
@@ -492,7 +496,8 @@ export const Tooltip = ({children, title, arrow}: {children?: ReactNode, title?:
 interface BasicDialogType {
     open: boolean
     close: () => void
-    action: () => void
+    action?: () => void
+    dialogActions?: ReactNode
     waiting?: boolean
     title: string
     children?: ReactNode
@@ -502,7 +507,7 @@ interface BasicDialogType {
     center?: boolean
 }
 
-export const BasicDialog:FC<BasicDialogType> = ({open, close, action, waiting, title, center, children, okay, fullWidth, maxWidth}) => {
+export const BasicDialog:FC<BasicDialogType> = ({open, close, action, dialogActions, waiting, title, center, children, okay, fullWidth, maxWidth}) => {
 
     return(<>
         <Dialog open={open} onClose={close} scroll={'paper'} fullWidth={fullWidth} maxWidth={maxWidth}>
@@ -510,19 +515,23 @@ export const BasicDialog:FC<BasicDialogType> = ({open, close, action, waiting, t
                 <DialogContent dividers={true}>
                     {children}
                 </DialogContent>
-                <DialogActions style={{alignSelf: center ? "center" : "" }}>
-                        {okay ? 
-                            <Button onClick={action}>Okay</Button>
-                            :
-                        <>
-                            {waiting ? 
-                                <ProgressButton onClick={action} waiting={waiting} name="Yes"/>
-                                : <Button onClick={action}>Yes</Button>
-                            }
-                            <Button onClick={close}>No</Button>
-                        </>
-                    }
-                </DialogActions>
+                {dialogActions ?
+                    dialogActions
+                    :
+                    <DialogActions style={{alignSelf: center ? "center" : "" }}>
+                            {okay ? 
+                                <Button onClick={action}>Okay</Button>
+                                :
+                            <>
+                                {waiting ? 
+                                    <ProgressButton onClick={action} waiting={waiting} name="Yes"/>
+                                    : <Button onClick={action}>Yes</Button>
+                                }
+                                <Button onClick={close}>No</Button>
+                            </>
+                        }
+                    </DialogActions> 
+                }
             </Dialog>
     </>)
 

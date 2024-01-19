@@ -264,12 +264,13 @@ class Bill(models.Model):
 
 class ContractorContact(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
+    location = models.IntegerField()
     company = models.ForeignKey(Contractor, on_delete=PROTECT)
-    contact = models.CharField(max_length=60)
     address = models.CharField(max_length=100)
     locality = models.CharField(max_length=50)
     state = models.CharField(max_length=3, choices=STATE_CHOICES, default='NSW')
     postcode = models.CharField(max_length=4)
+    country = models.CharField(max_length=50, default="Australia")
     phone1 = models.CharField(max_length=12)
     phone2 = models.CharField(max_length=12)
     phone3 = models.CharField(max_length=12)

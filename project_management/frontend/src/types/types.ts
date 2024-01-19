@@ -158,6 +158,23 @@ export interface ContractorType {
     bankAccountNumber: string
     bsb: string
     abn: string
+    contacts?: ContractorContactType[]
+}
+
+export interface ContractorContactType {
+    id: string
+    location: number
+    address: string
+    locality: string
+    state: string
+    postcode: string
+    country: string
+    phone1: string
+    phone2: string
+    phone3: string
+    fax: string
+    email: string
+    website: string
 }
 
 export interface JobStageType {
@@ -259,6 +276,7 @@ export interface InputFieldType {
     label?: string
     min?: number
     max?: string
+    maxLength?: number
     children?: ReactNode
     multiline?: boolean
     rows?: number

@@ -456,6 +456,12 @@ select.estimateTableInput {
   margin: 0 auto;
 }
 
+.custom-dialog-actions {
+  margin: 10px 0;
+  display: flex;
+  justify-content: center;
+}
+
 /* Clickable Links */
 a {
   color: rgb(75, 75, 75);
@@ -504,7 +510,7 @@ a {
   width: var(--size);
   height: var(--size);
   border-radius: 50%;
-  margin: 0 auto;
+  margin: 10px auto 0 auto;
   background-color: rgb(225, 225, 225);
 }
 /* Line */
@@ -551,21 +557,21 @@ a {
 /* Title */
 .stepper-title {
   font-weight: bold;
-  font-size: 16px;
+  font-size: 1rem;
   margin: 6px;
+  margin-top: 10px;
 }
 /* Description */
 .stepper-desc {
   color: grey;
-  font-size: 14px;
   padding-left: 10px;
   padding-right: 10px;
   margin: 0;
 }
 
-.outlined-button {
-  width: 150px;
-  height: 50px;
+.stepper-button {
+  width: 100px;
+  height: 30px;
   margin: 0 5px;
 }
 

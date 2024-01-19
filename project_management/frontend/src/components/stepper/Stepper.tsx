@@ -55,8 +55,8 @@ export const Stepper:FC<StepperProps> = ({children}) => {
                 {children}
             </ol>
             <div className='stepper-control'>
-                <button className="outlined-button" onClick={() => changeStep(-1)}>Previous</button>
-                <button className="outlined-button" onClick={() => changeStep(1)}>Next</button>
+                <button className="stepper-button" onClick={() => changeStep(-1)}>Previous</button>
+                <button className="stepper-button" onClick={() => changeStep(1)}>Next</button>
             </div>
         </StepperContext.Provider>
     </>
