@@ -10,7 +10,7 @@ import DebouncedInput from '../../components/DebouncedInput';
 import useAuth from '../auth/useAuth';
 import { BasicDialog, Footer, InputField, PaginationControls, ProgressIconButton, SnackBar, Table, useSkipper } from '../../components/Components';
 import { blankContractor } from '../job/Queries';
-import { ContactType, ContractorType, SnackBarType, SnackType } from '../../types/types';
+import { ContactType, ContractorContactType, ContractorType, SnackBarType, SnackType } from '../../types/types';
 import { ColumnDef } from '@tanstack/table-core';
 import { Step, Stepper } from '../../components/stepper/Stepper';
 
@@ -303,6 +303,7 @@ const Contractors = () => {
                     :
                     <Table data={data} setData={setData} 
                         columns={columns} 
+                        setUpdateRequired={setUpdateRequired}
                         pagination
                         globalFilter={globalFilter} setGlobalFilter={setGlobalFilter}
                     />
@@ -335,7 +336,7 @@ const CreateContractorDialog = ({ createObject, open, onCreate, onClose }: {
     createObject: ContractorType
 }) => {
 
-    const [value, setValue] = useState(createObject);
+    const [value, setValue] = useState<ContractorType>(createObject);
     const [fieldError, setFieldError] = useState({
         name: false, abn: false,bsb: false, bankAccountName: false, bankAccountNumber: false, contacts: [{
             address: false, locality: false, state: false, postcode: false, country: false
@@ -385,47 +386,77 @@ const CreateContractorDialog = ({ createObject, open, onCreate, onClose }: {
         onCreate(value);
     }
 
-    const BankDetailsStep = (
+    const dialogActions = (
+        <div className='custom-dialog-actions'>
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button onClick={handleCreate}>Create</Button>
+        </div>
+    )
+
+    return(
+        <BasicDialog open={open} close={handleClose} 
+            title='Create New Contractor' dialogActions={<></>}
+            fullWidth maxWidth='sm' center
+        >
+            <Stepper onComplete={handleCreate} completeButtonName='Create'>
+                <Step name='Bank Details *'>
+                    <BankDetailsStep value={value} fieldError={fieldError} handleDialogChange={handleDialogChange}/>
+                </Step>
+                <Step name='Contact *'>
+                    <ContactDetailsStep value={value} fieldError={fieldError}  handleDialogChange={handleDialogChange}/>
+                </Step>
+            </Stepper>
+            
+        </BasicDialog>
+    )
+}
+
+const BankDetailsStep = ({value, fieldError, handleDialogChange}: {
+    value: ContractorType, 
+    fieldError: any, 
+    handleDialogChange: (e: any) => void
+}) => {
+    return (
         <Grid container spacing={1} direction='column' alignItems='center'>
             <Grid item xs={12}>
                 <InputField
                     type="text" 
-                    error={fieldError['name']} 
+                    error={fieldError.name} 
                     label="Contractor" name="name" 
-                    value={value['name']} 
+                    value={value.name} 
                     onChange={handleDialogChange} maxLength={50}
                 />
             </Grid>
             <Grid item xs={12}>
                 <InputField
                     type="text" 
-                    error={fieldError['abn']} 
+                    error={fieldError.abn} 
                     label="ABN" name="abn" 
-                    value={value['abn']} 
+                    value={value.abn} 
                     onChange={handleDialogChange} maxLength={14}
                 />
             </Grid>
             <Grid item xs={12}>
                 <InputField
                     type="text" 
-                    error={fieldError['bankAccountName']} 
+                    error={fieldError.bankAccountName} 
                     label="Bank Account Name" name="bankAccountName" 
-                    value={value['bankAccountName']} 
+                    value={value.bankAccountName} 
                     onChange={handleDialogChange} maxLength={32}
                 />
             </Grid>
             <Grid item xs={12}>
                 <InputField
                     type="text" 
-                    error={fieldError['bsb']} 
+                    error={fieldError.bsb} 
                     label="BSB" name="bsb" 
-                    value={value['bsb']} 
+                    value={value.bsb} 
                     onChange={handleDialogChange} maxLength={7} 
                     style={{width: '75px', marginRight: '5px'}}
                 />
                 <InputField
                     type="text" 
-                    error={fieldError['bankAccountNumber']} 
+                    error={fieldError.bankAccountNumber} 
                     label="Account Number" name="bankAccountNumber" 
                     value={value['bankAccountNumber']} 
                     onChange={handleDialogChange} maxLength={9} 
@@ -434,15 +465,22 @@ const CreateContractorDialog = ({ createObject, open, onCreate, onClose }: {
             </Grid>
         </Grid>
     )
+}
 
-    const ContactDetailsStep = (
+const ContactDetailsStep = ({value, fieldError, handleDialogChange}: {
+    value: ContractorType, 
+    fieldError: any,
+    handleDialogChange: any
+}) => {
+    
+    return (
         <Grid container spacing={1} direction='column' alignItems='center'>
             <Grid item xs={12}>
                 <InputField
                     type="text"
                     label="Street" name="street" 
                     error={fieldError.contacts[0].address} 
-                    value={value.contacts?.[0].address ?? ""} 
+                    value={value.contacts?.[0].address} 
                     onChange={handleDialogChange} maxLength={255}
                 />
             </Grid>
@@ -493,30 +531,6 @@ const CreateContractorDialog = ({ createObject, open, onCreate, onClose }: {
             </Grid>
 
         </Grid>
-    )
-
-    const dialogActions = (
-        <div className='custom-dialog-actions'>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button onClick={handleCreate}>Create</Button>
-        </div>
-    )
-
-    return(
-        <BasicDialog open={open} close={handleClose} 
-            title='Create New Contractor' dialogActions={dialogActions}
-            fullWidth maxWidth='sm' center
-        >
-            <Stepper>
-                <Step name='Bank Details *'>
-                    {BankDetailsStep}
-                </Step>
-                <Step name='Contact *'>
-                    {ContactDetailsStep}
-                </Step>
-            </Stepper>
-            
-        </BasicDialog>
     )
 }
 
@@ -569,6 +583,7 @@ const inputMask = (name: any, val: any) => {
             val = val.toUpperCase();
             break;
         default:
+            val = val;
             break;
     }
     return val;

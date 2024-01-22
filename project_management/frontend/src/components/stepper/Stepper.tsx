@@ -2,8 +2,10 @@ import React, { FC, ReactNode, useEffect, useState, useContext, createContext } 
 
 export interface StepperProps {
     children: ReactNode;
+    onComplete: () => void;
+    completeButtonName: string
 }
-export const Stepper:FC<StepperProps> = ({children}) => {
+export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonName}) => {
 
     let stepper = document.getElementById('stepper');
     const [step, setStep] = useState(0);
@@ -55,8 +57,18 @@ export const Stepper:FC<StepperProps> = ({children}) => {
                 {children}
             </ol>
             <div className='stepper-control'>
-                <button className="stepper-button" onClick={() => changeStep(-1)}>Previous</button>
-                <button className="stepper-button" onClick={() => changeStep(1)}>Next</button>
+                {
+                    step > 0 &&
+                    <button className="stepper-button" onClick={() => changeStep(-1)}>Previous</button>
+                }
+                {
+                    step < React.Children.count(children)-1 ?
+                    <button className="stepper-button" onClick={() => changeStep(1)}>Next</button>
+                    :
+                    <button className="stepper-button" onClick={onComplete}>{completeButtonName}</button>
+                }
+                
+                
             </div>
         </StepperContext.Provider>
     </>

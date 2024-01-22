@@ -192,11 +192,21 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
         setWaiting(prev => ({...prev, 'check': true}));
 
         let externalInvoices: InvoiceType[] = []
+        let errorFound = false
         data.map((invoice) => {
-            if(!invoices.find(inv => inv.number === invoice.number)) {
+            let inv = invoices.find(inv => inv.number === invoice.number)
+            if(!inv) {
                 externalInvoices.push(invoice);
             }
+            else {
+                if((invoice?.amount ?? 0).toFixed(2) !== parseFloat(((inv.amount ?? 0) * 1.1).toString()).toFixed(2)) {
+                    setSnack({'active': true, variant:'error', message: "Some invoice prices do not match. Please review advice."})
+                    setWaiting(prev => ({...prev, 'check': false}));
+                    errorFound = true
+                }
+            }
         })
+        if(errorFound){ return }
 
         if(externalInvoices.length == 0) {
             setWaiting(prev => ({...prev, 'check': false}));
@@ -209,7 +219,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             if(i > 0) queryString += ' or '
             queryString += `Number eq '${externalInvoices[i].number}'`
         }
-
+        
         console.log(queryString);
         // MYOB Payment
         await axiosPrivate({
