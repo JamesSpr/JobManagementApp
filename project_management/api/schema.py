@@ -18,7 +18,7 @@ from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuot
 from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
 # from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 # from .services.data_extraction import ExtractBillDetails
-from .services.data_extraction_v2 import ExtractRemittanceAdvice, ExtractBillDetails
+from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote
 from .services.file_processing import PDFToImage
 
