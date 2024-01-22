@@ -1,7 +1,7 @@
 import React, { useState, useMemo }  from 'react';
 import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getExpandedRowModel, ColumnDef, Row, ColumnSort, Table, Column} from '@tanstack/react-table'
 import { Dialog, DialogContent, Grid, Typography, IconButton } from '@mui/material';
-import { FileUploadSection, ProgressIconButton } from '../../components/Components';
+import { FileUploadSection, InputField, ProgressIconButton } from '../../components/Components';
 
 // Icons
 import CloseIcon from '@mui/icons-material/Close';
@@ -33,6 +33,8 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
     const { auth } = useAuth(); 
     const axiosPrivate = useAxiosPrivate();
     const [waiting, setWaiting] = useState({'create': false, 'update': false});
+    const [advancedUpload, setAdvancedUpload] = useState(false);
+    const [advancedUploadSettings, setAdvancedUploadSettings] = useState({numPages: 0});
 
     // Table Columns
     const estimateTableColumns = useMemo<ColumnDef<EstimateSummaryType>[]>(() => [
@@ -274,8 +276,8 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
                 method: 'post',
                 data: JSON.stringify({
                 query: `
-                mutation extractBillDetails($file: String!, $filename: String!) {
-                    bill: extractBillDetails(file: $file, filename: $filename) {
+                mutation extractBillDetails($file: String!, $filename: String!, $numPages: Int!) {
+                    bill: extractBillDetails(file: $file, filename: $filename, numPages: $numPages) {
                         success
                         message
                         data
@@ -285,7 +287,8 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
                 }`,
                 variables: { 
                     file: data,
-                    filename: file.name
+                    filename: file.name,
+                    numPages: advancedUploadSettings.numPages
                 },
             }),
             }).then((response) => {
@@ -300,8 +303,12 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
                         'name': res.billFileName
                     })
                     // setNewBill(prev => ({...prev, 'invoiceDate': new Date(prev?.invoiceDate)}))
+                    setCreateBill(true);
                 }
-                setCreateBill(true);
+                else {
+                    setSnack({active: true, variant: 'error', message: res.message})
+                    setWaiting(prev => ({...prev, 'create': false}));
+                }
             }).catch((err) => {
                 setWaiting(prev => ({...prev, 'create': false}));
                 console.log("Error", err)
@@ -472,7 +479,17 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
                             </table>
                         </Grid>
                         <Grid item xs={12}>
-                            <p className='subHeader'>Upload New Bill</p>
+                            <div className='subheader-with-options'>
+                                <p className='subHeader'>Upload New Bill</p>
+                                <a className='options-link' onClick={() => setAdvancedUpload(!advancedUpload)}>Advanced Upload {advancedUpload ? "V" : ">"}</a>
+                            </div>
+                            { advancedUpload &&
+                                <div className="bill-upload-options-container">
+                                    <InputField type='number' step={1} min={0} label='Number of Pages'
+                                        value={advancedUploadSettings.numPages} name="numPages"
+                                        onChange={e => setAdvancedUploadSettings(prev => ({...prev, [e.target.name]: e.target.value}))} />
+                                </div>
+                            }
                             <FileUploadSection onSubmit={handleNewBill} waiting={waiting.create} id="create_bill" type=".pdf" button="Create New Bill"/>
                         </Grid>
                     </Grid>

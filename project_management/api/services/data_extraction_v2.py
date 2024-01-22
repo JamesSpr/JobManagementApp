@@ -18,10 +18,13 @@ import fitz
 import json
 from io import BytesIO
 from PIL import Image
+import environ
 
 # tesseract_cmd = r"C:\Program Files\Tesseract-OCR"
-REMITTANCE_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Aurify\Accounts\Remittance Advice"
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+env = environ.Env()
+environ.Env.read_env()
+REMITTANCE_PATH = env('REMITTANCE_PATH')
+pytesseract.pytesseract.tesseract_cmd = env('TESSERACT_PATH')
 
 class RemittanceAdvice(graphene.ObjectType):
     number = graphene.String()
@@ -57,6 +60,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         f.close()
 
         img_uid = pdf_to_image(pdf, 'remittance')
+        
         if debug: print(img_uid)
         advice_text = pytesseract.image_to_string(Image.open(f"Media\\remittance\\{img_uid}.jpg"))
 
@@ -127,6 +131,7 @@ class ExtractBillDetails(graphene.Mutation):
     class Arguments:
         file = graphene.String()
         filename = graphene.String()
+        num_pages = graphene.Int()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -135,7 +140,7 @@ class ExtractBillDetails(graphene.Mutation):
     billFileData = graphene.String()
 
     @classmethod
-    def mutate(self, root, info, file, filename):
+    def mutate(self, root, info, file, filename, num_pages):
         if not file: 
             return self(success=False)
         
@@ -144,9 +149,17 @@ class ExtractBillDetails(graphene.Mutation):
         file = file.replace("data:application/pdf;base64,", "")
         pdf = base64.b64decode(file, validate=True)
 
-        img_uid = pdf_to_image(pdf, 'bills')
+        img_uid = pdf_to_image(pdf, 'bills', num_pages)
+        bill_image = Image.open(f"Media\\bills\\{img_uid}.jpg")
+
+        # Check the image is within the requirements for pytesseract
+        ## Image size - Max is 32767 (INT16_MAX) width and height
+        if(bill_image.height > 32767 or bill_image.width > 32767):
+            return self(success=False, message="Bill PDF is too large. Please remove unnecessary pages using the advanced upload section")
+        
+
         if debug: print(img_uid)
-        bill_text = pytesseract.image_to_string(Image.open(f"Media\\bills\\{img_uid}.jpg")).lower()
+        bill_text = pytesseract.image_to_string(bill_image).lower()
 
         data = {
             'thumbnailPath':'',
@@ -274,7 +287,7 @@ def try_parsing_date_to_string(text, debug=False):
 
     return ""
 
-def pdf_to_image(pdf, type):
+def pdf_to_image(pdf, type, num_pages):
     # write pdf to temp file so we can convert to a thumbnail image
     temp_pdf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
     temp_pdf.write(pdf)
@@ -288,7 +301,9 @@ def pdf_to_image(pdf, type):
 
     with fitz.open(temp_pdf.name) as doc: # open document
         img_bytes = []
-        for page in doc:
+        for idx, page in enumerate(doc):
+            if num_pages > 0 and idx >= num_pages:
+                continue
             pix = page.get_pixmap(dpi=350)  # render page to an image
             img_bytes.append(pix.pil_tobytes(format="JPEG", optimize=True))
 

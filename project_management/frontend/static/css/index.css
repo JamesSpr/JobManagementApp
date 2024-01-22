@@ -141,6 +141,20 @@ tr.EmptyTableData:hover {
   font-weight: bold;
 }
 
+.subheader-with-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subheader-with-options a:hover {
+  color: rgb(0, 0, 0);
+}
+
+.bill-upload-options-container {
+  margin-bottom: 10px;
+}
+
 /* Input Text Field */
 .inputBox {
   position: relative;
