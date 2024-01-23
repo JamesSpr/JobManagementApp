@@ -16,8 +16,10 @@ const WizQuote = () => {
                     <CheckQuotes />
                 </Step>
                 <Step name='Create Quote'>
+                    <></>
                 </Step>
                 <Step name='Add Details'>
+                    <></>
                 </Step>
                 <Step name='Finished'>
                     <Finished />

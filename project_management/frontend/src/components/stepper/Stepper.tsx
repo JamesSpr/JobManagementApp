@@ -1,4 +1,4 @@
-import React, { FC, ReactNode, useEffect, useState, useContext, createContext } from "react"
+import React, { FC, ReactNode, useEffect, useState, useContext, createContext, ReactElement } from "react"
 
 export interface StepperProps {
     children: ReactNode;
@@ -15,7 +15,6 @@ export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonNa
         stepper = document.getElementById('stepper');
         stepper?.children[0].setAttribute('class', "stepper-item active");
     }, [])
-
     
     const changeStep = (value: number) => {
         if(value > 0) {
@@ -47,9 +46,20 @@ export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonNa
         }
     }, [step])
 
+    useEffect(() => {
+        // Rerender on changes to the step components children 
+        // e.g. useState prop 
+        setContent(
+            React.Children.map(children, (child, stepI) => {
+                let childComponent = React.Children.toArray(child)[0] as JSX.Element
+                return childComponent.props.children
+            }) ?? []
+        )
+    }, [children])
+
     return (
     <>
-        <StepperContext.Provider value={{ content, setContent }}>
+        <StepperContext.Provider value={{ content, setContent, step, setStep }}>
             <div className='stepper-content'>
                 {content[step]}
             </div>
@@ -67,8 +77,6 @@ export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonNa
                     :
                     <button className="stepper-button" onClick={onComplete}>{completeButtonName}</button>
                 }
-                
-                
             </div>
         </StepperContext.Provider>
     </>
@@ -76,17 +84,24 @@ export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonNa
 }
 
 export interface StepProps {
-    name: string;
-    description?: string;
-    children?: ReactNode;
+    name: string
+    // key: React.Key 
+    description?: string
+    children?: ReactNode
 }
 export const Step:FC<StepProps> = ({name, description, children}) => {
 
-    const { setContent } = useStepperContext();
+    const { step, setContent } = useStepperContext();
 
     useEffect(() => {
         setContent(prev => [...prev, children]);
     }, [])
+
+    useEffect(() => {
+        setContent(prev => prev.map((child) => {
+            return child
+        }));
+    }, [step, children])
 
     return (
     <>
@@ -102,11 +117,15 @@ export const Step:FC<StepProps> = ({name, description, children}) => {
 interface StepperContent {
     content: ReactNode[];
     setContent: (rn: (value: ReactNode[]) => ReactNode[]) => void;
+    step: number
+    setStep: (value: number) => void
 }
 
 const StepperContext = createContext<StepperContent>({
     content: [],
     setContent: () => {},
+    step: 0,
+    setStep: () => {},
 })
 
 const useStepperContext = () => useContext(StepperContext)
