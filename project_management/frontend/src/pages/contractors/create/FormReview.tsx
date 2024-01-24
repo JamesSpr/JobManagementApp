@@ -1,5 +1,4 @@
 import { ContractorType } from "../../../types/types"
-import { Grid } from "@mui/material"
 
 const FormReview = ({value}: {
     value: ContractorType, 

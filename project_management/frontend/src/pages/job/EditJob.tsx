@@ -729,4 +729,3 @@ const JobPage = () => {
     );
 }
 export default JobPage;
-// export default () => '';
