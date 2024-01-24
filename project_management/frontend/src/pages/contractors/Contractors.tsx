@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useMemo, }  from 'react';
 import useAxiosPrivate from '../../hooks/useAxiosPrivate';
-import { Button, IconButton, Dialog, DialogContent, DialogTitle, 
-         Grid, Box, CircularProgress, Tooltip } from '@mui/material';
+import { IconButton, Grid, Box, CircularProgress, Tooltip } from '@mui/material';
 import { usePrompt } from '../../hooks/promptBlocker';
 import SaveIcon from '@mui/icons-material/Save';
 import PersonIcon from '@mui/icons-material/Person';
 import AddIcon from '@mui/icons-material/Add';
-import DebouncedInput from '../../components/DebouncedInput';
 import useAuth from '../auth/useAuth';
-import { BasicDialog, Footer, InputField, PaginationControls, ProgressIconButton, SnackBar, Table, useSkipper } from '../../components/Components';
+import { Footer,ProgressIconButton, SnackBar, Table } from '../../components/Components';
 import { blankContractor } from '../job/Queries';
-import { ContactType, ContractorContactType, ContractorType, SnackBarType, SnackType } from '../../types/types';
+import { ContractorType, SnackType } from '../../types/types';
 import { ColumnDef, ColumnFiltersState } from '@tanstack/table-core';
-import { Step, Stepper } from '../../components/stepper/Stepper';
 import CreateContractorDialog from './create/Dialog';
 
 type ChangedRowType = {
@@ -35,7 +32,7 @@ const Contractors = () => {
     const [snack, setSnack] = useState<SnackType>({active: false, variant: 'info', message:''})
 
     // Table
-    const [globalFilter, setGlobalFilter] = useState('')
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
@@ -287,18 +284,9 @@ const Contractors = () => {
         }); 
     }
 
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     return(<>
         <Grid container spacing={1} alignItems="center">
             <Grid item xs={12} style={{overflowX: 'auto', overflowY: 'hidden'}}>
-                <Grid item xs={12}>
-                    <DebouncedInput
-                        value={globalFilter ?? ''}
-                        onChange={(value: any) => setGlobalFilter(String(value))}
-                        placeholder="Search Contractors"
-                        style={{maxWidth: '1200px'}}
-                    />
-                </Grid>
                 {loading ? 
                     <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingTop: '10px'}}>
                         <CircularProgress />
@@ -309,7 +297,6 @@ const Contractors = () => {
                         setUpdateRequired={setUpdateRequired}
                         pagination
                         columnFilters={columnFilters} setColumnFilters={setColumnFilters}
-                        globalFilter={globalFilter} setGlobalFilter={setGlobalFilter}
                     />
                 }
             </Grid> 
