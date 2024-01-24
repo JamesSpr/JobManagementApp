@@ -9,9 +9,10 @@ export const blankClient: ClientType = {
 export const blankContractorContact: ContractorContactType = {
     id: '',
     location: 0,
+    contactName: '',
     address: '',
     locality: '',
-    state: '',
+    state: 'NSW',
     postcode: '',
     country: 'Australia',
     phone1: '',

@@ -29,9 +29,10 @@ body {
 }
 
 main {
+  overflow-x: auto;
   padding: 24px 0;
   width: 100%;
-  height: calc(100% - 114px);
+  /* height: calc(100% - 114px); */
 }
 
 h1 {
@@ -419,10 +420,9 @@ select.estimateTableInput {
     max-width: 95%;
   }
 
-
 }
 
-@media only screen and (max-width: 768px) {
+@media only screen and (max-width: 800px) {
   .inputField[type="date"],
   .inputField[type="datetime-local"] {
     border-radius: 0;
@@ -453,6 +453,10 @@ select.estimateTableInput {
     -webkit-appearance: auto;
     -moz-appearance: auto;
     border-radius: 0;
+  }
+
+  .inputBox {
+    max-width: 250px;
   }
 }
 
@@ -702,4 +706,9 @@ a {
 
 .FileIconText {
   font-size: 12px;
+}
+
+.formReviewContainer {
+  display: flex;
+  justify-content: center;
 }

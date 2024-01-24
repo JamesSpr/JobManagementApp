@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from genericpath import exists
 import shutil
 from accounts.models import CustomUser
-from api.models import Client, Contractor, Estimate, Job, Invoice, Bill, RemittanceAdvice
+from api.models import Client, Contractor, ContractorContact, Estimate, Job, Invoice, Bill, RemittanceAdvice
 from api.schema import InvoiceUpdateInput, ClientType, InvoiceType, JobInput, JobType, RemittanceType
 import graphene
 from graphene_django import DjangoObjectType
@@ -357,14 +357,32 @@ class myobGetContractors(graphene.Mutation):
         else:
             return self(success=False, message="MYOB Connection Error")
 
+
+class myobContractorContactInput(graphene.InputObjectType):
+    id = graphene.String()
+    location = graphene.Int()
+    contact_name = graphene.String()
+    address = graphene.String()
+    locality = graphene.String()
+    state = graphene.String()
+    postcode = graphene.String()
+    country = graphene.String()
+    phone1 = graphene.String()
+    phone2 = graphene.String()
+    phone3 = graphene.String()
+    fax = graphene.String()
+    email = graphene.String()
+    website = graphene.String()
+
 class myobContractorInput(graphene.InputObjectType):
+    id = graphene.String()
+    myob_uid = graphene.String()
     name = graphene.String()
     abn = graphene.String()
     bsb = graphene.String()
     bank_account_name = graphene.String()
     bank_account_number = graphene.String()
-    id = graphene.String()
-    myob_uid = graphene.String()
+    contacts = graphene.List(myobContractorContactInput)
 
 class myobCreateContractor(graphene.Mutation):
     class Arguments:
@@ -388,6 +406,24 @@ class myobCreateContractor(graphene.Mutation):
             checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
 
+            contact_addresses = []
+            for i, contact in enumerate(contractor.contacts):
+                contact_addresses.append({
+                    'Location': i,
+                    'ContactName': contact.contact_name.strip(),
+                    'Street': contact.address.strip(),
+                    'City': contact.locality.strip(),
+                    'State': contact.state.strip(),
+                    'Postcode': contact.postcode.strip(),
+                    'Country': contact.country.strip(),
+                    'Phone1': contact.phone1.strip(),
+                    'Phone2': contact.phone2.strip(),
+                    'Phone3': contact.phone3.strip(),
+                    'Fax': contact.fax.strip(),
+                    'Email': contact.email.strip(),
+                    'Website': contact.website.strip(),
+                })
+
             link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/"
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -397,6 +433,7 @@ class myobCreateContractor(graphene.Mutation):
             }
             payload = json.dumps({
                 'CompanyName': contractor['name'],
+                'Addresses': contact_addresses,
                 'BuyingDetails': {
                     'ABN': contractor['abn'],
                     'IsReportable': True,
@@ -428,6 +465,24 @@ class myobCreateContractor(graphene.Mutation):
             new_contractor.bank_account_name = contractor.bank_account_name.strip()
             new_contractor.bank_account_number = contractor.bank_account_number.strip()
             new_contractor.save()
+
+            for i, contact in enumerate(contractor.contacts):
+                new_contractor_contact = ContractorContact()
+                new_contractor_contact.company = new_contractor
+                new_contractor_contact.location = i
+                new_contractor_contact.contact_name = contact.contact_name.strip()
+                new_contractor_contact.address = contact.address.strip()
+                new_contractor_contact.locality = contact.locality.strip()
+                new_contractor_contact.state = contact.state.strip()
+                new_contractor_contact.postcode = contact.postcode.strip()
+                new_contractor_contact.country = contact.country.strip()
+                new_contractor_contact.phone1 = contact.phone1.strip()
+                new_contractor_contact.phone2 = contact.phone2.strip()
+                new_contractor_contact.phone3 = contact.phone3.strip()
+                new_contractor_contact.fax = contact.fax.strip()
+                new_contractor_contact.email = contact.email.strip()
+                new_contractor_contact.website = contact.website.strip()
+                new_contractor_contact.save()
 
             return self(success=True, message=response.text, myob_uid=myob_uid)
         else:

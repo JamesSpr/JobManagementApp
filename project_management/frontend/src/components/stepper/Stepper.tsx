@@ -1,8 +1,8 @@
 import React, { FC, ReactNode, useEffect, useState, useContext, createContext, ReactElement } from "react"
 
 export interface StepperProps {
-    children: ReactNode;
-    onComplete: () => void;
+    children: ReactNode
+    onComplete: () => void
     completeButtonName: string
 }
 export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonName}) => {
@@ -57,6 +57,15 @@ export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonNa
         )
     }, [children])
 
+    const checkThenNextStep = () => {
+        if((React.Children.toArray(children)[step] as JSX.Element).props.validation) {
+            if((React.Children.toArray(children)[step] as JSX.Element).props.validation()) {
+                return
+            }
+        }
+        changeStep(1)
+    }
+
     return (
     <>
         <StepperContext.Provider value={{ content, setContent, step, setStep }}>
@@ -73,7 +82,7 @@ export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonNa
                 }
                 {
                     step < React.Children.count(children)-1 ?
-                    <button className="stepper-button" onClick={() => changeStep(1)}>Next</button>
+                    <button className="stepper-button" onClick={checkThenNextStep}>Next</button>
                     :
                     <button className="stepper-button" onClick={onComplete}>{completeButtonName}</button>
                 }
@@ -88,6 +97,7 @@ export interface StepProps {
     // key: React.Key 
     description?: string
     children?: ReactNode
+    validation?: () => void
 }
 export const Step:FC<StepProps> = ({name, description, children}) => {
 

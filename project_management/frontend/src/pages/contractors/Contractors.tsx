@@ -11,8 +11,9 @@ import useAuth from '../auth/useAuth';
 import { BasicDialog, Footer, InputField, PaginationControls, ProgressIconButton, SnackBar, Table, useSkipper } from '../../components/Components';
 import { blankContractor } from '../job/Queries';
 import { ContactType, ContractorContactType, ContractorType, SnackBarType, SnackType } from '../../types/types';
-import { ColumnDef } from '@tanstack/table-core';
+import { ColumnDef, ColumnFiltersState } from '@tanstack/table-core';
 import { Step, Stepper } from '../../components/stepper/Stepper';
+import CreateContractorDialog from './create/Dialog';
 
 type ChangedRowType = {
     [key: number]: boolean
@@ -25,15 +26,16 @@ const Contractors = () => {
     const [loading, setLoading] = useState(true);
     const [updateRequired, setUpdateRequired] = useState(false);
     const [data, setData] = useState<ContractorType[]>([]);
-    const [newContractor, setNewContractor] = useState<ContractorType>(blankContractor);
     const [changedRows, setChangedRows] = useState<ChangedRowType>({});
+
     const [createContractor, setCreateContractor] = useState(false);
+    const [newContractor, setNewContractor] = useState<ContractorType>(blankContractor);
 
     const [waiting, setWaiting] = useState(false);
     const [snack, setSnack] = useState<SnackType>({active: false, variant: 'info', message:''})
 
     // Table
-    const [globalFilter, setGlobalFilter] = React.useState('')
+    const [globalFilter, setGlobalFilter] = useState('')
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
@@ -47,7 +49,6 @@ const Contractors = () => {
     }
 
     const handleDialogCreate = (value: ContractorType) => {
-        setNewContractor(value);
         handleCreate(value);
         setCreateContractor(false);
     }
@@ -182,7 +183,7 @@ const Contractors = () => {
             accessorKey: 'bankAccountNumber',
             header: () => 'Bank Number',
             cell: editableCell,
-            size: 80,
+            size: 95,
         },
         {
             accessorKey: 'bankAccountName',
@@ -206,6 +207,7 @@ const Contractors = () => {
     ], []);
 
     const handleCreate = async (newContractor: ContractorType) => {
+        console.log("Creating", newContractor)
         //Send to MYOB
         await axiosPrivate({
             method: 'post',
@@ -285,6 +287,7 @@ const Contractors = () => {
         }); 
     }
 
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     return(<>
         <Grid container spacing={1} alignItems="center">
             <Grid item xs={12} style={{overflowX: 'auto', overflowY: 'hidden'}}>
@@ -305,6 +308,7 @@ const Contractors = () => {
                         columns={columns} 
                         setUpdateRequired={setUpdateRequired}
                         pagination
+                        columnFilters={columnFilters} setColumnFilters={setColumnFilters}
                         globalFilter={globalFilter} setGlobalFilter={setGlobalFilter}
                     />
                 }
@@ -325,213 +329,11 @@ const Contractors = () => {
         <SnackBar snack={snack} setSnack={setSnack} />
 
         {/* Create Contractor Dialog Box */}
-        <CreateContractorDialog createObject={newContractor} open={createContractor} onCreate={handleDialogCreate} onClose={handleDialogClose}/>
+        <CreateContractorDialog newContractor={newContractor} setNewContractor={setNewContractor} 
+            open={createContractor} onCreate={handleDialogCreate} onClose={handleDialogClose}
+            inputMask={inputMask}
+        />
     </>);
-}
-
-const CreateContractorDialog = ({ createObject, open, onCreate, onClose }: {
-    open:boolean
-    onCreate: (value: ContractorType) => void
-    onClose: (event: any, reason: string, value: ContractorType) => void
-    createObject: ContractorType
-}) => {
-
-    const [value, setValue] = useState<ContractorType>(createObject);
-    const [fieldError, setFieldError] = useState({
-        name: false, abn: false,bsb: false, bankAccountName: false, bankAccountNumber: false, contacts: [{
-            address: false, locality: false, state: false, postcode: false, country: false
-        }]
-    });
-
-    const handleDialogChange = (e: { target: { name: string; value: string | any[]; }; }) => {
-        if(e.target.name === 'abn' && fieldError['abn'] && e.target.value.length == 14) {
-            setFieldError(prev => ({...prev, 'abn': false}))
-        }
-        if(e.target.name === 'bsb' && fieldError['bsb'] && e.target.value.length == 7) {
-            setFieldError(prev => ({...prev, 'bsb': false}))
-        }
-        if(e.target.name === 'bankAccountNumber' && fieldError['bankAccountNumber'] && e.target.value.length >= 6) {
-            setFieldError(prev => ({...prev, 'bankAccountNumber': false}))
-        }
-
-        setValue((prev: any) => ({...prev, [e.target.name]: inputMask(e.target.name, e.target.value)}))
-    }
-
-    const handleClose = (event?: any, reason?: any) => {
-        setFieldError({name: false, abn: false,bsb: false, bankAccountName: false, bankAccountNumber: false, contacts: [
-            {address: false, locality: false, state: false, postcode: false, country: false}
-        ]});
-        onClose(event, reason, value);
-    }
-
-    const handleCreate = () => {
-        let error = false;
-        if(value['abn'].length < 14) {
-            setFieldError(prev => ({...prev, 'abn': true}))
-            error = true;
-        }
-        if(value['bsb'].length < 7) {
-            setFieldError(prev => ({...prev, 'bsb': true}))
-            error = true;
-        }
-        if(value['bankAccountNumber'].length < 6) {
-            setFieldError(prev => ({...prev, 'bankAccountNumber': true}))
-            error = true;
-        }
-        
-        if(error) {
-            return
-        }
-
-        onCreate(value);
-    }
-
-    const dialogActions = (
-        <div className='custom-dialog-actions'>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button onClick={handleCreate}>Create</Button>
-        </div>
-    )
-
-    return(
-        <BasicDialog open={open} close={handleClose} 
-            title='Create New Contractor' dialogActions={<></>}
-            fullWidth maxWidth='sm' center
-        >
-            <Stepper onComplete={handleCreate} completeButtonName='Create'>
-                <Step name='Bank Details *'>
-                    <BankDetailsStep value={value} fieldError={fieldError} handleDialogChange={handleDialogChange}/>
-                </Step>
-                <Step name='Contact *'>
-                    <ContactDetailsStep value={value} fieldError={fieldError}  handleDialogChange={handleDialogChange}/>
-                </Step>
-            </Stepper>
-            
-        </BasicDialog>
-    )
-}
-
-const BankDetailsStep = ({value, fieldError, handleDialogChange}: {
-    value: ContractorType, 
-    fieldError: any, 
-    handleDialogChange: (e: any) => void
-}) => {
-    return (
-        <Grid container spacing={1} direction='column' alignItems='center'>
-            <Grid item xs={12}>
-                <InputField
-                    type="text" 
-                    error={fieldError.name} 
-                    label="Contractor" name="name" 
-                    value={value.name} 
-                    onChange={handleDialogChange} maxLength={50}
-                />
-            </Grid>
-            <Grid item xs={12}>
-                <InputField
-                    type="text" 
-                    error={fieldError.abn} 
-                    label="ABN" name="abn" 
-                    value={value.abn} 
-                    onChange={handleDialogChange} maxLength={14}
-                />
-            </Grid>
-            <Grid item xs={12}>
-                <InputField
-                    type="text" 
-                    error={fieldError.bankAccountName} 
-                    label="Bank Account Name" name="bankAccountName" 
-                    value={value.bankAccountName} 
-                    onChange={handleDialogChange} maxLength={32}
-                />
-            </Grid>
-            <Grid item xs={12}>
-                <InputField
-                    type="text" 
-                    error={fieldError.bsb} 
-                    label="BSB" name="bsb" 
-                    value={value.bsb} 
-                    onChange={handleDialogChange} maxLength={7} 
-                    style={{width: '75px', marginRight: '5px'}}
-                />
-                <InputField
-                    type="text" 
-                    error={fieldError.bankAccountNumber} 
-                    label="Account Number" name="bankAccountNumber" 
-                    value={value['bankAccountNumber']} 
-                    onChange={handleDialogChange} maxLength={9} 
-                    style={{width: '120px', marginLeft: '5px'}}
-                />
-            </Grid>
-        </Grid>
-    )
-}
-
-const ContactDetailsStep = ({value, fieldError, handleDialogChange}: {
-    value: ContractorType, 
-    fieldError: any,
-    handleDialogChange: any
-}) => {
-    
-    return (
-        <Grid container spacing={1} direction='column' alignItems='center'>
-            <Grid item xs={12}>
-                <InputField
-                    type="text"
-                    label="Street" name="street" 
-                    error={fieldError.contacts[0].address} 
-                    value={value.contacts?.[0].address} 
-                    onChange={handleDialogChange} maxLength={255}
-                />
-            </Grid>
-            <Grid item xs={12}>
-                <InputField
-                    type="text"
-                    label="City" name="city" 
-                    error={fieldError.contacts[0].locality} 
-                    value={value.contacts?.[0].locality} 
-                    onChange={handleDialogChange} maxLength={255}
-                />
-            </Grid>
-            <Grid item xs={12}>
-                <InputField
-                    type="select" 
-                    error={fieldError.contacts[0].state} 
-                    label="State" name="state" 
-                    value={value.contacts?.[0].state}
-                    onChange={handleDialogChange} maxLength={32}
-                >
-                    <option>NSW</option>
-                    <option>ACT</option>
-                    <option>NT</option>
-                    <option>QLD</option>
-                    <option>SA</option>
-                    <option>TAS</option>
-                    <option>VIC</option>
-                    <option>WA</option>
-                </InputField>
-            </Grid>
-            <Grid item xs={12}>
-                <InputField
-                    type="text" 
-                    error={fieldError.contacts[0].postcode} 
-                    label="Postcode" name="postcode" 
-                    value={value.contacts?.[0].postcode} 
-                    onChange={handleDialogChange} maxLength={4} 
-                />
-            </Grid>
-            <Grid item xs={12}>
-                <InputField
-                    type="text" 
-                    error={fieldError.contacts[0].country} 
-                    label="Postcode" name="postcode" 
-                    value={value.contacts?.[0].country} 
-                    onChange={handleDialogChange} maxLength={4} 
-                />
-            </Grid>
-
-        </Grid>
-    )
 }
 
 // Mask inputs
@@ -588,6 +390,5 @@ const inputMask = (name: any, val: any) => {
     }
     return val;
 }
-
 
 export default Contractors;

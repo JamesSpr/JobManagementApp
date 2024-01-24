@@ -164,6 +164,7 @@ export interface ContractorType {
 export interface ContractorContactType {
     id: string
     location: number
+    contactName: string
     address: string
     locality: string
     state: string

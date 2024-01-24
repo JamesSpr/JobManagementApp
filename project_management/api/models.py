@@ -266,6 +266,7 @@ class ContractorContact(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     location = models.IntegerField()
     company = models.ForeignKey(Contractor, on_delete=PROTECT)
+    contact_name = models.CharField(max_length=25)
     address = models.CharField(max_length=100)
     locality = models.CharField(max_length=50)
     state = models.CharField(max_length=3, choices=STATE_CHOICES, default='NSW')
