@@ -657,9 +657,9 @@ class CreateEstimate(graphene.Mutation):
         est = Estimate()
         est.quote_by = CustomUser.objects.get(id=estimate.quote_by.id)
         est.job_id = job
-        est.name = estimate.name
+        est.name = estimate.name.strip()
         est.price = str(estimate.price)
-        est.description = estimate.description
+        est.description = estimate.description.strip()
         est.scope = estimate.scope
         est.save()
 
@@ -669,7 +669,7 @@ class CreateEstimate(graphene.Mutation):
             for header in estimate.estimateheaderSet:
                 estHeader = EstimateHeader()
                 estHeader.estimate_id = est
-                estHeader.description = header.description
+                estHeader.description = header.description.strip()
                 estHeader.gross = header.gross
                 estHeader.markup = header.markup
                 estHeader.save()
@@ -678,7 +678,7 @@ class CreateEstimate(graphene.Mutation):
                 for item in header.estimateitemSet:
                     estItem = EstimateItem()
                     estItem.header_id = estHeader
-                    estItem.description = item.description
+                    estItem.description = item.description.strip()
                     estItem.quantity = item.quantity
                     estItem.item_type = item.itemType
                     estItem.rate = item.rate

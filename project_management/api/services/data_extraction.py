@@ -287,7 +287,7 @@ def try_parsing_date_to_string(text, debug=False):
 
     return ""
 
-def pdf_to_image(pdf, type, num_pages):
+def pdf_to_image(pdf, type, num_pages=0):
     # write pdf to temp file so we can convert to a thumbnail image
     temp_pdf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
     temp_pdf.write(pdf)
