@@ -1,14 +1,14 @@
 import React, { useState, useEffect }  from 'react';
 import { Dialog, DialogContent, Grid, IconButton } from '@mui/material';
-import { InputField, ProgressButton } from '../../components/Components';
+import { InputField, ProgressButton } from '../../../components/Components';
 
 // Icons
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-import useAxiosPrivate from '../../hooks/useAxiosPrivate';
-import useAuth from '../auth/useAuth';
-import { BillType, ContractorType, EstimateType, JobType, SnackType } from '../../types/types';
+import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
+import useAuth from '../../auth/useAuth';
+import { BillType, ContractorType, EstimateType, JobType, SnackType } from '../../../types/types';
 import { BillAttachmentType } from './BillDialog';
 
 const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, newBill, setNewBill, billAttachment, setSnack}: {

@@ -1,7 +1,7 @@
 import React, { useState, useMemo }  from 'react';
 import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getExpandedRowModel, ColumnDef, Row, ColumnSort, Table, Column} from '@tanstack/react-table'
 import { Dialog, DialogContent, Grid, Typography, IconButton } from '@mui/material';
-import { FileUploadSection, InputField, ProgressIconButton } from '../../components/Components';
+import { FileUploadSection, InputField, ProgressIconButton } from '../../../components/Components';
 
 // Icons
 import CloseIcon from '@mui/icons-material/Close';
@@ -11,11 +11,11 @@ import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 
-import useAxiosPrivate from '../../hooks/useAxiosPrivate';
-import { BillSummaryType, BillType, EstimateSummaryType, JobType, SnackType } from '../../types/types';
+import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
+import { BillSummaryType, BillType, EstimateSummaryType, JobType, SnackType } from '../../../types/types';
 import { BillAttachmentType, SummariseBill } from './BillDialog';
 import EditBill, { blankBill } from './EditBill';
-import useAuth from '../auth/useAuth';
+import useAuth from '../../auth/useAuth';
 
 const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, setCreateBill, setBillAttachment, setSnack }: {
     open: boolean,

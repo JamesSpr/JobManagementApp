@@ -246,6 +246,21 @@ class Invoice(models.Model):
     def __str__(self):
         return "Invoice " + self.number + " for " + str(self.job)
 
+class Expense(models.Model):
+    id = models.AutoField(primary_key=True, unique=True)
+    myob_uid = models.CharField(max_length=36, blank=True, null=True)
+    job = models.ForeignKey(Job, on_delete=PROTECT)
+    employee = models.ForeignKey(CustomUser, on_delete=PROTECT, blank=True, null=True, related_name="employee")
+    vendor = models.CharField(max_length=255, blank=True, null=True)
+    locale = models.CharField(max_length=255, blank=True, null=True)
+    amount = models.DecimalField(max_digits=13, default='0.00', decimal_places=2)
+    expense_date = models.DateField() 
+    thumbnail_path = models.CharField(max_length=512, blank=True)
+    file_path = models.CharField(max_length=512, blank=True)
+
+    def __str__(self):
+        return self.memo
+
 class Bill(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)

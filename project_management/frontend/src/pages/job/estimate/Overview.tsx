@@ -8,7 +8,7 @@ import { produce } from 'immer';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ContractorType, EmployeeType, EstimateType, JobType, SnackType } from '../../../types/types';
 import { BasicDialog } from '../../../components/Components';
-import BillDialog from '../../bill/BillDialog';
+import BillDialog from '../../bill/bills/BillDialog';
 
 const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdateRequired, contractors, setSnack }: {
     users: EmployeeType[]

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { BillSummaryType, BillType, ContractorType, JobType, SnackBarType, SnackType } from '../../types/types';
-import useAxiosPrivate from '../../hooks/useAxiosPrivate';
+import { BillSummaryType, BillType, ContractorType, JobType, SnackBarType, SnackType } from '../../../types/types';
+import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import { useParams } from 'react-router-dom';
 import { CircularProgress, Divider, Grid, IconButton } from '@mui/material';
-import { Footer, InputField, ProgressIconButton, SnackBar } from '../../components/Components';
-import { blankJob } from '../job/Queries';
-import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
+import { Footer, InputField, ProgressIconButton, SnackBar } from '../../../components/Components';
+import { blankJob } from '../../job/Queries';
+import { defineJobIdentifier, openInNewTab } from '../../../components/Functions';
 import SaveIcon from '@mui/icons-material/Save';
-import useAuth from '../auth/useAuth';
+import useAuth from '../../auth/useAuth';
 
 const blankContractor = {
     id: '',

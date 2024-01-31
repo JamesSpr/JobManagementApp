@@ -1,7 +1,7 @@
 import React, { useState, useEffect }  from 'react';
 import { useParams } from 'react-router-dom';
 
-import { BillSummaryType, BillType, ContractorType, EstimateHeaderType, EstimateSummaryType, EstimateType, JobType, SnackType } from '../../types/types';
+import { BillSummaryType, BillType, ContractorType, EstimateHeaderType, EstimateSummaryType, EstimateType, JobType, SnackType } from '../../../types/types';
 import BillHome from './JobBill';
 import CreateBill from './Create';
 import { blankBill } from './EditBill';

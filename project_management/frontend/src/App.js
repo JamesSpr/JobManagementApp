@@ -26,7 +26,7 @@ import Timesheets from "./pages/timesheets/Timesheets";
 
 import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
-import EditBill from "./pages/bill/EditBill";
+import EditBill from "./pages/bill/bills/EditBill";
 
 
 const App = () => {
