@@ -163,7 +163,7 @@ const JobPage = () => {
         setWaiting(prev => ({...prev, 'save': true}));
 
         // Remove unwanted values from job state for backend
-        let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = job
+        let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, expenseSet:______, ...jobInput} = job
         // Define formats before sending to backend
         job['totalHours'] === null ? jobInput['totalHours'] = 0 : null;
 
