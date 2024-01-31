@@ -8,7 +8,8 @@ import { produce } from 'immer';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ContractorType, EmployeeType, EstimateType, JobType, SnackType } from '../../../types/types';
 import { BasicDialog } from '../../../components/Components';
-import BillDialog from '../../bill/bills/BillDialog';
+import BillDialog from '../../bill/job-bill/Dialog';
+import ExpenseDialog from '../../bill/job-expense/Dialog';
 
 const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdateRequired, contractors, setSnack }: {
     users: EmployeeType[]
@@ -24,6 +25,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
 
     const [rowSelection, setRowSelection] = useState({});
     const [billsDialog, setBillsDialog] = useState(false);
+    const [expensesDialog, setExpensesDialog] = useState(false);
 
     const [waiting, setWaiting] = useState({quote: false, estimate: false});
     
@@ -401,10 +403,6 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
         // debugTable: true,
     });    
 
-    const handleBillClose = (event: any, reason: any) => {
-        setBillsDialog(false);
-    }
-
     return (
         <>        
         <Grid container direction={'column'} alignItems={'center'}>
@@ -511,6 +509,7 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                 } */}
 
                 {job.estimateSet.find((estimate) => estimate.approvalDate !== null) &&
+                <>
                     <Tooltip title={job.myobUid === "" ? "Please Sync with MYOB" : null}>
                         <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
                             <Button 
@@ -519,14 +518,28 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
                                 disabled={job.myobUid === ""}
                                 onClick={e => setBillsDialog(true)}
                                 >
-                                Open Bills
+                                Bills
                             </Button>
                         </Box>
                     </Tooltip> 
+                    <Tooltip title={job.myobUid === "" ? "Please Sync with MYOB" : null}>
+                        <Box sx={{ m: 1, position: 'relative' }} style={{display: 'inline-block'}}>
+                            <Button 
+                                variant="outlined" 
+                                style={{marginRight: '10px'}} 
+                                disabled={job.myobUid === ""}
+                                onClick={e => setExpensesDialog(true)}
+                                >
+                                Expenses
+                            </Button>
+                        </Box>
+                    </Tooltip> 
+                </>
                 }
             </Grid>
 
-            <BillDialog open={billsDialog} onClose={handleBillClose} job={job} setJob={setJob} contractors={contractors} setSnack={setSnack}/>
+            <BillDialog open={billsDialog} onClose={() => setBillsDialog(false)} job={job} setJob={setJob} contractors={contractors} setSnack={setSnack}/>
+            <ExpenseDialog open={expensesDialog} onClose={() => setExpensesDialog(false)} job={job} setJob={setJob} setSnack={setSnack}/>
 
             {/* { auth.user.role === "DEV" ? 
                 <Tooltip placement="top" title={updateRequired ? "Please Save Changes" : Object.keys(rowSelection).length === 0 ? "Please Select a Quote" : ""}>

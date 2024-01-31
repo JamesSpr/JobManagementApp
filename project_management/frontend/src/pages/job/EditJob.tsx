@@ -13,9 +13,10 @@ import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { openInNewTab } from '../../components/Functions';
-import { blankInvoice, blankJob, jobAllQuery, jobQueryData } from './Queries';
+import { jobAllQuery, jobQueryData } from './Queries';
 import SettingsDialog from './SettingsDialog';
 import { ClientType, ContactType, EmployeeType, InvoiceType, JobStageType, JobType, LocationType, SnackType } from '../../types/types';
+import { blankInvoice, blankJob } from '../../types/blanks';
 
 const JobPage = () => { 
     const axiosPrivate = useAxiosPrivate();

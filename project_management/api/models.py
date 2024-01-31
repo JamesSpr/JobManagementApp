@@ -255,11 +255,12 @@ class Expense(models.Model):
     locale = models.CharField(max_length=255, blank=True, null=True)
     amount = models.DecimalField(max_digits=13, default='0.00', decimal_places=2)
     expense_date = models.DateField() 
+    process_date = models.DateField(default=datetime.date.today)
     thumbnail_path = models.CharField(max_length=512, blank=True)
     file_path = models.CharField(max_length=512, blank=True)
 
     def __str__(self):
-        return self.memo
+        return f"{self.vendor} {self.locale} for ${self.amount}"
 
 class Bill(models.Model):
     id = models.AutoField(primary_key=True, unique=True)

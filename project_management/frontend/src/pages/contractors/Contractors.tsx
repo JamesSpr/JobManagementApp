@@ -7,7 +7,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import AddIcon from '@mui/icons-material/Add';
 import useAuth from '../auth/useAuth';
 import { Footer,ProgressIconButton, SnackBar, Table } from '../../components/Components';
-import { blankContractor } from '../job/Queries';
+import { blankContractor } from '../../types/blanks';
 import { ContractorType, SnackType } from '../../types/types';
 import { ColumnDef, ColumnFiltersState } from '@tanstack/table-core';
 import CreateContractorDialog from './create/Dialog';

@@ -49,6 +49,7 @@ export interface JobType {
     }
     estimateSet: EstimateType[]
     invoiceSet: InvoiceType[]
+    expenseSet: ExpenseType[]
     billSet: BillType[]
     opportunityType: string
     bsafeLink: string
@@ -135,6 +136,26 @@ export interface BillSummaryType {
     amount: number
     invoiceNumber: number
     subRows: BillSummaryType[]
+}
+
+export interface ExpenseType {
+    id: string
+    myobUid: string
+    vendor: string
+    cardNumber: string 
+    expenseDate: string
+    amount: number
+    thumbnailPath: string
+    // Data when extracting the bill
+    // job?: JobType
+    // employee?: UserType
+}
+
+export interface ExpenseSummaryType {
+    vendor: string
+    amount: number
+    invoiceNumber: number
+    subRows: ExpenseSummaryType[]
 }
 
 export interface EstimateSummaryType {

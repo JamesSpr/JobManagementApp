@@ -5,7 +5,7 @@ import { Button, Grid, Box, Dialog, DialogTitle, DialogContent, DialogActions, C
 import { useNavigate } from 'react-router-dom';
 import {InputField, SnackBar} from '../../components/Components';
 import { defineJobIdentifier, openInNewTab } from '../../components/Functions';
-import { blankJob, jobQueryData } from '../job/Queries';
+import { blankJob } from '../../types/blanks';
 import { ClientType, ContactType, JobType, LocationType, SnackType } from '../../types/types';
 
 const CreateDialog = ({ open, onClose, jobs, setJobs, clients, clientContacts, locations }: {

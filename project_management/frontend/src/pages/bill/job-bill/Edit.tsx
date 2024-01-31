@@ -4,33 +4,10 @@ import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import { useParams } from 'react-router-dom';
 import { CircularProgress, Divider, Grid, IconButton } from '@mui/material';
 import { Footer, InputField, ProgressIconButton, SnackBar } from '../../../components/Components';
-import { blankJob } from '../../job/Queries';
 import { defineJobIdentifier, openInNewTab } from '../../../components/Functions';
 import SaveIcon from '@mui/icons-material/Save';
 import useAuth from '../../auth/useAuth';
-
-const blankContractor = {
-    id: '',
-    myobUid: '',
-    name: '',
-    bankAccountName: '',
-    bankAccountNumber: '',
-    bsb: '',
-    abn: '',
-}
-
-export const blankBill = {
-    id: '',
-    myobUid: '',
-    invoiceNumber: '',
-    invoiceDate: '',
-    processDate: '',
-    amount: 0,
-    billType: '',
-    thumbnailPath: '',
-    supplier: blankContractor,
-    job: blankJob
-}
+import { blankBill, blankJob } from '../../../types/blanks';
 
 const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setToggleSave}: {
     bills: BillType

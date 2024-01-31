@@ -9,7 +9,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import useAuth from '../../auth/useAuth';
 import { BillType, ContractorType, EstimateType, JobType, SnackType } from '../../../types/types';
-import { BillAttachmentType } from './BillDialog';
+import { BillAttachmentType } from './Dialog';
 
 const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, newBill, setNewBill, billAttachment, setSnack}: {
     open: boolean,

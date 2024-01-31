@@ -13,9 +13,10 @@ import SaveIcon from '@mui/icons-material/Save';
 
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import { BillSummaryType, BillType, EstimateSummaryType, JobType, SnackType } from '../../../types/types';
-import { BillAttachmentType, SummariseBill } from './BillDialog';
-import EditBill, { blankBill } from './EditBill';
+import { BillAttachmentType, SummariseBill } from './Dialog';
+import EditBill from './Edit';
 import useAuth from '../../auth/useAuth';
+import { blankBill } from '../../../types/blanks';
 
 const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, setCreateBill, setBillAttachment, setSnack }: {
     open: boolean,

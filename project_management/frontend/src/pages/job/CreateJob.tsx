@@ -6,8 +6,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { InputField, ProgressButton, SnackBar } from "../../components/Components";
 import JobAllocator from "../home/JobAllocator";
 import { defineJobIdentifier, openInNewTab } from "../../components/Functions";
-import { blankClient, blankJob, blankLocation, jobQueryData } from "./Queries";
 import { ClientType, ContactType, EmployeeType, JobType, LocationType, SnackType } from "../../types/types";
+import { blankJob, blankClient, blankLocation } from "../../types/blanks";
 
 const CreateJob = () => {
     const axiosPrivate = useAxiosPrivate();

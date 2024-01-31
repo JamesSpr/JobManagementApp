@@ -4,27 +4,8 @@ import { useParams } from 'react-router-dom';
 import { BillSummaryType, BillType, ContractorType, EstimateHeaderType, EstimateSummaryType, EstimateType, JobType, SnackType } from '../../../types/types';
 import BillHome from './JobBill';
 import CreateBill from './Create';
-import { blankBill } from './EditBill';
+import { blankBill } from '../../../types/blanks';
 
-const emptyBillState = {
-    id: '',
-    myobUid: '',
-    supplier: {
-        id: '',
-        myobUid: '',
-        name: '',
-        bankAccountName: '',
-        bankAccountNumber: '',
-        bsb: '',
-        abn: '',
-    },
-    thumbnailPath: '',
-    // contractor: '',
-    invoiceNumber: '',
-    invoiceDate: '',
-    amount: 0,
-    billType: 'subcontractor'
-}
 
 export interface BillAttachmentType {
     data: string
@@ -40,7 +21,7 @@ const BillDialog = ({ open, onClose, job, setJob, contractors, setSnack }: {
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
 
-    const [newBill, setNewBill] = useState<BillType>(emptyBillState);
+    const [newBill, setNewBill] = useState<BillType>(blankBill);
     const [billAttchment, setBillAttachment] = useState<BillAttachmentType>({'data':'', 'name':''})
     const [createBill, setCreateBill] = useState(false);
     const [data, setData] = useState<EstimateSummaryType[]>([]);
@@ -68,7 +49,7 @@ const BillDialog = ({ open, onClose, job, setJob, contractors, setSnack }: {
     }
 
     const handleBack = () => {
-        setNewBill(emptyBillState);
+        setNewBill(blankBill);
         // TODO: Delete Temp Invoice File?
         setCreateBill(false);
     }

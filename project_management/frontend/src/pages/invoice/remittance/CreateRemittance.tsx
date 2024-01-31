@@ -11,7 +11,7 @@ import { EditableCell } from '../../../components/TableHelpers';
 
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { blankInvoice } from '../../job/Queries';
+import { blankInvoice } from '../../../types/blanks';
 
 const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvice }: {
     open: boolean
