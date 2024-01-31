@@ -9,7 +9,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import useAuth from '../../auth/useAuth';
 import { BillType, ContractorType, EstimateType, JobType, SnackType } from '../../../types/types';
-import { BillAttachmentType } from './Dialog';
+import { AttachmentType } from './Dialog';
 
 const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, newBill, setNewBill, billAttachment, setSnack}: {
     open: boolean,
@@ -20,7 +20,7 @@ const CreateBill = ({ open, handleClose, handleBack, id, setJob, contractors, ne
     newBill: BillType
     setNewBill: React.Dispatch<React.SetStateAction<BillType>>
     setJob: React.Dispatch<React.SetStateAction<JobType>>
-    billAttachment: BillAttachmentType
+    billAttachment: AttachmentType
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
     const emptyContractorState: ContractorType = {

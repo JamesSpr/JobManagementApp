@@ -15,7 +15,7 @@ from accounts.models import CustomUser
 from myob.models import MyobUser
 from api.services.create_completion_documents import CreateCompletionDocuments
 from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
-from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
+from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Expense, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
 # from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
 # from .services.data_extraction import ExtractBillDetails
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
@@ -1237,7 +1237,7 @@ class CreateBill(graphene.Mutation):
         bill.amount = newBill['amount'], 2
         bill.invoice_date = newBill['invoiceDate']
         bill.invoice_number = newBill['invoiceNumber']
-        bill.img_path = newBill['imagePath']
+        # bill.file_path = newBill['imagePath']
         bill.thumbnail_path = newBill['thumbnailPath']
         bill.save()
 
@@ -1282,6 +1282,56 @@ class DeleteBill(graphene.Mutation):
         bill = Bill.objects.get(id=id)
         bill.delete()
         return self(ok=True)
+
+class ExpenseType(DjangoObjectType):
+    class Meta:
+        model = Expense
+        fields = '__all__'
+
+    amount = graphene.Float()
+
+
+class ExpenseInput(graphene.InputObjectType):
+    id = graphene.String()
+    myobUid = graphene.String()
+    employee = graphene.Field(IDInput)
+    job = graphene.String()
+    vendor = graphene.String()
+    locale = graphene.String()
+    expenseDate = graphene.Date()
+    processDate = graphene.Date()
+    amount = graphene.Float()
+    thumbnailPath = graphene.String()
+
+class CreateExpense(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+        jobId = graphene.String()
+        newExpense = ExpenseInput()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    expense = graphene.Field(ExpenseType)
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, newExpense, jobId, uid): 
+        job = Job.objects.get(po=jobId)
+
+        expense = Expense()
+        expense.job = job
+        expense.myob_uid = uid
+        expense.vendor = newExpense['vendor']
+        expense.locale = newExpense['locale']
+        expense.employee = CustomUser.objects.get(id=newExpense['employee'].id)
+        expense.process_date = datetime.date.today()
+        expense.amount = newExpense['amount'], 2
+        expense.expense_date = newExpense['expenseDate']
+        expense.thumbnail_path = newExpense['thumbnailPath']
+        expense.save()
+
+        return self(success=True, message="Expense Successfully Created", expense=expense)
+    
 
 class DeleteInvoice(graphene.Mutation):
     ok = graphene.Boolean()
@@ -1572,6 +1622,7 @@ class Query(graphene.ObjectType):
     contractor_contacts = graphene.List(ContractorContactType, contractor=graphene.String())
     invoices = graphene.List(InvoiceType)
     bills = graphene.List(BillType, bill=graphene.String())
+    expenses = graphene.List(BillType, expense=graphene.String())
     insurances = graphene.List(InsuranceType)
     remittance_advice = graphene.List(RemittanceType)
 
@@ -1622,6 +1673,13 @@ class Query(graphene.ObjectType):
            return Bill.objects.filter(id=bill)
         
         return Bill.objects.all()
+
+    @login_required
+    def resolve_expenses(root, info, expense=None, **kwargs):
+        if expense:
+           return Expense.objects.filter(id=expense)
+
+        return Expense.objects.all()
 
     @login_required
     def resolve_invoices(root, info, **kwargs):

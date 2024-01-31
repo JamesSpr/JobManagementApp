@@ -96,11 +96,14 @@ export const jobQueryData = `
         id
         myobUid
         vendor
+        locale
         expenseDate
         amount
         processDate
         thumbnailPath
-        billType
+        employee {
+            id
+        }
         job {
             id
         }

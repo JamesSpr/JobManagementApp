@@ -1,13 +1,12 @@
 import React, { useState, useEffect }  from 'react';
 import { useParams } from 'react-router-dom';
 
-import { BillSummaryType, BillType, ContractorType, EstimateHeaderType, EstimateSummaryType, EstimateType, JobType, SnackType } from '../../../types/types';
+import { BillSummaryType, BillType, ContractorType, EstimateHeaderType, EstimateSummaryType, EstimateType, ExpenseSummaryType, ExpenseType, JobType, SnackType } from '../../../types/types';
 import BillHome from './JobBill';
 import CreateBill from './Create';
 import { blankBill } from '../../../types/blanks';
 
-
-export interface BillAttachmentType {
+export interface AttachmentType {
     data: string
     name: string
 }
@@ -22,18 +21,16 @@ const BillDialog = ({ open, onClose, job, setJob, contractors, setSnack }: {
 }) => {
 
     const [newBill, setNewBill] = useState<BillType>(blankBill);
-    const [billAttchment, setBillAttachment] = useState<BillAttachmentType>({'data':'', 'name':''})
+    const [billAttchment, setBillAttachment] = useState<AttachmentType>({'data':'', 'name':''})
     const [createBill, setCreateBill] = useState(false);
     const [data, setData] = useState<EstimateSummaryType[]>([]);
 
+    // Check if estimate has been approved if it has changed
     useEffect(() => {
-        const estimate = job.estimateSet.find((estimate) => estimate.approvalDate !== null)
-        // console.log(estimate)
-        // setData(estimate?.estimateheaderSet);
-        estimate?.estimateheaderSet?.map(header => {
+        const approvedEstimate = job.estimateSet.find((estimate) => estimate.approvalDate !== null)
+        approvedEstimate?.estimateheaderSet?.map(header => {
             header.estimateitemSet?.map(lineItem => {
                 // Add the header description for meta data
-                // console.log("lineItem", lineItem)
                 const summaryItem = {...lineItem, header: header?.description};
                 setData(prev => [...prev, summaryItem]);
             })
@@ -64,38 +61,16 @@ const BillDialog = ({ open, onClose, job, setJob, contractors, setSnack }: {
 
     if (data) {
         // Create a data structure with summarised headers and lineitem subRows
-        let counter = 0;
-        const summarisedData: EstimateSummaryType[] = data.reduce((items, item) => {
-            const {id, description, quantity, itemType, rate, extension, gross, header} = item;
-
-            // Check if the items descriptions are the same
-            const itemIndex = items.findIndex(it => it.description.trim() === description.trim())
-
-            if(itemIndex === -1) {
-                // Create a new header row
-                const subRows = [{id, description: header ?? '', quantity, itemType, rate, extension, gross}]
-                items.push({id, counter, description, quantity, itemType, rate, extension, gross, subRows}); 
-                counter += 1;
-            } else {
-                // Add to the existing header row
-                items[itemIndex].quantity = items[itemIndex].quantity + quantity;
-                items[itemIndex].itemType = itemType.slice(-1) == 's' ? itemType : itemType + 's';
-                items[itemIndex].rate = items[itemIndex].rate + rate;
-                items[itemIndex].extension = items[itemIndex].extension + extension;
-                items[itemIndex].gross = items[itemIndex].gross + gross;
-                items[itemIndex].subRows?.push({id, description: header ?? '', quantity, itemType, rate, extension, gross});
-            }
-
-            return items;
-        }, [] as EstimateSummaryType[]);
-        
-        let billSummary: BillSummaryType[] = SummariseBill(job.billSet)
+        const summarisedData: EstimateSummaryType[] = SummariseEstimate(data);
+        const billSummary: BillSummaryType[] = SummariseBill(job.billSet);
+        const expenseSummary: ExpenseSummaryType[] = SummariseExpense(job.expenseSet)
 
         return (
             <BillHome open={open} handleClose={handleClose} 
                 id={job.po} data={summarisedData} 
                 setJob={setJob}
                 bills={billSummary}
+                expenses={expenseSummary}
                 setBillAttachment={setBillAttachment}
                 setNewBill={setNewBill} setCreateBill={setCreateBill} setSnack={setSnack}
             />
@@ -105,7 +80,34 @@ const BillDialog = ({ open, onClose, job, setJob, contractors, setSnack }: {
     return <></>
 }
 
-export const SummariseBill = (bills: BillType[]) => {
+const SummariseEstimate = (estimate: EstimateSummaryType[]) => {
+    let counter = 0;
+    return estimate.reduce((items, item) => {
+        const {id, description, quantity, itemType, rate, extension, gross, header} = item;
+
+        // Check if the items descriptions are the same
+        const itemIndex = items.findIndex(it => it.description.trim() === description.trim())
+
+        if(itemIndex === -1) {
+            // Create a new header row
+            const subRows = [{id, description: header ?? '', quantity, itemType, rate, extension, gross}]
+            items.push({id, counter, description, quantity, itemType, rate, extension, gross, subRows}); 
+            counter += 1;
+        } else {
+            // Add to the existing header row
+            items[itemIndex].quantity = items[itemIndex].quantity + quantity;
+            items[itemIndex].itemType = itemType.slice(-1) == 's' ? itemType : itemType + 's';
+            items[itemIndex].rate = items[itemIndex].rate + rate;
+            items[itemIndex].extension = items[itemIndex].extension + extension;
+            items[itemIndex].gross = items[itemIndex].gross + gross;
+            items[itemIndex].subRows?.push({id, description: header ?? '', quantity, itemType, rate, extension, gross});
+        }
+
+        return items;
+    }, [] as EstimateSummaryType[]);
+}
+
+const SummariseBill = (bills: BillType[]) => {
     let summarisedBill: BillSummaryType[] = [];
     if(bills.length > 0) {
         let counter = 0;
@@ -135,6 +137,38 @@ export const SummariseBill = (bills: BillType[]) => {
         
     }
     return summarisedBill;
+}
+
+const SummariseExpense = (expenses: ExpenseType[]) => {
+    let summarisedExpenses: ExpenseSummaryType[] = [];
+    if(expenses.length > 0) {
+        let counter = 0;
+        summarisedExpenses = expenses.reduce((items: {vendor: string; amount: any; invoiceNumber: number; subRows: any[]; }[], item: { [x: string]: any; vendor: any; amount: any; }) => {
+            // console.log("items", items)
+            // console.log("item", item)
+            const {vendor, amount, ...other} = item;
+            
+            // Check if the items vendors have the same name
+            const itemIndex = items.findIndex((item: { vendor: string; }) => item.vendor.trim() === vendor.trim())
+
+            if(itemIndex === -1) {
+                // Create a new header row
+                const subRows = [{vendor, amount, ...other}]
+                items.push({vendor, amount, invoiceNumber: 1, subRows}); 
+                counter += 1;
+            } else {
+                // Add to the existing header row
+                items[itemIndex].vendor = vendor;
+                items[itemIndex].invoiceNumber = items[itemIndex].invoiceNumber + 1;
+                items[itemIndex].amount = parseFloat(items[itemIndex].amount) + parseFloat(amount);
+                items[itemIndex].subRows.push({vendor, amount, ...other});
+            }
+
+            return items
+        }, [])
+        
+    }
+    return summarisedExpenses;
 }
 
 export default BillDialog;

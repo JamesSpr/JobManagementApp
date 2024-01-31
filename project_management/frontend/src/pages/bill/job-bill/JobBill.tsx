@@ -12,22 +12,23 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
-import { BillSummaryType, BillType, EstimateSummaryType, JobType, SnackType } from '../../../types/types';
-import { BillAttachmentType, SummariseBill } from './Dialog';
+import { BillSummaryType, BillType, EstimateSummaryType, ExpenseSummaryType, JobType, SnackType } from '../../../types/types';
+import { AttachmentType } from './Dialog';
 import EditBill from './Edit';
 import useAuth from '../../auth/useAuth';
 import { blankBill } from '../../../types/blanks';
 
-const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, setCreateBill, setBillAttachment, setSnack }: {
+const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNewBill, setCreateBill, setBillAttachment, setSnack }: {
     open: boolean,
     handleClose: (event?: {}, reason?: string) => void,
     id: string
-    data: EstimateSummaryType[]
     setJob: React.Dispatch<React.SetStateAction<JobType>>
+    data: EstimateSummaryType[]
     bills: BillSummaryType[]
+    expenses: ExpenseSummaryType[]
     setNewBill: React.Dispatch<React.SetStateAction<BillType>>
     setCreateBill: React.Dispatch<React.SetStateAction<boolean>>
-    setBillAttachment: React.Dispatch<React.SetStateAction<BillAttachmentType>>
+    setBillAttachment: React.Dispatch<React.SetStateAction<AttachmentType>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
 
@@ -172,9 +173,7 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
             accessorKey: 'processDate',
             header: () => 'Processed',
             cell: ({getValue}: {getValue: () => any}) => getValue() ? new Date(getValue()).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : "",
-            minSize: 80,
             size: 80,
-            maxSize: 80,
         },
         {
             accessorKey: 'thumbnailPath',
@@ -185,9 +184,7 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
                     <RequestPageIcon />
                 </IconButton>
             ),
-            minSize: 40,
             size: 40,
-            maxSize: 40,
         },
     ], []);
     
@@ -216,45 +213,6 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
         setBillEditor(true);
     }
 
-    const estimateTotal = () => {
-        let totalAmount:number = 0.0;
-        estimateTable.getRowModel().flatRows.forEach((row) => {
-            if(row.depth === 0) {
-                totalAmount += parseFloat(row.original.extension.toString());
-            }
-        })
-        return totalAmount;
-    }
-
-    const estimateTotalIncProfit = () => {
-        let totalAmount:number = 0.0;
-        estimateTable.getRowModel().flatRows.forEach((row) => {
-            if(row.depth === 0) {
-                totalAmount += parseFloat(row.original.gross.toString());
-            }
-        })
-        return totalAmount;
-    }
-
-    const billsTotal = () => {
-        let totalAmount:number = 0.0;
-        billsTable.getRowModel().flatRows.forEach((row) => {
-            if(row.depth === 0) {
-                totalAmount += parseFloat(row.original.amount.toString());
-            }
-        })
-        return totalAmount / 1.1;
-    }
-
-    const getBudget = () => {
-        return estimateTotal() - billsTotal();
-    }
-    const getProfit = () => {
-        return estimateTotalIncProfit() - estimateTotal();
-    }
-    const getGross = () => {
-        return getProfit() + getBudget();
-    }
 
     const handleNewBill = () => {
 
@@ -461,24 +419,7 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
                                 </tfoot>
                             </table>
                         </Grid>
-                        <Grid item xs={12}>
-                            <table className='accounts-table'>
-                                <thead>
-                                    <tr>
-                                        <th>Budget</th>
-                                        <th>Profit</th>
-                                        <th>Gross</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td className={getBudget() == 0 ? '' : getBudget() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getBudget())}</td>
-                                        <td className={getProfit() == 0 ? '' : getProfit() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getProfit())}</td>
-                                        <td className={getGross() == 0 ? '' : getGross() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getGross())}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </Grid>
+                        <JobExpenseSummaryTable estimate={data} bills={bills} expenses={expenses} />
                         <Grid item xs={12}>
                             <div className='subheader-with-options'>
                                 <p className='subHeader'>Upload New Bill</p>
@@ -502,8 +443,64 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills,  setNewBill, set
     );
 }
 
+const JobExpenseSummaryTable = ({estimate, bills, expenses}: {
+    estimate: EstimateSummaryType[],
+    bills: BillSummaryType[],
+    expenses: ExpenseSummaryType[]
+}) => {
+
+    const estimateTotal = () => {
+        return estimate.reduce((total, est) => {
+            total += est.extension
+            return total
+        }, 0.0);
+    }
+
+    const estimateTotalIncProfit = () => {
+        return estimate.reduce((total, est) => {
+            total += est.gross
+            return total
+        }, 0.0);
+    }
+
+    const billsTotal = () => {
+        return bills.reduce((total, bill) => {
+            total += bill.amount
+            return total
+        }, 0.0) / 1.1;
+    }
+
+    const getBudget = () => {
+        return estimateTotal() - billsTotal();
+    }
+    const getProfit = () => {
+        return estimateTotalIncProfit() - estimateTotal();
+    }
+    const getGross = () => {
+        return getProfit() + getBudget();
+    }
+
+    return (
+        <Grid item xs={12}>
+            <table className='accounts-table'>
+                <thead>
+                    <tr>
+                        <th>Budget</th>
+                        <th>Profit</th>
+                        <th>Gross</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td className={getBudget() == 0 ? '' : getBudget() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getBudget())}</td>
+                        <td className={getProfit() == 0 ? '' : getProfit() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getProfit())}</td>
+                        <td className={getGross() == 0 ? '' : getGross() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getGross())}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </Grid>
+    )
+}
 
 
 export default BillHome;
-
-// export default () => ""
