@@ -135,7 +135,7 @@ const CreateJob = () => {
         setWaiting(true);
 
         // Remove unwanted values from job state for backend
-        let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, ...jobInput} = newJob
+        let {invoiceSet:_, myobUid:__, stage:____, billSet: _____, expenseSet: ______, ...jobInput} = newJob
         // Define formats before sending to backend
         newJob['inspectionDate'] === "" ? jobInput.inspectionDate = null : null;
         newJob['commencementDate'] === "" ? jobInput.commencementDate = null : null;
