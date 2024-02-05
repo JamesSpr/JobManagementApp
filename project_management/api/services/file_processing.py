@@ -9,7 +9,7 @@ from io import BytesIO
 import numpy as np
 from graphql_jwt.decorators import login_required
 
-INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Insurances"
+INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Aurify\Insurances"
 
 class PDFToImage(graphene.Mutation):
     class Arguments:

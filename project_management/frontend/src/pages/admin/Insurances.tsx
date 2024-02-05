@@ -138,6 +138,8 @@ const Insurances = ({insurances, setInsurances, setUpdateRequired}: {
         }
     }
 
+    const [sorting, setSorting] = useState([{"id": "active", "desc": true}]);
+
     return (
         <>
             <Grid container
@@ -146,7 +148,10 @@ const Insurances = ({insurances, setInsurances, setUpdateRequired}: {
             >
                 <Grid item xs={12}>
                     <p>Insurances Information/Details</p>
-                    <Table columns={columns} data={insurances} setData={setInsurances} pagination={true}/>
+                    <Table columns={columns} data={insurances} setData={setInsurances} 
+                        pagination={true}
+                        sorting={sorting} setSorting={setSorting}
+                    />
                     <p>Upload Insurances</p>
                     <FileUploadSection onSubmit={handleNewInsurance} waiting={waiting.update} id="upload_insurances" type=".pdf" button="Upload Insurances"/>
                 </Grid>
@@ -251,10 +256,10 @@ const NewInsurance = ({ open, onClose, newInsurance, setData }: {
                             <Grid item xs={12}>
                                 <InputField type="text" width={450} label="Description" name="description" 
                                     error={fieldError['description']} value={insurance.description} onChange={handleChange}/> 
-                            </Grid>
-                            <Grid item xs={12}>
                                 <InputField type="date" width={150} label="Issue Date" name="issueDate" 
                                     error={fieldError['issueDate']} value={insurance.issueDate} onChange={handleChange}/> 
+                            </Grid>
+                            <Grid item xs={12}>
                                 <InputField type="date" width={150} label="Start Date" name="startDate" 
                                     error={fieldError['startDate']} value={insurance.startDate} onChange={handleChange}/> 
                                 <InputField type="date" width={150} label="Expiry Date" name="expiryDate" 
@@ -267,8 +272,8 @@ const NewInsurance = ({ open, onClose, newInsurance, setData }: {
                             </Grid>
                         </Grid>
                         <Grid item xs={12} style={{display: 'flex', justifyContent: 'center'}}>
-                            <div className='pdf-preview-large'>
-                                <img src={"\\" + newInsurance.thumbnail} alt="PDF Preview"/>
+                            <div className='pdf-preview'>
+                                <img src={"\\" + newInsurance.thumbnail} alt="PDF Preview" className='pdf-img'/>
                             </div>
                         </Grid>
                     </Grid>
