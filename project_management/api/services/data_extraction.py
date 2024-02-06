@@ -132,6 +132,7 @@ class ExtractBillDetails(graphene.Mutation):
         file = graphene.String()
         filename = graphene.String()
         num_pages = graphene.Int()
+        object_type = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -140,117 +141,153 @@ class ExtractBillDetails(graphene.Mutation):
     billFileData = graphene.String()
 
     @classmethod
-    def mutate(self, root, info, file, filename, num_pages):
+    def mutate(self, root, info, file, filename, num_pages, object_type):
         if not file: 
             return self(success=False)
         
-        debug = True
+        debug = False
 
-        file = file.replace("data:application/pdf;base64,", "")
-        pdf = base64.b64decode(file, validate=True)
+        if "data:application/pdf;base64," in file:
+            # Convert PDF to JPG and Save
+            file = file.replace("data:application/pdf;base64,", "")
+            pdf = base64.b64decode(file, validate=True)
 
-        img_uid = pdf_to_image(pdf, 'bills', num_pages)
-        bill_image = Image.open(f"Media\\bills\\{img_uid}.jpg")
+            img_uid = pdf_to_image(pdf, 'bills', num_pages)
+            thumbnail_image_path = f"Media\\bills\\{img_uid}.jpg"
+            img = Image.open(thumbnail_image_path)
 
-        # Check the image is within the requirements for pytesseract
-        ## Image size - Max is 32767 (INT16_MAX) width and height
-        if(bill_image.height > 32767 or bill_image.width > 32767):
-            return self(success=False, message="Bill PDF is too large. Please remove unnecessary pages using the advanced upload section")
-        
-
-        if debug: print(img_uid)
-        bill_text = pytesseract.image_to_string(bill_image).lower()
-
-        data = {
-            'thumbnailPath':'',
-            'contractor':'',
-            'invoiceNumber':'',
-            'invoiceDate':'',
-            'amount':'',
-            'billType':'subcontractor'
-        }
-        data.update({'thumbnailPath': f"Media\\bills\\{img_uid}.jpg"})
-
-        if debug: print(bill_text)
-
-        abn_regex = re.findall('[\b\s]?abn\s*:?\s*([0-9]{2}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3})', bill_text)
-
-        for i, abn in enumerate(abn_regex):
-            abn_regex[i] = abn.replace(" ", "")
-
-        if not data.get('abn'):
-            abn_set = set(abn_regex)
-            if '14609594532' in abn_set: abn_set.remove('14609594532') # Aurify ABN [HARDCODED]
-            abn_regex = list(abn_set)
-            if(len(abn_regex) == 1): 
-                abn = abn_format(abn_regex[0])
-                data.update({'abn': abn})
-
-                if Contractor.objects.filter(abn=abn).exists():
-                    contractor = Contractor.objects.get(abn=abn)
-                    if debug: print("Contractor:",contractor)
-                    data.update({'contractor': contractor.id})
-
-            if debug: print("ABN:", abn_regex)
-
-        if not data.get('invoiceNumber'):
-            invoice_regex = re.findall('[\b\s](?:inv(?:oice)?)[-noumber.:# ]*?(\d+\/?\d*)', bill_text)
-            invoice_set = set(invoice_regex)
-            invoice_regex = list(invoice_set)
-            if(len(invoice_regex) == 1): 
-                data.update({'invoiceNumber': invoice_regex[0]})
-            if debug: print("Invoice:", invoice_regex)
-
-
-        if not data.get('invoiceDate'):
-            date_regex = re.findall('(?:\s?\d{1,2}[-/, ]{0,1}\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*[-/, ]{0,1}\s*\d{2,4})|(?:\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d{1,2}[-/, ]{0,1}\s*[-/, ]{0,1}\s?\d{4})|(?:3[01]|[12][0-9]|0?[1-9])\s?[/-]\s?(?:1[0-2]|0?[1-9])\s?[/-]\s?(?:[0-9]{2})?[0-9]{2}', bill_text)
-            for i, val in enumerate(date_regex):
-                date_regex[i] = val.strip().replace(" ", "")
+            # Check the image is within the requirements for pytesseract
+            ## Image size - Max is 32767 (INT16_MAX) width and height
+            if(img.height > 32767 or img.width > 32767):
+                return self(success=False, message="Bill PDF is too large. Please remove unnecessary pages using the advanced upload section")
             
+        elif "data:image" in file:
+            # Save as JPG
+            img_uid = uuid.uuid4().hex
+            while os.path.exists(img_uid):
+                img_uid = uuid.uuid4().hex
+
+            thumbnail_image_path = f"Media\\bills\\{img_uid}.jpg"
+
+            file = re.sub("data:image(.+);base64,", "", file)
+            img = Image.open(BytesIO(base64.b64decode(file)))
+            img = img.convert('RGB')
+            img.save(thumbnail_image_path)
+            
+            if(img.height > 32767 or img.width > 32767):
+                return self(success=False, message="Image size is too large. Please reduce the size and reupload")
+
+            # return self(success=True, message="Successfully Uploaded", data=json.dumps(data, indent=4, sort_keys=True, default=str), billFileName=filename, billFileData=file)
+        else:
+            return self(success=False, message="File type not recognised. Please Contact Developer")
+
+        if debug: print(thumbnail_image_path)
+        data = {'thumbnailPath': thumbnail_image_path}
+
+        text = pytesseract.image_to_string(img).lower()
+        if debug: print(text)
+
+        if object_type == "bill":
+            data.update({'billType':'subcontractor'})
+
+            data = extract_contractor_into_struct(text, data, debug)
+            data = extract_invoice_number_into_struct(text, data, debug)
+            data = extract_invoice_date_into_struct(text, data, debug)
+            data = extract_amount_into_struct(text, data, debug)
+            
+        elif object_type == "expense":            
+            data = extract_invoice_date_into_struct(text, data, debug)
+            data = extract_amount_into_struct(text, data, debug)
+
+        else:
+            return self(success=False, message="Provided object type not recognised")
+
+
+        return self(success=True, message="Successfully Uploaded", data=json.dumps(data, indent=4, sort_keys=True, default=str), billFileName=filename, billFileData=file)
+
+def extract_amount_into_struct(text, data, debug=False):
+    total_regex = re.findall('(?![\b[^\S\r\n]](?:total|amount|due)[: $aud]*?[^\S\r\n]*?)(-?[0-9]{0,3}[^\S\r\n]*,*?[0-9]{0,3}[^\S\r\n]*\.[^\S\r\n]*[0-9]{2})', text)
+    if debug: print(total_regex)
+    if(len(total_regex) == 1):
+        data.update({'amount': total_regex[0].replace(' ', '').replace(',', '')})
+    if len(total_regex) > 1:
+        for i, val in enumerate(total_regex):
+            total_regex[i] = float(val.replace(' ', '').replace(',', ''))
+        data.update({'amount': max(total_regex)})
+
+    if debug: print("Amount:", total_regex)
+
+    return data
+
+def extract_invoice_date_into_struct(text, data, debug=False):
+    date_regex = re.findall('(?:\s?\d{1,2}[-/, ]{0,1}\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*[-/, ]{0,1}\s*\d{2,4})|(?:\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d{1,2}[-/, ]{0,1}\s*[-/, ]{0,1}\s?\d{4})|(?:3[01]|[12][0-9]|0?[1-9])\s?[/-]\s?(?:1[0-2]|0?[1-9])\s?[/-]\s?(?:[0-9]{2})?[0-9]{2}', text)
+    for i, val in enumerate(date_regex):
+        date_regex[i] = val.strip().replace(" ", "")
+    
+    date_set = set(date_regex)
+    date_regex = list(date_set)
+    if debug: print("Date:", date_regex)
+
+    # If more than one date is found from the beginning, narrow down the search to look for an invoice date specifically. 
+    if(len(date_regex) == 1):
+        date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
+        data.update({'invoiceDate': date})
+
+    elif(len(date_regex) > 1):
+        # Remove future dates that could be the due date.
+        for d in date_regex:
+            if not try_parsing_date(d) == None and try_parsing_date(d) > datetime.today() + timedelta(days=1):
+                date_regex.remove(d)
+
+        if debug: print("Date:", date_regex)
+        if(len(date_regex) == 1):
+            date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
+            data.update({'invoiceDate': date})
+
+        else:
+            # Try a different regex pattern
+            date_regex = re.findall('(?:invoice\s?date[\r\n\s]*)((?:\s?\d*\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d*,{0,1}\s*\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2})', text)
             date_set = set(date_regex)
             date_regex = list(date_set)
             if debug: print("Date:", date_regex)
-
-            # If more than one date is found from the beginning, narrow down the search to look for an invoice date specifically. 
             if(len(date_regex) == 1):
                 date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
                 data.update({'invoiceDate': date})
 
-            elif(len(date_regex) > 1):
-                # Remove future dates that could be the due date.
-                for d in date_regex:
-                    if not try_parsing_date(d) == None and try_parsing_date(d) > datetime.today() + timedelta(days=1):
-                        date_regex.remove(d)
+    return data                
 
-                if debug: print("Date:", date_regex)
-                if(len(date_regex) == 1):
-                    date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
-                    data.update({'invoiceDate': date})
+def extract_invoice_number_into_struct(text, data, debug=False):
+    invoice_regex = re.findall('[\b\s](?:inv(?:oice)?)[-noumber.:# ]*?(\d+\/?\d*)', text)
+    invoice_set = set(invoice_regex)
+    invoice_regex = list(invoice_set)
+    if(len(invoice_regex) == 1): 
+        data.update({'invoiceNumber': invoice_regex[0]})
 
-                else:
-                    # Try a different regex pattern
-                    date_regex = re.findall('(?:invoice\s?date[\r\n\s]*)((?:\s?\d*\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d*,{0,1}\s*\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2})', bill_text)
-                    date_set = set(date_regex)
-                    date_regex = list(date_set)
-                    if debug: print("Date:", date_regex)
-                    if(len(date_regex) == 1):
-                        date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
-                        data.update({'invoiceDate': date})
-                
+    if debug: print("Invoice:", invoice_regex)
+    
+    return data
 
-        if not data.get('amount'):
-            total_regex = re.findall('(?![\b[^\S\r\n]](?:total|amount|due)[: $aud]*?[^\S\r\n]*?)(-?[0-9]{0,3}[^\S\r\n]*,*?[0-9]{0,3}[^\S\r\n]*\.[^\S\r\n]*[0-9]{2})', bill_text)
-            if debug: print(total_regex)
-            if(len(total_regex) == 1):
-                data.update({'amount': total_regex[0].replace(' ', '').replace(',', '')})
-            if len(total_regex) > 1:
-                for i, val in enumerate(total_regex):
-                    total_regex[i] = float(val.replace(' ', '').replace(',', ''))
-                data.update({'amount': max(total_regex)})
+# Extracts ABN from image and finds contact with that ABN
+def extract_contractor_into_struct(text, data, debug=False):
+    abn_regex = re.findall('[\b\s]?abn\s*:?\s*([0-9]{2}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3})', text)
+    for i, abn in enumerate(abn_regex):
+        abn_regex[i] = abn.replace(" ", "")
 
-            if debug: print("Amount:", total_regex)   
+    abn_set = set(abn_regex)
+    if '14609594532' in abn_set: abn_set.remove('14609594532') # Aurify ABN [HARDCODED]
+    abn_regex = list(abn_set)
+    if(len(abn_regex) == 1): 
+        abn = abn_format(abn_regex[0])
+        data.update({'abn': abn})
 
-        return self(success=True, message="Successfully Uploaded", data=json.dumps(data, indent=4, sort_keys=True, default=str), billFileName=filename, billFileData=file)
+        if Contractor.objects.filter(abn=abn).exists():
+            contractor = Contractor.objects.get(abn=abn)
+            if debug: print("Contractor:",contractor)
+            data.update({'contractor': contractor.id})
+
+    if debug: print("ABN:", abn_regex)
+
+    return data
 
 def abn_format(text):
     if len(text) == 14:
