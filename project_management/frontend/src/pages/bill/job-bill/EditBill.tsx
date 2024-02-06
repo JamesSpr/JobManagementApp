@@ -1,30 +1,27 @@
 import { useState, useEffect } from 'react';
-import { BillSummaryType, BillType, ContractorType, JobType, SnackBarType, SnackType } from '../../../types/types';
+import { BillType, JobType, SnackType } from '../../../types/types';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import { useParams } from 'react-router-dom';
-import { CircularProgress, Divider, Grid, IconButton } from '@mui/material';
-import { Footer, InputField, ProgressIconButton, SnackBar } from '../../../components/Components';
-import { defineJobIdentifier, openInNewTab } from '../../../components/Functions';
-import SaveIcon from '@mui/icons-material/Save';
+import { CircularProgress, Grid } from '@mui/material';
+import { InputField } from '../../../components/Components';
+import { defineJobIdentifier } from '../../../components/Functions';
 import useAuth from '../../auth/useAuth';
 import { blankBill, blankJob } from '../../../types/blanks';
 
-const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setToggleSave}: {
+const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setToggleSave, setSnack}: {
     bills: BillType
     setJob: React.Dispatch<React.SetStateAction<JobType>>
-    setEditing: React.Dispatch<React.SetStateAction<boolean>>
+    setEditing: React.Dispatch<React.SetStateAction<"expense" | "bill" | null>>
     setUpdateWaiting: React.Dispatch<React.SetStateAction<any>>
     toggleSave: boolean
     setToggleSave: React.Dispatch<React.SetStateAction<boolean>>
+    setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
     const axiosPrivate = useAxiosPrivate();
     const { auth } = useAuth();
 
     const [bill, setBill] = useState<BillType>(blankBill);
     const [jobs, setJobs] = useState<JobType[]>([blankJob]);
-    const [snack, setSnack] = useState<SnackType>({variant: 'info', active: false, message: ''});
-    const [waiting, setWaiting] = useState(false);
-    const [updateRequired, setUpdateRequired] = useState(false);
     const [loading, setLoading] = useState(true);
 
     // Fetch bill data if none has been passed
@@ -100,30 +97,25 @@ const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setT
     }, [])
 
     const handleInput = (e: { target: { name?: any; value?: any; }; }) => {
-        setBill(prev => ({...prev, [e.target.name]: e.target.value}))
-        setUpdateRequired(true);
+        setBill(prev => ({...prev, [e.target.name]: e.target.value}));
     }
     
     const handleNumberInput = (e: { target: { name?: any; value?: any; }; }) => {
         const val = e.target.value === "" ? 0 : e.target.value
-        setBill(prev => ({...prev, [e.target.name]: val}))
-        setUpdateRequired(true);
+        setBill(prev => ({...prev, [e.target.name]: val}));
     }
     
     const handleDateInput = (e: { target: { name?: any; value?: any; }; }) => {
         const val = e.target.value === "" ? null : e.target.value
-        setBill(prev => ({...prev, [e.target.name]: val}))
-        setUpdateRequired(true);
+        setBill(prev => ({...prev, [e.target.name]: val}));
     }
     
     const handleSelection = (e: { target: { name?: any; value?: any; }; }) => {
         const val = e.target.value === "" ? null : {id: e.target.value}
-        setBill(prev => ({...prev, [e.target.name]: val}))
-        setUpdateRequired(true);
+        setBill(prev => ({...prev, [e.target.name]: val}));
     }
 
     const handleSave = async () => {
-        setWaiting(true);
         if(setUpdateWaiting != null) {setUpdateWaiting((prev: any) => ({...prev, update: true}));}
 
         // Post bill details to MYOB
@@ -162,24 +154,21 @@ const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setT
             }),
         }).then((response) => {
             const res = response?.data?.data?.update;
-
-            console.log(res)
-
-            setWaiting(false);
             if(setUpdateWaiting != null) {setUpdateWaiting((prev: any) => ({...prev, update: false}));}
             
             if(res.success) {
                 setSnack({active: true, variant: 'success', message: res.message})
                 setToggleSave(false);
                 setJob(prev => ({...prev, billSet: res.job.billSet}));
-                setEditing(false);
+                setEditing(null);
             }
             else {
                 setSnack({active: true, variant:'error', message: res.message})
                 setToggleSave(false);
             }
+
         }).catch((err) => {
-            setWaiting(false);
+            if(setUpdateWaiting != null) {setUpdateWaiting((prev: any) => ({...prev, update: false}));}
             setToggleSave(false);
             console.log("error:", err);
             setSnack({active: true, variant:'error', message: "Submission Error. Contact Developer"})
@@ -255,7 +244,7 @@ const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setT
             <div style={{padding: '10px'}} />
             <Grid item xs={12}>
                 <div className='pdf-preview'>
-                    <img src={"\\" + bill?.thumbnailPath} alt="PDF Preview"  className='pdf-img'/>
+                    <img src={"\\" + bill?.thumbnailPath} alt="PDF Preview" className='pdf-img'/>
                 </div>
             </Grid>
         </>
@@ -265,18 +254,6 @@ const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setT
             </Grid>
     }   
     </Grid>
-
-    <SnackBar snack={snack} setSnack={setSnack} />
-    
-    {!bills &&  <>
-        <Footer>
-            <ProgressIconButton onClick={handleSave} waiting={waiting} >
-                <SaveIcon />
-            </ProgressIconButton>
-        </Footer>
-
-        </>
-    }
 
     </>);
 }

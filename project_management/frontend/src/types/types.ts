@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 
 export type User = {
-    id: Number,
+    id: string,
     email: string,
     firstName: string,
     lastName: string
@@ -142,12 +142,16 @@ export interface ExpenseType {
     id: string
     myobUid: string
     vendor: string
-    cardNumber: string 
+    locale: string
+    employee: { 
+        id: string
+        firstName?: string
+    } 
     expenseDate: string
     amount: number
     thumbnailPath: string
     // Data when extracting the bill
-    // job?: JobType
+    job?: JobType
     // employee?: UserType
 }
 

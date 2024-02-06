@@ -1,218 +1,76 @@
-import React, { useState, useMemo }  from 'react';
-import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getExpandedRowModel, ColumnDef, Row, ColumnSort, Table, Column} from '@tanstack/react-table'
-import { Dialog, DialogContent, Grid, Typography, IconButton } from '@mui/material';
+import React, { useEffect, useState }  from 'react';
+import { Dialog, DialogContent, Grid, IconButton } from '@mui/material';
 import { FileUploadSection, InputField, ProgressIconButton } from '../../../components/Components';
 
 // Icons
 import CloseIcon from '@mui/icons-material/Close';
-import RequestPageIcon from '@mui/icons-material/RequestPage';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
-import { BillSummaryType, BillType, EstimateSummaryType, ExpenseSummaryType, JobType, SnackType } from '../../../types/types';
-import { AttachmentType } from './Dialog';
-import EditBill from './Edit';
-import useAuth from '../../auth/useAuth';
-import { blankBill } from '../../../types/blanks';
+import { BillSummaryType, BillType, ContractorType, EmployeeType, EstimateSummaryType, ExpenseSummaryType, ExpenseType, JobType, SnackType } from '../../../types/types';
+import EditBill from './EditBill';
+import { BillSummaryTable, EstimateSummaryTable, ExpenseSummaryTable, JobBudgetSummary } from './Tables';
+import EditExpense from './EditExpense';
+import CreateBill from './CreateBill';
+import CreateExpense from './CreateExpense';
 
-const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNewBill, setCreateBill, setBillAttachment, setSnack }: {
+export interface AttachmentType {
+    data: string
+    name: string
+}
+
+export type BillTypes = null | "expense" | "bill"
+
+const BillHome = ({open, onClose, job, contractors, employees, setJob, setSnack }: {
     open: boolean,
-    handleClose: (event?: {}, reason?: string) => void,
-    id: string
+    onClose: (event?: {}, reason?: string) => void,
+    job: JobType
+    contractors: ContractorType[]
+    employees: EmployeeType[]
     setJob: React.Dispatch<React.SetStateAction<JobType>>
-    data: EstimateSummaryType[]
-    bills: BillSummaryType[]
-    expenses: ExpenseSummaryType[]
-    setNewBill: React.Dispatch<React.SetStateAction<BillType>>
-    setCreateBill: React.Dispatch<React.SetStateAction<boolean>>
-    setBillAttachment: React.Dispatch<React.SetStateAction<AttachmentType>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
 
-    const { auth } = useAuth(); 
     const axiosPrivate = useAxiosPrivate();
     const [waiting, setWaiting] = useState({'create': false, 'update': false});
     const [advancedUpload, setAdvancedUpload] = useState(false);
     const [advancedUploadSettings, setAdvancedUploadSettings] = useState({numPages: 0});
 
-    // Table Columns
-    const estimateTableColumns = useMemo<ColumnDef<EstimateSummaryType>[]>(() => [
-        {
-            id: 'expander',
-            size: 40,
-            header: () => "",
-            cell: ({ row }) => (
-                <>
-                    {row.getCanExpand() ? (
-                        <IconButton onFocus={(e) => row.getIsSelected() ? null : row.toggleSelected()}
-                        style={{padding: '0px 8px'}}
-                        {...{
-                            onClick: row.getToggleExpandedHandler(),
-                        }}
-                        >
-                        {row.getIsExpanded() ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
-                        </IconButton>
-                    ) : (
-                        ''
-                    )}
-                </>
-            )
-        },
-        {
-            accessorKey: 'description',
-            header: () => 'Description',
-            size: 400,
-        },
-        {
-            accessorKey: 'quantity',
-            header: () => 'Quantity',
-            size: 50,
-        },
-        {
-            accessorKey: 'itemType',
-            header: () => 'Units',
-            size: 50,
-        },
-        {
-            accessorKey: 'rate',
-            header: () => 'Rate',
-            cell: ({row, getValue}: {row: Row<EstimateSummaryType>, getValue: () => any}) => (
-                <>
-                    {row.getCanExpand() ? (
-                        new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getValue() / (row.original.subRows?.length ?? 1))
-                    ): (
-                        new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getValue())
-                    )}
-               </>
-            ),
-            size: 75,
-        },
-        {
-            accessorKey: 'extension',
-            header: () => 'Amount',
-            cell: ({getValue}: {getValue: () => any}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getValue()),
-            size: 100,
-        },
-    ], []);
+    const [newObjectType, setNewObjectType] = useState<"bill" | "expense">("bill")
     
+    const [editing, setEditing] = useState<BillTypes>(null);
+    const [editingObject, setEditingObject] = useState<BillType | ExpenseType>();
+    const [estimates, setEstimates] = useState<EstimateSummaryType[]>([]);
+
+    const [creating, setCreating] = useState<BillTypes>(null);
+    const [newObject, setNewObject] = useState<BillType | ExpenseType>();
+    const [attachment, setAttachment] = useState<AttachmentType>({'data':'', 'name':''})
     
-    const [expanded, setExpanded] = useState({})
-    const estimateTable = useReactTable({
-        data,
-        columns: estimateTableColumns,
-        state: {
-            expanded
-        },
-        onExpandedChange: setExpanded,
-        getSubRows: row => row.subRows,
-        getCoreRowModel: getCoreRowModel(),
-        getExpandedRowModel: getExpandedRowModel(),
-    });  
+    const [toggleSave, setToggleSave] = useState(false);
 
-    const footerSum = (table: Table<BillSummaryType>, column: Column<BillSummaryType>) => {
-        let sum = 0.0
+    const estimateSummary: EstimateSummaryType[] = SummariseEstimate(estimates);
+    const billSummary: BillSummaryType[] = SummariseBill(job.billSet);
+    const expenseSummary: ExpenseSummaryType[] = SummariseExpense(job.expenseSet)
 
-        for(var i = 0; i < table.getRowModel().flatRows.length; i++) {
-            if(table.getRowModel().flatRows[i].depth === 0) {
-                sum += Number(table.getRowModel().flatRows[i].getValue(column.id))
-            }
+    const handleClose = (event?: any, reason?: string) => {
+        if (reason !== 'backdropClick') {
+            // TODO: Snackbar
+            onClose(event, reason);
         }
-        return sum
     }
 
-    const billTableColumns = useMemo<ColumnDef<BillSummaryType>[]>(() => [
-        {
-            id: 'expander',
-            size: 40,
-            header: () => "",
-            cell: ({ row }) => (
-                <>
-                    {row.getCanExpand() ? (
-                        <IconButton onFocus={(e) => row.getIsSelected() ? null : row.toggleSelected()}
-                        style={{padding: '0px 8px'}}
-                        {...{
-                            onClick: row.getToggleExpandedHandler(),
-                        }}
-                        >
-                        {row.getIsExpanded() ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
-                        </IconButton>
-                    ) : (
-                        ''
-                    )}
-                </>
-            )
-        },
-        {
-            id: 'supplier',
-            accessorFn: row => row?.supplier?.name,
-            header: () => 'Supplier',
-            size: 400,
-        },
-        {
-            accessorKey: 'invoiceNumber',
-            header: () => 'Invoice #',
-            size: 80,
-        },
-        {
-            accessorKey: 'amount',
-            header: () => 'Amount',
-            cell: ({getValue}: {getValue: () => any}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getValue()/1.1),
-            footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)/1.1),
-            size: 100,
-        },
-        {
-            accessorKey: 'invoiceDate',
-            header: () => 'Invoice Date',
-            cell: ({getValue}: {getValue: () => any}) => getValue() ? new Date(getValue()).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : "",
-            size: 100,
-        },
-        {
-            accessorKey: 'processDate',
-            header: () => 'Processed',
-            cell: ({getValue}: {getValue: () => any}) => getValue() ? new Date(getValue()).toLocaleDateString('en-AU', {timeZone: 'UTC'}) : "",
-            size: 80,
-        },
-        {
-            accessorKey: 'thumbnailPath',
-            header: () => 'Bill',
-            cell: ({row}: {row: Row<BillSummaryType>}) => (
-                row.parentId !== undefined &&
-                <IconButton onClick={e => {displayBill(row)}}>
-                    <RequestPageIcon />
-                </IconButton>
-            ),
-            size: 40,
-        },
-    ], []);
-    
-    const [sorting, setSorting] = useState<ColumnSort[]>([{"id": "supplier", "desc": false}])
-    const [expandedBills, setExpandedBills] = useState({})
-    const billsTable = useReactTable({
-        data: bills,
-        columns: billTableColumns,
-        state: {
-            sorting,
-            expanded: expandedBills
-        },
-        onExpandedChange: setExpandedBills,
-        getSubRows: row => row.subRows,
-        onSortingChange: setSorting,
-        getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getExpandedRowModel: getExpandedRowModel(),
-    }); 
-
-    const [editingBill, setEditingBill] = useState<BillType>(blankBill);
-    const [billEditor, setBillEditor] = useState(false);
-    const displayBill = (row: any) => {
-        console.log(row)
-        setEditingBill(row.original);
-        setBillEditor(true);
-    }
-
+    // Check if estimate has been approved if it has changed
+    useEffect(() => {
+        const approvedEstimate = job.estimateSet.find((estimate) => estimate.approvalDate !== null)
+        approvedEstimate?.estimateheaderSet?.map(header => {
+            header.estimateitemSet?.map(lineItem => {
+                // Add the header description for meta data
+                const summaryItem = {...lineItem, header: header?.description};
+                setEstimates(prev => [...prev, summaryItem]);
+            })
+        });
+    }, [job.estimateSet])
 
     const handleNewBill = () => {
 
@@ -221,7 +79,8 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
         const [file] = target?.files as FileList;
 
         if (!file) {
-            setCreateBill(true);
+            // setCreateBill(true);
+            setSnack({active: true, variant: "warning", message: "You must upload attachment to create a bill"})
             setWaiting(prev => ({...prev, 'create': false}));
             return;
         }
@@ -235,8 +94,8 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
                 method: 'post',
                 data: JSON.stringify({
                 query: `
-                mutation extractBillDetails($file: String!, $filename: String!, $numPages: Int!) {
-                    bill: extractBillDetails(file: $file, filename: $filename, numPages: $numPages) {
+                mutation extractBillDetails($file: String!, $filename: String!, $numPages: Int!, $objectType: String! ) {
+                    bill: extractBillDetails(file: $file, filename: $filename, numPages: $numPages, objectType: $objectType) {
                         success
                         message
                         data
@@ -247,7 +106,8 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
                 variables: { 
                     file: data,
                     filename: file.name,
-                    numPages: advancedUploadSettings.numPages
+                    numPages: advancedUploadSettings.numPages,
+                    objectType: newObjectType
                 },
             }),
             }).then((response) => {
@@ -255,14 +115,16 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
                 const res = response?.data?.data?.bill;
                 setWaiting(prev => ({...prev, 'create': false}));
                 if(res.success) {
-                    // console.log(JSON.parse(res.data));
-                    setNewBill(JSON.parse(res.data));
-                    setBillAttachment({
+                    newObjectType === "bill" ? 
+                        setNewObject(JSON.parse(res.data) as BillType) 
+                        : setNewObject(JSON.parse(res.data) as ExpenseType);
+                    
+                    setAttachment({
                         'data': res.billFileData,
                         'name': res.billFileName
                     })
                     // setNewBill(prev => ({...prev, 'invoiceDate': new Date(prev?.invoiceDate)}))
-                    setCreateBill(true);
+                    setCreating(newObjectType);
                 }
                 else {
                     setSnack({active: true, variant: 'error', message: res.message})
@@ -276,15 +138,12 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
         }      
     }
 
-    const [toggleSave, setToggleSave] = useState(false);
-
     return (
     <>
         <Dialog fullWidth maxWidth='md' scroll={'paper'} open={open} onClose={handleClose}>
             <span className="dialogTitle">
-                
-                {billEditor && <>
-                    <IconButton onClick={() => setBillEditor(false)} disabled={waiting.update} style={{float: 'left', padding: '0px 0px 4px 0px'}}>
+                {editing && <>
+                    <IconButton onClick={() => setEditing(null)} disabled={waiting.update} style={{float: 'left', padding: '0px 0px 4px 0px'}}>
                         <ArrowBackIcon />
                     </IconButton>
                     <ProgressIconButton onClick={() => setToggleSave(true)} waiting={waiting.update} style={{float: 'left', padding: '0px 0px 4px 0px', margin: '0px 0px 0px 8px'}}>
@@ -292,137 +151,46 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
                     </ProgressIconButton>
                 </>
                 }
-                <h1
-                    style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 104px)', textAlign: 'center', fontWeight: 'bold'}}>
-                    Accounts for {id}
+                {creating && <>
+                    <IconButton onClick={() => setCreating(null)} disabled={waiting.update} style={{float: 'left', padding: '0px 0px 4px 0px'}}>
+                        <ArrowBackIcon />
+                    </IconButton>
+                </>
+                }
+                <h1 style={{display: 'inline-block', position: 'relative', left: '24px', width: 'calc(100% - 104px)', textAlign: 'center', fontWeight: 'bold'}}>
+                    Accounts for {job.po}
                 </h1>
                 <IconButton onClick={handleClose} disabled={waiting.update} style={{float: 'right', right: '10px', padding: '0px 0px 4px 0px'}} >
                     <CloseIcon />
                 </IconButton>
             </span>
             <DialogContent>
-                {billEditor ? 
-                    <EditBill bills={editingBill} setJob={setJob} toggleSave={toggleSave} setToggleSave={setToggleSave} setEditing={setBillEditor} setUpdateWaiting={setWaiting}/>
-                    :
+                {!editing && !creating ? 
                     <Grid container spacing={1} direction={'column'} alignItems={'center'} style={{overflow: 'auto hidden'}}>
-                        <Grid item xs={12} style={{margin: '10px 0px'}}>
-                            <Typography variant='h6' textAlign={'center'}>Approved Estimate Items</Typography>
-                            <table style={{width: estimateTable.getTotalSize()}}>
-                                <thead>
-                                    {estimateTable.getHeaderGroups().map(headerGroup => (
-                                        <tr key={headerGroup.id}>
-                                            {headerGroup.headers.map(header => {
-                                                return (
-                                                    <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
-                                                        {header.isPlaceholder ? null : (
-                                                        <>
-                                                            {flexRender(
-                                                            header.column.columnDef.header,
-                                                            header.getContext()
-                                                            )}
-                                                        </>
-                                                        )}
-                                                    </th>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </thead>
-                                <tbody>
-                                    {estimateTable.getRowModel().rows.map(row => {
-                                        return (
-                                            <tr key={row.id} style={{height: '20px'}}>
-                                                {row.getVisibleCells().map(cell => {
-                                                    return (
-                                                        <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '',padding: '4px 5px'}}>
-                                                            {
-                                                                flexRender(
-                                                                    cell.column.columnDef.cell,
-                                                                    cell.getContext()
-                                                                )
-                                                            }
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </Grid>
-                        <Grid item xs={12} style={{margin: '10px 0px', overflow: 'auto hidden'}}>
-                            <Typography variant='h6' textAlign={'center'}>Bills</Typography>
-                            <table style={{width: billsTable.getTotalSize()}}>
-                                <thead>
-                                    {billsTable.getHeaderGroups().map(headerGroup => (
-                                        <tr key={headerGroup.id}>
-                                            {headerGroup.headers.map(header => {
-                                                return (
-                                                    <th key={header.id} colSpan={header.colSpan} style={{width: header.getSize(), padding: '5px'}}>
-                                                        {header.isPlaceholder ? null : (
-                                                        <>
-                                                            {flexRender(
-                                                            header.column.columnDef.header,
-                                                            header.getContext()
-                                                            )}
-                                                        </>
-                                                        )}
-                                                    </th>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </thead>
-                                <tbody>
-                                    {billsTable.getRowModel().rows.length > 0 ? (
-                                        billsTable.getRowModel().rows.map(row => {
-                                            return (
-                                                <tr key={row.id} style={{height: '20px'}}>
-                                                    {row.getVisibleCells().map(cell => {
-                                                        return (
-                                                            <td key={cell.id} style={{background: row.depth === 0 ? "#fafafa" : '', padding: '4px 5px'}}>
-                                                                {
-                                                                    flexRender(
-                                                                        cell.column.columnDef.cell,
-                                                                        cell.getContext()
-                                                                    )
-                                                                }
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            );
-                                        })) : (
-                                            <tr className="EmptyTableData" key={"NoQuote"}>
-                                                <td className="EmptyTableData" colSpan={8}>
-                                                    No Bills Found. Upload bills below.
-                                                </td>
-                                            </tr>
-                                        )
-                                    }
-                                </tbody>
-                                <tfoot>
-                                    {billsTable.getFooterGroups().map(footerGroup => (
-                                        <tr key={footerGroup.id}>
-                                        {footerGroup.headers.map(header => (
-                                            <th key={header.id} style={{padding: '4px 5px'}}>
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.footer,
-                                                    header.getContext()
-                                                )}
-                                            </th>
-                                        ))}
-                                        </tr>
-                                    ))}
-                                </tfoot>
-                            </table>
-                        </Grid>
-                        <JobExpenseSummaryTable estimate={data} bills={bills} expenses={expenses} />
+                        <EstimateSummaryTable estimates={estimateSummary} />
+                        <BillSummaryTable bills={billSummary} setEditingObject={setEditingObject} setEditing={setEditing} />
+                        <ExpenseSummaryTable expenses={expenseSummary} setEditingObject={setEditingObject} setEditing={setEditing} />
+                        <JobBudgetSummary estimate={estimateSummary} bills={billSummary} expenses={expenseSummary} />
+                        
                         <Grid item xs={12}>
                             <div className='subheader-with-options'>
-                                <p className='subHeader'>Upload New Bill</p>
+                                <p className='subHeader'>Upload New</p>
+                                <div>
+                                    <label>
+                                        <input type="radio" value="bill" name="input_type" 
+                                            checked={newObjectType === "bill"}
+                                            onChange={() => setNewObjectType("bill")}
+                                        />
+                                        Bill
+                                    </label>
+                                    <label>
+                                        <input type="radio" value="expense" name="input_type" 
+                                            checked={newObjectType === "expense"}
+                                            onChange={() => setNewObjectType("expense")}
+                                        />
+                                        Expense
+                                    </label>
+                                </div>
                                 <a className='options-link' onClick={() => setAdvancedUpload(!advancedUpload)}>Advanced Upload {advancedUpload ? "V" : ">"}</a>
                             </div>
                             { advancedUpload &&
@@ -432,9 +200,46 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
                                         onChange={e => setAdvancedUploadSettings(prev => ({...prev, [e.target.name]: e.target.value}))} />
                                 </div>
                             }
-                            <FileUploadSection onSubmit={handleNewBill} waiting={waiting.create} id="create_bill" type=".pdf" button="Create New Bill"/>
+                            <FileUploadSection onSubmit={handleNewBill} waiting={waiting.create} id="create_bill" type=".pdf, image/*" button={"Create New " + newObjectType}/>
                         </Grid>
                     </Grid>
+                    :
+                    editing ?
+                        editing == "bill" ? 
+                            <EditBill bills={editingObject as BillType} setJob={setJob} 
+                                toggleSave={toggleSave} setToggleSave={setToggleSave} 
+                                setEditing={setEditing} setUpdateWaiting={setWaiting}
+                                setSnack={setSnack}        
+                            />
+                        : 
+                            <EditExpense expenses={editingObject as ExpenseType} setJob={setJob} 
+                                toggleSave={toggleSave} setToggleSave={setToggleSave} 
+                                setEditing={setEditing} setUpdateWaiting={setWaiting}
+                                setSnack={setSnack}        
+                            />
+                    :
+                    creating ?
+                        creating == "bill" ?
+                            <CreateBill
+                                setJob={setJob} id={job.po}
+                                contractors={contractors} 
+                                attachment={attachment}
+                                newBill={newObject as BillType} 
+                                setNewBill={setNewObject as React.Dispatch<React.SetStateAction<BillType>>} 
+                                setCreating={setCreating}
+                                setSnack={setSnack}
+                            />
+                        :
+                            <CreateExpense 
+                                setJob={setJob} id={job.po}
+                                employees={employees}
+                                attachment={attachment}
+                                newExpense={newObject as ExpenseType}
+                                setNewExpense={setNewObject as React.Dispatch<React.SetStateAction<ExpenseType>>} 
+                                setCreating={setCreating}
+                                setSnack={setSnack}                            
+                            />
+                    : <>Error Please Contact Developer</>
                 }
             </DialogContent>
         </Dialog>
@@ -443,64 +248,95 @@ const BillHome = ({ open, handleClose, id, data, setJob, bills, expenses, setNew
     );
 }
 
-const JobExpenseSummaryTable = ({estimate, bills, expenses}: {
-    estimate: EstimateSummaryType[],
-    bills: BillSummaryType[],
-    expenses: ExpenseSummaryType[]
-}) => {
+const SummariseEstimate = (estimate: EstimateSummaryType[]) => {
+    let counter = 0;
+    return estimate.reduce((items, item) => {
+        const {id, description, quantity, itemType, rate, extension, gross, header} = item;
 
-    const estimateTotal = () => {
-        return estimate.reduce((total, est) => {
-            total += est.extension
-            return total
-        }, 0.0);
-    }
+        // Check if the items descriptions are the same
+        const itemIndex = items.findIndex(it => it.description.trim() === description.trim())
 
-    const estimateTotalIncProfit = () => {
-        return estimate.reduce((total, est) => {
-            total += est.gross
-            return total
-        }, 0.0);
-    }
+        if(itemIndex === -1) {
+            // Create a new header row
+            const subRows = [{id, description: header ?? '', quantity, itemType, rate, extension, gross}]
+            items.push({id, counter, description, quantity, itemType, rate, extension, gross, subRows}); 
+            counter += 1;
+        } else {
+            // Add to the existing header row
+            items[itemIndex].quantity = items[itemIndex].quantity + quantity;
+            items[itemIndex].itemType = itemType.slice(-1) == 's' ? itemType : itemType + 's';
+            items[itemIndex].rate = items[itemIndex].rate + rate;
+            items[itemIndex].extension = items[itemIndex].extension + extension;
+            items[itemIndex].gross = items[itemIndex].gross + gross;
+            items[itemIndex].subRows?.push({id, description: header ?? '', quantity, itemType, rate, extension, gross});
+        }
 
-    const billsTotal = () => {
-        return bills.reduce((total, bill) => {
-            total += bill.amount
-            return total
-        }, 0.0) / 1.1;
-    }
-
-    const getBudget = () => {
-        return estimateTotal() - billsTotal();
-    }
-    const getProfit = () => {
-        return estimateTotalIncProfit() - estimateTotal();
-    }
-    const getGross = () => {
-        return getProfit() + getBudget();
-    }
-
-    return (
-        <Grid item xs={12}>
-            <table className='accounts-table'>
-                <thead>
-                    <tr>
-                        <th>Budget</th>
-                        <th>Profit</th>
-                        <th>Gross</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td className={getBudget() == 0 ? '' : getBudget() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getBudget())}</td>
-                        <td className={getProfit() == 0 ? '' : getProfit() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getProfit())}</td>
-                        <td className={getGross() == 0 ? '' : getGross() > 0 ? 'withinBudget' : 'overBudget'}>{new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(getGross())}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </Grid>
-    )
+        return items;
+    }, [] as EstimateSummaryType[]);
 }
 
+const SummariseBill = (bills: BillType[]) => {
+    let summarisedBill: BillSummaryType[] = [];
+    if(bills.length > 0) {
+        let counter = 0;
+        summarisedBill = bills.reduce((items: { supplier: any; amount: any; invoiceNumber: number; subRows: any[]; }[], item: { [x: string]: any; supplier: any; amount: any; }) => {
+            // console.log("items", items)
+            // console.log("item", item)
+            const {supplier, amount, ...other} = item;
+            
+            // Check if the items suppliers have the same name
+            const itemIndex = items.findIndex((item: { supplier: { name: string; }; }) => item.supplier.name.trim() === supplier.name.trim())
+
+            if(itemIndex === -1) {
+                // Create a new header row
+                const subRows = [{supplier, amount, ...other}]
+                items.push({supplier, amount, invoiceNumber: 1, subRows}); 
+                counter += 1;
+            } else {
+                // Add to the existing header row
+                items[itemIndex].supplier.name = supplier.name;
+                items[itemIndex].invoiceNumber = items[itemIndex].invoiceNumber + 1;
+                items[itemIndex].amount = parseFloat(items[itemIndex].amount) + parseFloat(amount);
+                items[itemIndex].subRows.push({supplier, amount, ...other});
+            }
+
+            return items
+        }, [])
+        
+    }
+    return summarisedBill;
+}
+
+const SummariseExpense = (expenses: ExpenseType[]) => {
+    let summarisedExpenses: ExpenseSummaryType[] = [];
+    if(expenses.length > 0) {
+        let counter = 0;
+        summarisedExpenses = expenses.reduce((items: {vendor: string; amount: any; invoiceNumber: number; subRows: any[]; }[], item: { [x: string]: any; vendor: any; amount: any; }) => {
+            // console.log("items", items)
+            // console.log("item", item)
+            const {vendor, amount, ...other} = item;
+            
+            // Check if the items vendors have the same name
+            const itemIndex = items.findIndex((item: { vendor: string; }) => item.vendor.trim() === vendor.trim())
+
+            if(itemIndex === -1) {
+                // Create a new header row
+                const subRows = [{vendor, amount, ...other}]
+                items.push({vendor, amount, invoiceNumber: 1, subRows}); 
+                counter += 1;
+            } else {
+                // Add to the existing header row
+                items[itemIndex].vendor = vendor;
+                items[itemIndex].invoiceNumber = items[itemIndex].invoiceNumber + 1;
+                items[itemIndex].amount = parseFloat(items[itemIndex].amount) + parseFloat(amount);
+                items[itemIndex].subRows.push({vendor, amount, ...other});
+            }
+
+            return items
+        }, [])
+        
+    }
+    return summarisedExpenses;
+}
 
 export default BillHome;

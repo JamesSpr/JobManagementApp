@@ -134,3 +134,16 @@ export const blankBill = {
     supplier: blankContractor,
     job: blankJob
 }
+
+export const blankExpense = {
+    id: '',
+    myobUid: '',
+    vendor: '',
+    locale: '',
+    expenseDate: '',
+    processDate: '',
+    amount: 0,
+    thumbnailPath: '',
+    employee: { id:'' },
+    job: blankJob
+}

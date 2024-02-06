@@ -26,7 +26,7 @@ import Timesheets from "./pages/timesheets/Timesheets";
 
 import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
-import EditBill from "./pages/bill/job-bill/Edit";
+import EditBill from "./pages/bill/job-bill/EditBill";
 
 
 const App = () => {
@@ -59,7 +59,7 @@ const App = () => {
                             <Route path="contractors" element={<Contractors />} />
                             <Route path="invoices" element={<Invoice />} />
                             <Route path="bills" element={<Bills />} />
-                            <Route path="bills/:id" element={<EditBill />} />
+                            {/* <Route path="bills/:id" element={<EditBill />} /> */}
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >
