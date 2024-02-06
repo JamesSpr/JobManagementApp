@@ -228,9 +228,9 @@ const Contractors = () => {
             if(res.success){    
                 setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
                 // Clear Dialog Content
+                setData(oldArray => [...oldArray, res.contractor]);
                 setNewContractor(blankContractor);
                 setCreateContractor(false);
-                setData(oldArray => [...oldArray, res.contractor]);
             }
             else {
                 console.log("error",res);
