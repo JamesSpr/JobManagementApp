@@ -1290,7 +1290,6 @@ class ExpenseType(DjangoObjectType):
 
     amount = graphene.Float()
 
-
 class ExpenseInput(graphene.InputObjectType):
     id = graphene.String()
     myobUid = graphene.String()
@@ -1594,6 +1593,22 @@ class UpdateInsurance(graphene.Mutation):
 
         return self(success=True, message="Insurances Updated Successfully")
 
+class DeleteInsurance(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, id):
+        insurance = Insurance.objects.get(id=id)
+
+        if insurance != None:
+            insurance.delete()
+            return self(success=True)
+            
+        return self(success=False)
 
 class Query(graphene.ObjectType):
     job_page = relay.ConnectionField(JobConnection)
@@ -1865,3 +1880,4 @@ class Mutation(graphene.ObjectType):
     update_company = UpdateCompany.Field()
     create_insurance = CreateInsurance.Field()
     update_insurance = UpdateInsurance.Field()
+    delete_insurance = DeleteInsurance.Field()
