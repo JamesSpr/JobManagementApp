@@ -6,6 +6,7 @@ import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
 import useAuth from '../../auth/useAuth';
 import { BillType, ContractorType, JobType, SnackType } from '../../../types/types';
 import { AttachmentType, BillTypes } from './JobBill';
+import { FieldErrorType } from '../../contractors/create/Dialog';
 
 const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, setCreating, setSnack}: {
     id: string
@@ -27,11 +28,18 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
         abn: '',
     }
 
+    type BillFieldErrorType = {
+        contractor: boolean,
+        invoiceNumber: boolean,
+        invoiceDate: boolean,
+        amount: boolean
+    } 
+
     const { auth } = useAuth();
     const axiosPrivate = useAxiosPrivate();
     const [waiting, setWaiting] = useState(false);
     const [contractor, setContractor] = useState<ContractorType>(emptyContractorState);
-    const [fieldError, setFieldError] = useState({'contractor': false, 'invoiceNumber': false, 'invoiceDate': false, 'amount': false});
+    const [fieldError, setFieldError] = useState<BillFieldErrorType>({'contractor': false, 'invoiceNumber': false, 'invoiceDate': false, 'amount': false});
 
     useEffect(() => {
         setContractor(contractors.find(contractor => contractor.id == newBill.contractor) ?? emptyContractorState)
@@ -46,11 +54,19 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
     }, [])
 
     const handleChange = (e: { target: { name: any; value: any; }; }) => {
-        setNewBill(prev => ({...prev, [e.target.name]:e.target.value}))
+        setNewBill(prev => ({...prev, [e.target.name]: e.target.value}));
+
+        if(fieldError[e.target.name as keyof BillFieldErrorType]) {
+            setFieldError(prev => ({...prev, [e.target.name]: false}));
+        }
     }
 
     const handleSelectContractor = (e: { target: { name: any; value: string; }; }) => {
         setNewBill(prev => ({...prev, [e.target.name]:e.target.value}))
+
+        if(fieldError[e.target.name as keyof BillFieldErrorType]) {
+            setFieldError(prev => ({...prev, [e.target.name]: false}));
+        }
 
         if(e.target.value !== "") {
             setContractor(contractors.find(contractor => contractor.id === e.target.value) ?? emptyContractorState)
@@ -65,8 +81,9 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
         
         // Check emty values
         let err = false;
-        Object.entries(newBill).map(([key, val]) => {
-            if(!val) {
+        Object.entries(fieldError).map(([key, val]) => {
+            const field = newBill[key as keyof BillType]
+            if(!field || field == "") {
                 setFieldError(prev => ({...prev, [key]: true}))
                 err = true;
             }
@@ -131,8 +148,6 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
             console.log("error:", err);
             setSnack({active: true, variant:'error', message: "Submission Error. Contact Developer"})
         })
-        
-        // const {billType, ...formattedBill} = bill
     }
 
     return (

@@ -17,13 +17,25 @@ const CreateExpense = ({ id, setJob, employees, newExpense, setNewExpense, attac
     setCreating: React.Dispatch<React.SetStateAction<BillTypes>>
     setSnack: React.Dispatch<React.SetStateAction<SnackType>>
 }) => {
+    type ExpenseFieldErrorType = {
+        vendor: boolean
+        locale: boolean
+        expenseDate: boolean
+        amount: boolean
+        employee: boolean
+    }
+
     const { auth } = useAuth();
     const axiosPrivate = useAxiosPrivate();
     const [waiting, setWaiting] = useState(false);
-    const [fieldError, setFieldError] = useState({'vendor': false, 'locale': false, 'expenseDate': false, 'amount': false, 'employee': false});
+    const [fieldError, setFieldError] = useState<ExpenseFieldErrorType>({'vendor': false, 'locale': false, 'expenseDate': false, 'amount': false, 'employee': false});
 
     const handleChange = (e: { target: { name: any; value: any; }; }) => {
         setNewExpense(prev => ({...prev, [e.target.name]:e.target.value}))
+
+        if(fieldError[e.target.name as keyof ExpenseFieldErrorType]) {
+            setFieldError(prev => ({...prev, [e.target.name]: false}));
+        }
     }
 
     const handleSubmit = async () => {
@@ -31,8 +43,9 @@ const CreateExpense = ({ id, setJob, employees, newExpense, setNewExpense, attac
         
         // Check emty values
         let err = false;
-        Object.entries(newExpense).map(([key, val]) => {
-            if(!val) {
+        Object.entries(fieldError).map(([key, val]) => {
+            const field = newExpense[key as keyof ExpenseType]
+            if(!field || field == "") {
                 setFieldError(prev => ({...prev, [key]: true}))
                 err = true;
             }
@@ -108,14 +121,16 @@ const CreateExpense = ({ id, setJob, employees, newExpense, setNewExpense, attac
                 <h2>Vendor Details</h2>
             </Grid>
             <Grid item xs={12}>
-                <InputField type="text" label="Vendor Name" value={newExpense.vendor}/>
-                <InputField type="text" label="Vendor Locale" value={newExpense.locale}/>
+                <InputField type="text" label="Vendor Name" name="vendor" 
+                    error={fieldError.vendor} value={newExpense.vendor} onChange={handleChange}/>
+                <InputField type="text" label="Vendor Locale" name="locale" 
+                    error={fieldError.locale} value={newExpense.locale} onChange={handleChange}/>
             </Grid>
             <Grid item xs={12}>
                 <h2>Purchase Details</h2>
             </Grid>
             <Grid item xs={12}>
-                <InputField width={500} type="select" label="Employee" name="employee" 
+                <InputField width={500} type="select" label="Employee - Card Used" name="employee" 
                     error={fieldError.employee} value={newExpense?.employee?.id ?? ''} onChange={handleSelect}>
                     <option key="nullEmployee" value=""></option>
                     {employees.map(employee => (

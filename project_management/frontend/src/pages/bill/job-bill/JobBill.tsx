@@ -14,6 +14,7 @@ import { BillSummaryTable, EstimateSummaryTable, ExpenseSummaryTable, JobBudgetS
 import EditExpense from './EditExpense';
 import CreateBill from './CreateBill';
 import CreateExpense from './CreateExpense';
+import { blankBill, blankExpense } from '../../../types/blanks';
 
 export interface AttachmentType {
     data: string
@@ -88,7 +89,7 @@ const BillHome = ({open, onClose, job, contractors, employees, setJob, setSnack 
         let fileReader = new FileReader();
         fileReader.readAsDataURL(file)
         fileReader.onload = async () => {
-            let data = fileReader.result
+            let fileData = fileReader.result
 
             await axiosPrivate({
                 method: 'post',
@@ -104,7 +105,7 @@ const BillHome = ({open, onClose, job, contractors, employees, setJob, setSnack 
                     }
                 }`,
                 variables: { 
-                    file: data,
+                    file: fileData,
                     filename: file.name,
                     numPages: advancedUploadSettings.numPages,
                     objectType: newObjectType
@@ -115,10 +116,11 @@ const BillHome = ({open, onClose, job, contractors, employees, setJob, setSnack 
                 const res = response?.data?.data?.bill;
                 setWaiting(prev => ({...prev, 'create': false}));
                 if(res.success) {
+                    let extractedData = JSON.parse(res.data)
                     newObjectType === "bill" ? 
-                        setNewObject(JSON.parse(res.data) as BillType) 
-                        : setNewObject(JSON.parse(res.data) as ExpenseType);
-                    
+                        setNewObject({...blankBill, ...extractedData}) 
+                        : setNewObject({...blankExpense, ...extractedData});
+                        
                     setAttachment({
                         'data': res.billFileData,
                         'name': res.billFileName

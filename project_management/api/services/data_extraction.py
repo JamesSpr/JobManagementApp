@@ -145,7 +145,7 @@ class ExtractBillDetails(graphene.Mutation):
         if not file: 
             return self(success=False)
         
-        debug = False
+        debug = True
 
         if "data:application/pdf;base64," in file:
             # Convert PDF to JPG and Save
@@ -196,8 +196,10 @@ class ExtractBillDetails(graphene.Mutation):
             data = extract_amount_into_struct(text, data, debug)
             
         elif object_type == "expense":            
-            data = extract_invoice_date_into_struct(text, data, debug)
+            data = extract_invoice_date_into_struct(text, data, "expenseDate", debug)
             data = extract_amount_into_struct(text, data, debug)
+
+            print(data)
 
         else:
             return self(success=False, message="Provided object type not recognised")
@@ -219,7 +221,7 @@ def extract_amount_into_struct(text, data, debug=False):
 
     return data
 
-def extract_invoice_date_into_struct(text, data, debug=False):
+def extract_invoice_date_into_struct(text, data, data_name="invoiceDate", debug=False):
     date_regex = re.findall('(?:\s?\d{1,2}[-/, ]{0,1}\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*[-/, ]{0,1}\s*\d{2,4})|(?:\s?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d{1,2}[-/, ]{0,1}\s*[-/, ]{0,1}\s?\d{4})|(?:3[01]|[12][0-9]|0?[1-9])\s?[/-]\s?(?:1[0-2]|0?[1-9])\s?[/-]\s?(?:[0-9]{2})?[0-9]{2}', text)
     for i, val in enumerate(date_regex):
         date_regex[i] = val.strip().replace(" ", "")
@@ -231,7 +233,7 @@ def extract_invoice_date_into_struct(text, data, debug=False):
     # If more than one date is found from the beginning, narrow down the search to look for an invoice date specifically. 
     if(len(date_regex) == 1):
         date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
-        data.update({'invoiceDate': date})
+        data.update({data_name: date})
 
     elif(len(date_regex) > 1):
         # Remove future dates that could be the due date.
@@ -242,7 +244,7 @@ def extract_invoice_date_into_struct(text, data, debug=False):
         if debug: print("Date:", date_regex)
         if(len(date_regex) == 1):
             date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
-            data.update({'invoiceDate': date})
+            data.update({data_name: date})
 
         else:
             # Try a different regex pattern
@@ -252,7 +254,7 @@ def extract_invoice_date_into_struct(text, data, debug=False):
             if debug: print("Date:", date_regex)
             if(len(date_regex) == 1):
                 date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
-                data.update({'invoiceDate': date})
+                data.update({data_name: date})
 
     return data                
 
@@ -302,10 +304,9 @@ def try_parsing_date(text, debug=False):
     text = text.strip().title()
     if debug: print("Parsing:", text)
     for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', 
-                '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %B %', '%d %b %Y',
-                '%B%d,%Y', '%b%d,%Y', '%B%d%Y', '%b%d%Y', '%d%B%Y', '%d%b%Y',
-                '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y',
-                '%-d-%b-%Y'):
+                '%B %d, %Y', '%b %d, %y', '%B %d %Y', '%b %d %y', '%d %b %Y', '%d %b %y',
+                '%B%d,%Y', '%b%d,%y', '%B%d%Y', '%b%d%y', '%d%b%Y', '%d%b%y','%d%B%Y', '%d%B%y',
+                '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
         try:
             return datetime.strptime(text, fmt)
         except ValueError:
@@ -316,7 +317,10 @@ def try_parsing_date(text, debug=False):
 def try_parsing_date_to_string(text, debug=False):
     text = text.strip().title()
     if debug: print("Parsing:", text)
-    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', '%B %d, %Y', '%b %d, %Y', '%B %d %Y', '%b %d %Y', '%d %B %Y', '%d %b %Y', '%d%B%Y', '%d%b%Y', '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
+    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', 
+                '%B %d, %Y', '%b %d, %y', '%B %d %Y', '%b %d %y', '%d %b %Y', '%d %b %y',
+                '%B%d,%Y', '%b%d,%y', '%B%d%Y', '%b%d%y', '%d%b%Y', '%d%b%y','%d%B%Y', '%d%B%y',
+                '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
         try:
             return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
         except ValueError:

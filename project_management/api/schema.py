@@ -1863,6 +1863,10 @@ class Mutation(graphene.ObjectType):
     update_bill = UpdateBill.Field()
     delete_bill = DeleteBill.Field()
 
+    create_expense = CreateExpense.Field()
+    # update_expense = UpdateExpense.Field()
+    # delete_expense = DeleteExpense.Field()
+
     create_estimate = CreateEstimate.Field()
     update_estimate = UpdateEstimate.Field()
     delete_estimate = DeleteEstimate.Field()

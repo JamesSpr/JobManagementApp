@@ -26,6 +26,14 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
     const [billsDialog, setBillsDialog] = useState(false);
 
     const [waiting, setWaiting] = useState({quote: false, estimate: false});
+
+    interface DeleteDialog {
+        open: boolean
+        row: Row<EstimateType> | undefined
+        title: string
+        message: string
+    }
+    const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>({open: false, row: undefined, title: '', message: ''});
     
     const handleToggleSelected = (row: Row<EstimateType>) => {
         row.toggleSelected();
@@ -232,14 +240,6 @@ const EstimateOptionsOverview = ({ users, job, setJob, updateRequired, setUpdate
             ),
         }
     ], []);
-
-    interface DeleteDialog {
-        open: boolean
-        row: Row<EstimateType> | undefined
-        title: string
-        message: string
-    }
-    const [deleteDialog, setDeleteDialog] = useState<DeleteDialog>({open: false, row: undefined, title: '', message: ''});
 
     const deleteEstimate = async () => {
         // Checks
