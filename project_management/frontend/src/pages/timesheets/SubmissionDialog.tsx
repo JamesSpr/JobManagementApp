@@ -4,8 +4,7 @@ import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { IAuth, SnackType } from "../../types/types";
 import { TimesheetType, WorkdayType } from "./Timesheets";
 
-import { Box, CircularProgress, Grid, LinearProgress } from '@mui/material'
-import { intlFormat } from 'date-fns';
+import { Box, Grid, LinearProgress } from '@mui/material'
 
 const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack, payrollDetails, dateFilter, auth}: {
     open: boolean
