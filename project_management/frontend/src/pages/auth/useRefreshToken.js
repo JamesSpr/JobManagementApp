@@ -43,7 +43,6 @@ const useRefreshToken = () => {
     }
 
     const refresh = async () => {
-
         // If the auth state is empty for persistance
         let userAuth = auth?.user
         // if(!auth?.user) {
@@ -73,9 +72,9 @@ const useRefreshToken = () => {
             }),
             withCredentials: true,
         }).then((response) => {
-            // console.log("Refresh", response);
+            console.log("Refresh", response);
             const res = response?.data?.data?.userRefreshToken[0];
-            // console.log("RT", res);
+            console.log("RT", res);
             if(res) {
                 // Update user auth state
                 const {myobUser, ...user} = res

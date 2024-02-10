@@ -62,7 +62,7 @@ export const InputField:FC<InputFieldType> = ({
         <>
             <div className={boxStyle} >
                 {type === "select" ? 
-                    <select className={styleClass} {...props} placeholder=" " required>{children}</select> :
+                    <select className={styleClass} {...props} required>{children}</select> :
                     multiline ?
                         rows == 0 ?
                             <textarea ref={textareaRef} className={styleClass} {...props} placeholder=" " required/> 
