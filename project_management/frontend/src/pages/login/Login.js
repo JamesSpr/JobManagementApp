@@ -24,7 +24,7 @@ function LoginPage() {
         if(auth?.user) {
             navigate(from, { replace: true });
         }
-    }, [])
+    }, [auth])
     
     useEffect(() => {
         setErrorMessage('');
