@@ -122,6 +122,7 @@ export interface BillType {
     supplier: ContractorType
     invoiceNumber: string
     invoiceDate: string
+    processDate: string
     amount: number
     billType: string
     thumbnailPath: string

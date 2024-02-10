@@ -153,7 +153,7 @@ class ExtractBillDetails(graphene.Mutation):
             pdf = base64.b64decode(file, validate=True)
 
             img_uid = pdf_to_image(pdf, 'bills', num_pages)
-            thumbnail_image_path = f"Media\\bills\\{img_uid}.jpg"
+            thumbnail_image_path = f"Media/bills/{img_uid}.jpg"
             img = Image.open(thumbnail_image_path)
 
             # Check the image is within the requirements for pytesseract
@@ -167,7 +167,7 @@ class ExtractBillDetails(graphene.Mutation):
             while os.path.exists(img_uid):
                 img_uid = uuid.uuid4().hex
 
-            thumbnail_image_path = f"Media\\bills\\{img_uid}.jpg"
+            thumbnail_image_path = f"Media/bills/{img_uid}.jpg"
 
             file = re.sub("data:image(.+);base64,", "", file)
             img = Image.open(BytesIO(base64.b64decode(file)))
@@ -177,7 +177,6 @@ class ExtractBillDetails(graphene.Mutation):
             if(img.height > 32767 or img.width > 32767):
                 return self(success=False, message="Image size is too large. Please reduce the size and reupload")
 
-            # return self(success=True, message="Successfully Uploaded", data=json.dumps(data, indent=4, sort_keys=True, default=str), billFileName=filename, billFileData=file)
         else:
             return self(success=False, message="File type not recognised. Please Contact Developer")
 
@@ -192,20 +191,18 @@ class ExtractBillDetails(graphene.Mutation):
 
             data = extract_contractor_into_struct(text, data, debug)
             data = extract_invoice_number_into_struct(text, data, debug)
-            data = extract_invoice_date_into_struct(text, data, debug)
+            data = extract_invoice_date_into_struct(text, data, 'invoiceDate', debug)
             data = extract_amount_into_struct(text, data, debug)
             
         elif object_type == "expense":            
             data = extract_invoice_date_into_struct(text, data, "expenseDate", debug)
             data = extract_amount_into_struct(text, data, debug)
 
-            print(data)
-
         else:
             return self(success=False, message="Provided object type not recognised")
 
 
-        return self(success=True, message="Successfully Uploaded", data=json.dumps(data, indent=4, sort_keys=True, default=str), billFileName=filename, billFileData=file)
+        return self(success=True, message="Successfully Uploaded", data=json.dumps(data, indent=4, default=str), billFileName=filename, billFileData=file)
 
 def extract_amount_into_struct(text, data, debug=False):
     total_regex = re.findall('(?![\b[^\S\r\n]](?:total|amount|due)[: $aud]*?[^\S\r\n]*?)(-?[0-9]{0,3}[^\S\r\n]*,*?[0-9]{0,3}[^\S\r\n]*\.[^\S\r\n]*[0-9]{2})', text)
@@ -285,7 +282,7 @@ def extract_contractor_into_struct(text, data, debug=False):
         if Contractor.objects.filter(abn=abn).exists():
             contractor = Contractor.objects.get(abn=abn)
             if debug: print("Contractor:",contractor)
-            data.update({'contractor': contractor.id})
+            data.update({'contractor': str(contractor.id)})
 
     if debug: print("ABN:", abn_regex)
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState }  from 'react';
+import React, { useEffect, useMemo, useState }  from 'react';
 import { Dialog, DialogContent, Grid, IconButton } from '@mui/material';
 import { FileUploadSection, InputField, ProgressIconButton } from '../../../components/Components';
 
@@ -50,9 +50,9 @@ const BillHome = ({open, onClose, job, contractors, employees, setJob, setSnack 
     
     const [toggleSave, setToggleSave] = useState(false);
 
-    const estimateSummary: EstimateSummaryType[] = SummariseEstimate(estimates);
-    const billSummary: BillSummaryType[] = SummariseBill(job.billSet);
-    const expenseSummary: ExpenseSummaryType[] = SummariseExpense(job.expenseSet)
+    const estimateSummary: EstimateSummaryType[] = useMemo(() => (SummariseEstimate(estimates)), [estimates])
+    const billSummary: BillSummaryType[] = useMemo(() => (SummariseBill(job.billSet)), [job.billSet])
+    const expenseSummary: ExpenseSummaryType[] = useMemo(() => (SummariseExpense(job.expenseSet)), [job.expenseSet])
 
     const handleClose = (event?: any, reason?: string) => {
         if (reason !== 'backdropClick') {
@@ -63,14 +63,17 @@ const BillHome = ({open, onClose, job, contractors, employees, setJob, setSnack 
 
     // Check if estimate has been approved if it has changed
     useEffect(() => {
+        let newEstimate:EstimateSummaryType[] = []
         const approvedEstimate = job.estimateSet.find((estimate) => estimate.approvalDate !== null)
         approvedEstimate?.estimateheaderSet?.map(header => {
             header.estimateitemSet?.map(lineItem => {
                 // Add the header description for meta data
                 const summaryItem = {...lineItem, header: header?.description};
-                setEstimates(prev => [...prev, summaryItem]);
+                newEstimate.push(summaryItem)
             })
         });
+        setEstimates(newEstimate);
+
     }, [job.estimateSet])
 
     const handleNewBill = () => {

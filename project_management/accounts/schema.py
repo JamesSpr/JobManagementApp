@@ -190,13 +190,8 @@ class Query(UserQuery, MeQuery, graphene.ObjectType):
 
     def resolve_user_refresh_token(root, info, **kwargs):
         cookies = info.context.META.get('HTTP_COOKIE')
-
-        refresh_token_matches = re.search("(?<=JWT-refresh-token=)(.*)(?=;)", cookies)
-        if refresh_token_matches:
-            refresh_token = refresh_token_matches.group()
-            return CustomUser.objects.filter(refresh_token=refresh_token)
-
-        refresh_token_matches = re.search("(?<=JWT-refresh-token=)(.*)", cookies)
+        refresh_token_matches = re.search("(?<=JWT-refresh-token=)(.*)(?=;)?", cookies)
+        
         if refresh_token_matches:
             refresh_token = refresh_token_matches.group()
             return CustomUser.objects.filter(refresh_token=refresh_token)
