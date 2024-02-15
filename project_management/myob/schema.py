@@ -1764,7 +1764,10 @@ class myobCreateInvoice(graphene.Mutation):
             if not os.path.exists(accounts_folder):
                 return self(success=False, message="Jobs Accounts Folder does not exist.")
 
-            estimate_folder = os.path.join(job_folder, "Estimates", estimate.name)
+            estimate_folder = os.path.join(job_folder, "Estimates", estimate.name.strip())
+            
+            if not os.path.exists(estimate_folder):
+                return self(success=False, message="Job Estimate Folder does not exist.")
 
             if job.client.name == "BGIS":
                 ## Check the required invoice files that are stored in the relevant estimate folder

@@ -712,7 +712,7 @@ class UpdateEstimate(graphene.Mutation):
             return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
 
         estimate = Estimate.objects.get(id=id)
-        estimate.name = name
+        estimate.name = name.strip()
         estimate.description = description
         estimate.price = price
         estimate.issue_date = None if issue_date == datetime.date(1970, 1, 1) else issue_date
@@ -737,7 +737,7 @@ class CreateEstimateHeader(graphene.Mutation):
         estHeader.save()
 
         estItem = EstimateItem()
-        estItem.header_id = estHeader
+        estItem.header_id = estHeader.strip()
         estItem.save()
 
         return self(success=True, estimate_header=estHeader)
@@ -856,8 +856,8 @@ class UpdateClient(graphene.Mutation):
             return self(success=False, message="Client Not Found")
         
         client = Client.objects.get(id=details.id)
-        if details.name: client.name = details.name
-        if details.display_name: client.display_name = details.display_name
+        client.name = details.name
+        client.display_name = details.display_name
         if details.myob_uid: client.myob_uid = details.myob_uid
         client.save()
 
