@@ -45,9 +45,41 @@ const Contractors = () => {
         }
     }
 
-    const handleDialogCreate = (value: ContractorType) => {
-        handleCreate(value);
-        setCreateContractor(false);
+    const handleDialogCreate = async (value: ContractorType) => {
+        //Send to MYOB
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                mutation myobCreateContractor($contractor: myobContractorInput!, $uid: String!) { 
+                    myob_create: myobCreateContractor(contractor: $contractor, uid: $uid) {
+                        success
+                        message
+                    }
+                }`,
+                variables: { 
+                    uid: auth?.myob?.id,
+                    contractor: newContractor,
+                },
+            }),
+        }).then((response) => {
+            const res = response?.data?.data?.myob_create;
+
+            if(res.success){    
+                setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
+                // Clear Dialog Content
+                setData(oldArray => [...oldArray, res.contractor]);
+                setNewContractor(blankContractor);
+                setCreateContractor(false);
+            }
+            else {
+                console.log("error",res);
+                setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
+            }
+        }).catch((e) => {
+            console.log("error", e);
+            setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
+        });   
     }
     
     // Get Data
@@ -202,46 +234,6 @@ const Contractors = () => {
             size: 60,
         },
     ], []);
-
-    const handleCreate = async (newContractor: ContractorType) => {
-        console.log("Creating", newContractor)
-        //Send to MYOB
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `
-                mutation myobCreateContractor($contractor: myobContractorInput!, $uid: String!) { 
-                    myob_create: myobCreateContractor(contractor: $contractor, uid: $uid) {
-                        success
-                        message
-                        myobUid
-                    }
-                }`,
-                variables: { 
-                    uid: auth?.myob?.id,
-                    contractor: newContractor,
-                },
-            }),
-        }).then((response) => {
-            const res = response?.data?.data?.myob_create;
-
-            if(res.success){    
-                setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
-                // Clear Dialog Content
-                setData(oldArray => [...oldArray, res.contractor]);
-                setNewContractor(blankContractor);
-                setCreateContractor(false);
-            }
-            else {
-                console.log("error",res);
-                setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
-            }
-        }).catch((e) => {
-            console.log("error", e);
-            setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
-        });   
-        
-    }
 
     const handleSave = async () => {
         setWaiting(true);

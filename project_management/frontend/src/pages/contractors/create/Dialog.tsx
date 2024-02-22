@@ -46,7 +46,6 @@ const CreateContractorDialog = ({ newContractor, setNewContractor, open, onCreat
     }
 
     const handleCreate = () => {        
-        console.log(newContractor)
         onCreate(newContractor);
     }
 

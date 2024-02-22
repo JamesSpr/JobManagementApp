@@ -391,7 +391,6 @@ class myobCreateContractor(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
-    myob_uid = graphene.String()
 
     @classmethod
     @login_required
@@ -405,6 +404,98 @@ class myobCreateContractor(graphene.Mutation):
         if is_valid_myob_user(uid, info.context.user):
             checkTokenAuth(uid, info.context.user)
             user = MyobUser.objects.get(id=uid)
+
+            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/?$filter=BuyingDetails/ABN eq '{contractor.abn.strip()}'"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            check_existing = requests.get(link, headers=headers)
+
+            existing = json.loads(check_existing.text)
+            existing = existing['Items']
+
+
+            if len(existing) > 0:
+                existing = existing[0]
+                print(existing)
+
+                # Create the contractor with the existing MYOB account
+                new_contractor = Contractor()
+                new_contractor.myob_uid = existing['UID']
+                new_contractor.name = existing['CompanyName']
+                new_contractor.abn = existing['BuyingDetails']['ABN']
+                new_contractor.bsb = existing['PaymentDetails']['BSBNumber']
+                new_contractor.bank_account_name = existing['PaymentDetails']['BankAccountName']
+                new_contractor.bank_account_number = existing['PaymentDetails']['BankAccountNumber']
+                new_contractor.save()
+
+                for i, contact in enumerate(existing['Addresses']):
+                    new_contractor_contact = ContractorContact()
+                    new_contractor_contact.company = new_contractor
+                    new_contractor_contact.location = i
+                    new_contractor_contact.contact_name = contact['ContactName']
+                    new_contractor_contact.address = contact['Street']
+                    new_contractor_contact.locality = contact['City']
+                    new_contractor_contact.state = contact['State']
+                    new_contractor_contact.postcode = contact['PostCode']
+                    new_contractor_contact.country = contact['Country']
+                    new_contractor_contact.phone1 = contact['Phone1']
+                    new_contractor_contact.phone2 = contact['Phone2']
+                    new_contractor_contact.phone3 = contact['Phone3']
+                    new_contractor_contact.fax = contact['Fax']
+                    new_contractor_contact.email = contact['Email']
+                    new_contractor_contact.website = contact['Website']
+                    new_contractor_contact.save()
+
+                # Update Contractor Details in MYOB if required
+                put_payload = {'RowVersion': existing['RowVersion']}
+                    
+                if not existing['CompanyName']:
+                    put_payload.update({'CompanyName': contractor['name']})
+
+                if not existing['BuyingDetails']['ABN']:
+                    put_payload.update({'BuyingDetails': {'ABN': contractor.abn.strip()}})
+
+                if not existing['PaymentDetails']['BSBNumber']:
+                    put_payload.update({'PaymentDetails': {'BSBNumber': contractor['bsb']}})
+
+                if not existing['PaymentDetails']['BankAccountName']:
+                    put_payload.update({'PaymentDetails': {'BankAccountName': contractor['bank_account_name']}})
+
+                if not existing['PaymentDetails']['BankAccountNumber']:
+                    put_payload.update({'PaymentDetails': {'BankAccountNumber': contractor['bank_account_number'].strip()}})
+
+                if len(existing['Addresses']) == 0:
+                    contact_addresses = []
+                    for i, contact in enumerate(contractor.contacts):
+                        contact_addresses.append({
+                            'Location': i,
+                            'ContactName': contact.contact_name.strip(),
+                            'Street': contact.address.strip(),
+                            'City': contact.locality.strip(),
+                            'State': contact.state.strip(),
+                            'Postcode': contact.postcode.strip(),
+                            'Country': contact.country.strip(),
+                            'Phone1': contact.phone1.strip(),
+                            'Phone2': contact.phone2.strip(),
+                            'Phone3': contact.phone3.strip(),
+                            'Fax': contact.fax.strip(),
+                            'Email': contact.email.strip(),
+                            'Website': contact.website.strip(),
+                        })
+
+                if len(put_payload) > 1:
+                    put_link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{existing['UID']}"
+                    response = requests.put(put_link, headers=headers, data=put_payload)
+
+                    if not response.status_code == 200:
+                        print(response.text)
+                        print("MYOB Update Unsuccessful")
+
+                return self(success=True, message="Contractor Existed in MYOB")
 
             contact_addresses = []
             for i, contact in enumerate(contractor.contacts):
@@ -435,7 +526,7 @@ class myobCreateContractor(graphene.Mutation):
                 'CompanyName': contractor['name'],
                 'Addresses': contact_addresses,
                 'BuyingDetails': {
-                    'ABN': contractor['abn'],
+                    'ABN': contractor.abn.strip(),
                     'IsReportable': True,
                     'TaxCode': {
                         'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
@@ -445,8 +536,8 @@ class myobCreateContractor(graphene.Mutation):
                     },
                 },
                 'PaymentDetails': {
-                    'BSBNumber': contractor['bsb'],
-                    'BankAccountName': contractor['bank_account_name'],
+                    'BSBNumber': contractor['bsb'].strip(),
+                    'BankAccountName': contractor['bank_account_name'].strip(),
                     'BankAccountNumber': contractor['bank_account_number'].strip(),
                 },
             })
@@ -484,7 +575,7 @@ class myobCreateContractor(graphene.Mutation):
                 new_contractor_contact.website = contact.website.strip()
                 new_contractor_contact.save()
 
-            return self(success=True, message=response.text, myob_uid=myob_uid)
+            return self(success=True, message=response.text)
         else:
             return self(success=False, message="MYOB Connection Error")
         
