@@ -1,14 +1,16 @@
-import graphene
 import environ
 import requests
 import json
 from datetime import datetime
+
+import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
-from timesheets.models import Timesheet, WorkDay, Employee, PayrollCategory, MyobJob, SyncSettings
 
+from timesheets.models import Timesheet, WorkDay, Employee, PayrollCategory, MyobJob, SyncSettings
 from myob.models import MyobUser
-from myob.schema import checkTokenAuth
+from myob.schema import check_user_token_auth, GetEmployees, GetJobs, GetPayrollCategories, GetPayrollDetails
+
 
 class MyobJobType(DjangoObjectType):
     class Meta:
@@ -48,45 +50,26 @@ class PayrollCategoryType(DjangoObjectType):
         model = PayrollCategory
         fields = '__all__'
 
-class GetEmployees(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-
+class GetMyobEmployees(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
     employees = graphene.List(EmployeeType)
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        env.read_env(env.str('ENV_PATH', '../myob/.env'))
-
-        if not MyobUser.objects.filter(id=uid).exists():
-            return self(success=False, message="MYOB Connection Error - Not User Assigned")
+    def mutate(self, root, info):
+        jobSync = SyncMyobJobs.mutate(root, info)
+        if not jobSync.success:
+            return self(success=False, message=jobSync.message)
         
-        if not checkTokenAuth(uid, info.context.user):
-            return self(success=False, message="MYOB Authentication Error")
-        
-        user = MyobUser.objects.get(id=uid)
-
-        GetMyobJob.mutate(root, info, uid)
-
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Employee"
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        response = requests.request("GET", url, headers=headers)
-
-        res = json.loads(response.text)
-        res = res['Items']
+        get_employees = GetEmployees.mutate(root, info)
+        if not get_employees.success:
+            return self(success=False, message=get_employees.message)
+        employees = get_employees.employees
 
         not_included = ["David Phillips", "Leo Sprague", "Colin Baggott", "Robert Stapleton", "Brett Macpherson"]
         active_employees = []
-        for employee in res:
+        for employee in employees:
             emp = Employee()
             if Employee.objects.filter(myob_uid=employee['UID']).exists():
                 emp = Employee.objects.get(myob_uid=employee['UID'])
@@ -101,49 +84,26 @@ class GetEmployees(graphene.Mutation):
 
         return self(success=True, employees=active_employees)
     
-class GetPayrollCategories(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-
+class GetMyobPayrollCategories(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        env.read_env(env.str('ENV_PATH', '../myob/.env'))
+    def mutate(self, root, info):
+        get_payroll_categories = GetPayrollCategories.mutate(root, info)
+        if not get_payroll_categories.success:
+            return self(success=False, message=get_payroll_categories.message)
+        payroll_categories = get_payroll_categories.payroll_categories
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        for category in payroll_categories:
+            prc = PayrollCategory()
+            if PayrollCategory.objects.filter(myob_uid=category['UID']).exists():
+                prc = PayrollCategory.objects.get(myob_uid=category['UID'])
 
-            payroll_types = ['wage', 'entitlement', 'deduction', 'expense', 'superannuation', 'tax', 'taxtable']
-            for prt in payroll_types:
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Payroll/PayrollCategory/{prt}"
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers)
-
-                res = json.loads(response.text)
-                res = res['Items']
-
-                for category in res:
-                    prc = PayrollCategory()
-                    if PayrollCategory.objects.filter(myob_uid=category['UID']).exists():
-                        prc = PayrollCategory.objects.get(myob_uid=category['UID'])
-
-                    prc.myob_uid = category['UID']
-                    prc.name = category['Name']
-                    # prc.type = prt
-                    prc.save()
-
-        else:
-            return self(success=False, message="MYOB Connection Error")
+            prc.myob_uid = category['UID']
+            prc.name = category['Name']
+            prc.save()
 
         return self(success=True, message="Payroll Categories Successfully Synced")
 
@@ -332,9 +292,7 @@ class UpdateTimesheet(graphene.Mutation):
 
         return self(success=True)
 
-class GetMyobJob(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
+class SyncMyobJobs(graphene.Mutation):
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -342,32 +300,17 @@ class GetMyobJob(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        env.read_env(env.str('ENV_PATH', '../myob/.env'))
-
-        if not MyobUser.objects.filter(id=uid).exists():
-            return self(success=False, message="MYOB Connection Error - Not User Assigned")
-        
-        if not checkTokenAuth(uid,info.context.user):
-            return self(success=False, message="MYOB Authentication Error")
-        user = MyobUser.objects.get(id=uid)
-
+    def mutate(self, root, info, ):
         LastJobSync = SyncSettings.objects.get(id=1)
+        filter = f"LastModified gt datetime'{LastJobSync.jobs}'"
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$filter=LastModified gt datetime'{LastJobSync.jobs}'"
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        # response = requests.request("GET", url, headers=headers)
-        response = getAllData(url, headers)
-        res = response['Items']
+        get_jobs = GetJobs.mutate(root, info, filter)
+        if not get_jobs.success:
+            return self(success=False, message=get_jobs.message)
+        jobs = get_jobs.jobs
 
         # Update the pay basis for employees to ensure correct pay
-        for j in res:
+        for j in jobs:
             if MyobJob.objects.filter(myob_uid=j['UID']).exists():
                 job = MyobJob.objects.get(myob_uid=j['UID'])
             else:
@@ -378,71 +321,33 @@ class GetMyobJob(graphene.Mutation):
             job.name = j['Name']
             job.save()
 
+        # Update the last sync
         LastJobSync.jobs = datetime.now()
         LastJobSync.save()
 
-        return self(success=True)    
-
-def getAllData(url, headers):
-    response = requests.request("GET", url, headers=headers, data={})
-    res = json.loads(response.text)
-    data = res
-    counter = 1
-
-    while res['NextPageLink'] != None:
-        skip = 1000*counter
-        response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
-        res = json.loads(response.text)
-        data['Items'].extend(res['Items'])
-        counter += 1
-        print(f"Fetched: {skip} records")
-
-    return data
-
-class GetPayrollDetails(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-
+        return self(success=True)
+    
+class GetMyobPayrollDetails(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
     details = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        env.read_env(env.str('ENV_PATH', '../myob/.env'))
-
-        if not MyobUser.objects.filter(id=uid).exists():
-            return self(success=False, message="MYOB Connection Error - Not User Assigned")
-        
-        if not checkTokenAuth(uid, info.context.user):
-            return self(success=False, message="MYOB Authentication Error")
-        user = MyobUser.objects.get(id=uid)
-
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/EmployeePayrollDetails"
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        response = requests.request("GET", url, headers=headers)
-
-        if not response.status_code == 200:
-           return self(success=False, message="Error Fetching MYOB Payroll Data") 
-
-        res = json.loads(response.text)
-        res = res['Items']
+    def mutate(self, root, info):
+        get_payroll_details = GetPayrollDetails.mutate(root, info)
+        if not get_payroll_details.success:
+            return self(success=False, message=get_payroll_details.message)
+        payroll_details = get_payroll_details.payroll_details
 
         # Update the pay basis for employees to ensure correct pay
-        for employee in res:
+        for employee in payroll_details:
             if Employee.objects.filter(myob_uid=employee['Employee']['UID']):
                 emp = Employee.objects.get(myob_uid=employee['Employee']['UID'])
                 #emp.pay_basis = employee['Wage']['PayBasis']
                 emp.save()
 
-        return self(success=True, message="Successfully Retrieved Payroll Details", details=json.dumps(res))    
+        return self(success=True, message="Successfully Retrieved Payroll Details", details=json.dumps(payroll_details))    
 
 class DeleteTimesheetEntry(graphene.Mutation):
     class Arguments:
@@ -462,20 +367,6 @@ class DeleteTimesheetEntry(graphene.Mutation):
 
         return self(success=True)
 
-class ClearAllTimesheetExamples(graphene.Mutation):
-    success = graphene.Boolean()
-
-    @classmethod
-    @login_required
-    def mutate(self, root, info):
-        for workday in WorkDay.objects.all():
-            workday.delete()
-
-        for timesheet in Timesheet.objects.all():
-            timesheet.delete()
-
-        return self(success=True)
-
 class SubmitTimesheets(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -487,7 +378,6 @@ class SubmitTimesheets(graphene.Mutation):
     submissionError = graphene.Boolean()
     message = graphene.String()
     timesheets = graphene.List(TimesheetType)
-    # debug = graphene.String()
 
     @classmethod
     @login_required
@@ -495,11 +385,9 @@ class SubmitTimesheets(graphene.Mutation):
         env = environ.Env()
         env.read_env(env.str('ENV_PATH', '../myob/.env'))
 
-        if not MyobUser.objects.filter(id=uid).exists():
-            return self(success=False, message="MYOB Connection Error - Not User Assigned")
-        
-        if not checkTokenAuth(uid, info.context.user):
-            return self(success=False, message="MYOB Authentication Error")
+        user = check_user_token_auth(uid, info.context.user)
+        if user == None:
+            return self(success=False, message="MYOB User Authentication Error")
         
         user = MyobUser.objects.get(id=uid)
         processed = []
@@ -730,7 +618,7 @@ class Query(graphene.ObjectType):
         if end_date:
             return Timesheet.objects.filter(end_date=end_date).order_by('id')
 
-        return Timesheet.objects.all().order_by('id')
+        return Timesheet.objects.all().order_by('-id')
     
     employees = graphene.List(EmployeeType)
     # @login_required
@@ -772,19 +660,15 @@ class QuickMutate(graphene.Mutation):
         return self(success=True)
 
 class Mutation(graphene.ObjectType):
-    get_myob_payroll_categories = GetPayrollCategories.Field()
-    get_payroll_details = GetPayrollDetails.Field()
-    get_myob_employees = GetEmployees.Field()
+    get_myob_payroll_categories = GetMyobPayrollCategories.Field()
+    get_myob_payroll_details = GetMyobPayrollDetails.Field()
+    get_myob_employees = GetMyobEmployees.Field()
     
     delete_timesheet_entry = DeleteTimesheetEntry.Field()
 
-    # delete_all_timesheets = ClearAllTimesheetExamples.Field()
-    # get_employee_count = GetEmployeeCount.Field()
-    
     import_timesheets = ImportTimesheets.Field()
     submit_timesheets = SubmitTimesheets.Field()
     update_timesheet = UpdateTimesheet.Field()
-
 
     quick_mutate = QuickMutate.Field()
 

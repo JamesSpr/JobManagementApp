@@ -169,15 +169,13 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation getMyobPayrollCategories($uid:String!) {
-                    categories: getMyobPayrollCategories(uid:$uid) {
+                query: `mutation getMyobPayrollCategories() {
+                    categories: getMyobPayrollCategories() {
                         success
                         message
                     }
                 }`,
-                variables: {
-                    uid: auth?.myob?.id,
-                }
+                variables: {}
             }),
         }).then((response) => {
             const res = response?.data?.data?.categories;
@@ -193,12 +191,13 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
     }
 
     return( <>
-        <Grid container direction={'column'} spacing={2} style={{textAlign: 'center', overflow: "auto", margin: 'auto'}}>
+        <Grid container direction={'column'} spacing={2} style={{textAlign: 'center', overflow: "auto"}}>
             <Grid item xs={12}>
             {dateFilter.length > 0 && 
                 <h2>{dateFilter[0]?.toLocaleDateString('en-AU', { timeZone: 'UTC' }) ?? ''} - {dateFilter[1]?.toLocaleDateString('en-AU', { timeZone: 'UTC' }) ?? ''}</h2>
             }
             </Grid>
+            
             {/* Display the Colour Key */}
             <Grid item xs={12}>
                 <div>
@@ -223,10 +222,7 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
                     })}
                 </div>
             </Grid>
-            {/* <Grid item xs={12}>
-                <button onClick={() => console.log(payrollDetails)}>Payroll Details</button>
-                <button onClick={syncPayrollCategories}>Sync Payroll Categories</button>
-            </Grid> */}
+
             <Grid item xs={12}>
                 {timesheets.length > 0 ?
                     <Table data={timesheets} columns={columns} />

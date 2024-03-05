@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import useAxiosPrivate from '../../hooks/useAxiosPrivate'
 import { NavigateFunction, useNavigate, useParams } from 'react-router-dom'
 import { CircularProgress, Grid, Portal, Typography } from '@mui/material'
-import { SnackBar, Table, Tooltip } from '../../components/Components'
+import { LoadingProgress, SnackBar, Table, Tooltip } from '../../components/Components'
 import useAuth from '../auth/useAuth'
 
 import { SnackType } from '../../types/types'
@@ -124,8 +124,7 @@ const Timesheets = () => {
                 }),
             }).then((response) => {
                 const res = response?.data?.data;
-
-                setEmployees(res.employees);
+                setEmployees(res?.employees);
                 
                 if(endDate){
                     let startDate = new Date(endDate)
@@ -134,7 +133,7 @@ const Timesheets = () => {
                 }
                 else {
                     // Reduce timesheets down to group by startDate
-                    res.timesheets = res.timesheets.reduce((items: any[], item: any) => {
+                    res.timesheets = res?.timesheets.reduce((items: any[], item: any) => {
                         const {id, startDate, endDate, employee, workdaySet, sentToMyob} = item
                         const itemIndex = items.findIndex((it: any) => it.startDate === item.startDate)
 
@@ -150,7 +149,7 @@ const Timesheets = () => {
                 }
                 
                 setTimesheets(res.timesheets);
-            });
+            })
         }
 
         fetchData();
@@ -160,33 +159,33 @@ const Timesheets = () => {
                 method: 'post',
                 signal: controller.signal,
                 data: JSON.stringify({
-                    query: ` mutation getPayrollDetails ($uid: String!) {
-                        details: getPayrollDetails(uid:$uid) {
+                    query: `mutation getMyobPayrollDetails {
+                        details: getMyobPayrollDetails {
                             success
                             message
                             details
                         }
                     }`,
-                    variables: {
-                        uid: auth?.myob?.id
-                    }
+                    variables: {}
                 }),
             }).then((response) => {
                 const res = response?.data?.data.details;
 
                 if(res?.success) {
-                    const details = JSON.parse(res.details);
-                    setPayrollDetails(details);
+                    setPayrollDetails(JSON.parse(res.details));
                     setFilterPayrollEmployees(true);
                 }
                 else {
-                    setSnack({variant: "error", message: res.message + " - Error getting Payroll Details. Please contact Developer", active: true});
                     console.log(response)
+                    setSnack({variant: "error", message: res?.message + " - Error getting Payroll Details. Please contact Developer", active: true});
                 }
-            })
+                setLoading(false);
 
+            })
         }
+
         getPayrollDetails();
+        
 
         return () => {
             controller.abort();
@@ -202,14 +201,15 @@ const Timesheets = () => {
                 })
             }))
             
-            setLoading(false);
             setFilterPayrollEmployees(false);
         }   
+        setLoading(false);
+
     }, [filterPayrollEmployees])
 
     return ( <> 
         { 
-            !loading ?
+            timesheets.length > 0 && !loading ?
             endDate ? <>
                     <TimesheetView 
                         timesheets={timesheets} setTimesheets={setTimesheets} 
@@ -218,15 +218,11 @@ const Timesheets = () => {
                 </>
                 :  
                 <>              
-                    <Typography variant="h5" style={{textAlign: 'center', padding: '15px'}}>Timesheets</Typography>
+                    <Typography variant="h5" style={{textAlign: 'center', padding: '15px'}}>Timesheets</Typography>               
                     <TimesheetTable timesheets={timesheets} setTimesheets={setTimesheets} />
                 </>
             :
-            <Grid container direction={'column'} spacing={2} alignContent={'center'}>
-                <Grid item xs={12}>
-                    <CircularProgress />
-                </Grid>
-            </Grid>
+            <LoadingProgress />
         }
 
         <Portal>
@@ -267,7 +263,6 @@ const TimesheetTable = ({timesheets, setTimesheets}: {
             header: () => <p style={{margin: '0', textAlign: 'center'}}>Processed</p>,
             size: 100,
             cell: ({getValue}) => {
-                console.log(getValue())
                 if(getValue() == "Partial") {
                     return (
                         <div style={{textAlign: 'center'}}>
@@ -307,7 +302,13 @@ const TimesheetTable = ({timesheets, setTimesheets}: {
     }
 
     return (
-        <Table data={timesheets} columns={columns} pagination={true} rowOnDoubleClick={handleRowClick}/>
+        <>
+            <div className='grid-container'>
+                <button className='button'>Sync Timesheets</button>
+            </div>
+            <Table data={timesheets} columns={columns} pagination={true} rowOnDoubleClick={handleRowClick}/>
+        </>
+
     )
 }
 
