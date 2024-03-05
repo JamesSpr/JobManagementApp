@@ -8,7 +8,7 @@ const WizQuote = () => {
 
     return (
         <div className="wizard-content">
-            <Stepper onComplete={()=>{}} completeButtonName='Done'>
+            <Stepper onComplete={()=>{}} completeButtonName='Done' waiting={false}>
                 <Step name='Select Job'>
                     <JobSelect />
                 </Step>

@@ -3,8 +3,7 @@ import { Outlet } from "react-router-dom";
 import { useState, useEffect } from "react";
 import useRefreshToken from "./useRefreshToken";
 import useAuth from "./useAuth";
-import { Box, CircularProgress } from "@mui/material";
-import axios from 'axios';
+import { LoadingProgress } from "../../components/Components";
 
 const PersistLogin = () => {
     const [isLoading, setIsLoading] = useState(true);
@@ -24,19 +23,11 @@ const PersistLogin = () => {
 
         !auth?.accessToken ? verifyRefreshToken() : setIsLoading(false);
     }, [])
- 
-    useEffect(() => {
-        // console.log(`isLoading: ${isLoading}`);
-        // console.log(`aT: ${JSON.stringify(auth?.accessToken)}`);
-    }, [isLoading])
 
     return (
         <>
-            {isLoading
-                ? 
-                    <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingTop: '10px'}} align="center">
-                        <CircularProgress />
-                    </Box>
+            {isLoading ? 
+                <LoadingProgress />
                 : <Outlet />
             }
         </>

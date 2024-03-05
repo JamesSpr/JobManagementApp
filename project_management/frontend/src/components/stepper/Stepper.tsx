@@ -1,11 +1,14 @@
 import React, { FC, ReactNode, useEffect, useState, useContext, createContext } from "react"
+import { ProgressButton } from "../Components"
+import { Button } from "@mui/material"
 
 export interface StepperProps {
     children: ReactNode
     onComplete: () => void
     completeButtonName: string
+    waiting: boolean
 }
-export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonName}) => {
+export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonName, waiting}) => {
 
     let stepper = document.getElementById('stepper');
     const [step, setStep] = useState(0);
@@ -78,13 +81,13 @@ export const Stepper:FC<StepperProps> = ({children, onComplete, completeButtonNa
             <div className='stepper-control'>
                 {
                     step > 0 &&
-                    <button className="stepper-button" onClick={() => changeStep(-1)}>Previous</button>
+                    <Button variant="outlined" className="stepper-button" onClick={() => changeStep(-1)}>Previous</Button>
                 }
                 {
                     step < React.Children.count(children)-1 ?
-                    <button className="stepper-button" onClick={checkThenNextStep}>Next</button>
+                    <Button variant='outlined' className="stepper-button" onClick={checkThenNextStep}>Next</Button>
                     :
-                    <button className="stepper-button" onClick={onComplete}>{completeButtonName}</button>
+                    <ProgressButton name={completeButtonName} className="stepper-button" buttonVariant="outlined" onClick={onComplete} waiting={waiting} />
                 }
             </div>
         </StepperContext.Provider>
