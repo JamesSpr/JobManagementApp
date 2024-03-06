@@ -95,6 +95,7 @@ class UserRefreshTokenMutation(graphene.Mutation):
         user = CustomUser.objects.get(pk=id)
         user.refresh_token = refreshToken
         user.save()
+        
         return UserRefreshTokenMutation(user=user)
 
 class UpdateUser(graphene.Mutation):

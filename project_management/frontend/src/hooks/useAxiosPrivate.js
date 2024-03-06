@@ -30,8 +30,12 @@ const useAxiosPrivate = () => {
                 }
                 return(response)
             },
-            async (errors) => {
-                return Promise.reject(errors);
+            async (error) => {
+                // if (error.code === "ERR_CANCELED") {
+                //     // aborted in useEffect cleanup
+                //     return Promise.resolve({status: 499})
+                // }
+                return Promise.reject(error);
             }
         );
 

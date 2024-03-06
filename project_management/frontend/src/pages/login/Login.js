@@ -21,6 +21,7 @@ function LoginPage() {
     const [forgottenPassword, setForgottenPassword] = useState(false);
 
     useEffect(() => {
+        console.log("Login Auth:", auth)
         if(auth?.user) {
             navigate(from, { replace: true });
         }
@@ -105,7 +106,8 @@ function LoginPage() {
 
     const successfulLogin = async (TA) => {
         // Login
-        await initialiseJWTRT(TA);
+        const RT = await initialiseJWTRT(TA);
+        await updateRT(TA, RT);
     }
 
     const initialiseJWTRT = async (TA) => {
@@ -130,46 +132,49 @@ function LoginPage() {
             }),
             withCredentials: true,
         }).then((response) => {
-            const RT = response?.data?.data?.refreshToken?.refreshToken;
-
-            // Set user refresh token for persistant login
-            axios({
-                method: 'post',
-                data: JSON.stringify({
-                    query: `mutation updateUserRefreshToken($id: ID!, $refreshToken: String!){
-                        updateUserRefreshToken (id: $id, refreshToken: $refreshToken){
-                            user {
-                                id
-                                username
-                                company {
-                                    id
-                                    name
-                                    logoPath
-                                }
-                                refreshToken
-                            }
-                        }
-                    }`,
-                    variables: {
-                        id: TA.user.pk,
-                        refreshToken: RT
-                    }
-                }),
-                withCredentials: true
-            }).then((res) => {
-                // Update user refresh token for the auth state
-                console.log(TA)
-                TA.user.refreshToken = res.data.data.updateUserRefreshToken.user.refreshToken;
-                const user = TA?.user;
-                const myobUser = TA?.user?.myobUser ?? "";
-
-                user['id'] = user['pk']
-                delete user['pk']
-                
-                setAuth({ "myob": myobUser, "user": user, "accessToken": TA.token });
-                navigate(from, { replace: true });
-            })          
+            const RT = response?.data?.data?.refreshToken?.refreshToken;      
+            return RT
         });    
+    }
+
+    const updateRT = async (TA, RT) => {
+        // Set user refresh token for persistant login
+        await axios({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation updateUserRefreshToken($id: ID!, $refreshToken: String!){
+                    updateUserRefreshToken (id: $id, refreshToken: $refreshToken){
+                        user {
+                            id
+                            username
+                            company {
+                                id
+                                name
+                                logoPath
+                            }
+                            refreshToken
+                        }
+                    }
+                }`,
+                variables: {
+                    id: TA.user.pk,
+                    refreshToken: RT
+                }
+            }),
+            withCredentials: true
+        }).then((res) => {
+            // Update user refresh token for the auth state
+            console.log(TA)
+            TA.user.refreshToken = res.data.data.updateUserRefreshToken.user.refreshToken;
+            const user = TA?.user;
+            const myobUser = TA?.user?.myobUser ?? "";
+
+            user['id'] = user['pk']
+            delete user['pk']
+            
+            setAuth({ "myob": myobUser, "user": user, "accessToken": TA.token });
+            navigate(from, { replace: true });
+        })    
     }
 
     const handleReset = async () => {

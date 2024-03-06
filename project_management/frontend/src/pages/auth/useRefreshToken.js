@@ -43,16 +43,14 @@ const useRefreshToken = () => {
     }
 
     const refresh = async () => {
-        // If the auth state is empty for persistance
         let userAuth = auth?.user
-        // if(!auth?.user) {
+            
         // Check if a user has the current JWT-refresh-token 
         await axios({
             method: 'post',
-            // signal: controller.signal,
             data: JSON.stringify({
                 query: `{
-                    userRefreshToken{
+                    userRefreshToken {
                         id
                         username
                         refreshToken
@@ -81,16 +79,24 @@ const useRefreshToken = () => {
                 userAuth = user
                 setAuth(prev => ({...prev, user: user, myob: myobUser}));
             }
+            else {
+                navigate('/login', {state: {from: location}, replace: true});
+                console.log("No RefreshToken")
+                return;
+            }
         })
-        // }
+
+        if(!userAuth) {
+            return;
+        }
 
         // console.log("ref", auth.user, userAuth)
 
         // Get new JWT and Refresh Token
+        let updateRequired = false
+        let refreshToken = ''
         await axios({
             method: 'post',
-            // cancelToken: cancelToken,
-            // signal: controller.signal,
             data: JSON.stringify({
                 query: `
                     mutation RefreshToken($refreshToken: String!){
@@ -110,44 +116,35 @@ const useRefreshToken = () => {
             withCredentials: true,
         }).then((response) => {
             const res = response.data;
-            // console.log("REFRESH TOKEN", res);
+            console.log("REFRESH TOKEN", res);
             if(!res?.data?.refreshToken?.errors?.nonFieldErrors) {
-                setAuth(prev => {
-                    // console.log(JSON.stringify(prev));
-                    // console.log("RT:", res.data.refreshToken.token);
-                    
-                    updateUserRefreshToken(userAuth?.id, res.data.refreshToken.refreshToken);
-                    return {
+                setAuth(prev => ({
                         ...prev,
-                        // username: res.data.payload.username,
                         accessToken: res.data.refreshToken.token
-                    }
-                })
-                // console.log(res.data.refreshToken.token)
-                return res.data.refreshToken.token;
+                }))
+
+                updateRequired = true
+                refreshToken = res.data.refreshToken.refreshToken
             }
             else { // Token is not valid
-                // console.log("Token no longer valid", userAuth?.refreshToken, response)
+                console.log("Token no longer valid", userAuth?.refreshToken, response)
                 setAuth({});
                 navigate('/login', {state: {from: location}, replace: true});
-                return;
+                return; 
             }
+        }).catch((err) => {
+            console.log(err)
         })
-        // .catch((err) => {
-        //     if (axiosInstance.isCancel(err)) {
-        //         // API Request has been cancelled
-        //         // console.log("API Request Cancelled!");
-        //     } else {
-        //         //todo:handle error
-        //         console.log("Please Contact Admin. Error[00001]:", err)
-        //     }
-        // });
+
+        if(updateRequired) {
+            await updateUserRefreshToken(userAuth?.id, refreshToken);
+            return refreshToken;
+        }
+
 
         // Revoke old refresh token
         await axios({
             method: 'post',
-            // cancelToken: cancelToken,
-            // signal: controller.signal,
             data: JSON.stringify({
                 query: `mutation revokeToken($refreshToken: String!) {
                     revokeToken: revokeToken(refreshToken: $refreshToken) {
@@ -163,15 +160,6 @@ const useRefreshToken = () => {
         }).then((res) => {
             // console.log("Revoking", userAuth?.refreshToken, res);
         })
-        // .catch((err) => {
-        //     if (axiosInstance.isCancel(err)) {
-        //         // API Request has been cancelled
-        //         // console.log("API Request Cancelled!");
-        //     } else {
-        //         //todo:handle error
-        //         console.log("Please Contact Admin. Error[00001]:", err)
-        //     }
-        // });
     }
     return refresh;
 }
