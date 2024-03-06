@@ -126,7 +126,7 @@ class ExchangeEmail():
 
     def connect(self):
         if self.email_account is not None:
-            return 
+            return
         
         env = environ.Env()
         environ.Env.read_env()

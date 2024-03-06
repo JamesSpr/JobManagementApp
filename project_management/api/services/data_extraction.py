@@ -231,8 +231,9 @@ def extract_invoice_date_into_struct(text, data, data_name="invoiceDate", debug=
     if(len(date_regex) == 1):
         date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
         data.update({data_name: date})
+        return data 
 
-    elif(len(date_regex) > 1):
+    if (len(date_regex) > 1):
         # Remove future dates that could be the due date.
         for d in date_regex:
             if not try_parsing_date(d) == None and try_parsing_date(d) > datetime.today() + timedelta(days=1):
@@ -242,16 +243,16 @@ def extract_invoice_date_into_struct(text, data, data_name="invoiceDate", debug=
         if(len(date_regex) == 1):
             date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
             data.update({data_name: date})
+            return data
 
-        else:
-            # Try a different regex pattern
-            date_regex = re.findall('(?:invoice\s?date[\r\n\s]*)((?:\s?\d*\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d*,{0,1}\s*\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2})', text)
-            date_set = set(date_regex)
-            date_regex = list(date_set)
-            if debug: print("Date:", date_regex)
-            if(len(date_regex) == 1):
-                date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
-                data.update({data_name: date})
+        # Try a different regex pattern
+        date_regex = re.findall('(?:invoice\s?date[\r\n\s]*)((?:\s?\d*\s*(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*\d*,{0,1}\s*\d{4})|(?:3[01]|[12][0-9]|0?[1-9])[/-](?:1[0-2]|0?[1-9])[/-](?:[0-9]{2})?[0-9]{2})', text)
+        date_set = set(date_regex)
+        date_regex = list(date_set)
+        if debug: print("Date:", date_regex)
+        if(len(date_regex) == 1):
+            date = try_parsing_date_to_string(date_regex[0].capitalize(), debug)
+            data.update({data_name: date})
 
     return data                
 
@@ -268,7 +269,7 @@ def extract_invoice_number_into_struct(text, data, debug=False):
 
 # Extracts ABN from image and finds contact with that ABN
 def extract_contractor_into_struct(text, data, debug=False):
-    abn_regex = re.findall('[\b\s]?abn\s*:?\s*([0-9]{2}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3})', text)
+    abn_regex = re.findall('[\b\s]?[abn.]{3,6}\s*:?\s*([0-9]{2}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3})', text)
     for i, abn in enumerate(abn_regex):
         abn_regex[i] = abn.replace(" ", "")
 
@@ -296,14 +297,15 @@ def abn_format(text):
         text = text[:2] + " " + text[2:5] + " " + text[5:8] + " " + text[8:]
         return text
 
+DATE_FORMATS = ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', 
+                '%B %d, %Y', '%b %d, %y', '%B %d %Y', '%b %d %y', '%d %b %Y', '%d %b %y',
+                '%B%d,%Y', '%b%d,%y', '%B%d%Y', '%b%d%y', '%d%b%Y', '%d%b%y','%d%B%Y', '%d%B%y',
+                '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y')
 
 def try_parsing_date(text, debug=False):
     text = text.strip().title()
     if debug: print("Parsing:", text)
-    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', 
-                '%B %d, %Y', '%b %d, %y', '%B %d %Y', '%b %d %y', '%d %b %Y', '%d %b %y',
-                '%B%d,%Y', '%b%d,%y', '%B%d%Y', '%b%d%y', '%d%b%Y', '%d%b%y','%d%B%Y', '%d%B%y',
-                '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
+    for fmt in DATE_FORMATS:
         try:
             return datetime.strptime(text, fmt)
         except ValueError:
@@ -314,10 +316,7 @@ def try_parsing_date(text, debug=False):
 def try_parsing_date_to_string(text, debug=False):
     text = text.strip().title()
     if debug: print("Parsing:", text)
-    for fmt in ('%d/%m/%y', '%d/%m/%Y', '%d-%m-%y', '%d-%m-%Y', 
-                '%B %d, %Y', '%b %d, %y', '%B %d %Y', '%b %d %y', '%d %b %Y', '%d %b %y',
-                '%B%d,%Y', '%b%d,%y', '%B%d%Y', '%b%d%y', '%d%b%Y', '%d%b%y','%d%B%Y', '%d%B%y',
-                '%d-%b-%y', '%d-%b-%Y', '%-d-%b-%y', '%-d-%b-%Y'):
+    for fmt in DATE_FORMATS:
         try:
             return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
         except ValueError:
