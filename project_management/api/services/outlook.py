@@ -146,7 +146,7 @@ class ProcessApproval(graphene.Mutation):
         estimate.approval_date = date
         estimate.save()
 
-        create_job = CreateJobInMyob.mutate(root, info, job)
+        create_job = CreateJobInMyob.mutate(root, info, job.id)
         if not create_job.success:
             return self(success=False, message="Job creation in MYOB failed")
         
