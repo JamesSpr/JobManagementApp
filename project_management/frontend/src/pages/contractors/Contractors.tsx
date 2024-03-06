@@ -46,6 +46,8 @@ const Contractors = () => {
     }
 
     const handleDialogCreate = async (value: ContractorType) => {
+        setWaiting(true);
+
         //Send to MYOB
         await axiosPrivate({
             method: 'post',
@@ -79,6 +81,8 @@ const Contractors = () => {
         }).catch((e) => {
             console.log("error", e);
             setSnack({active: true, variant: 'error', message: "Error Creating Contractor"})
+        }).finally(() => {
+            setWaiting(false);
         });   
     }
     
@@ -310,7 +314,7 @@ const Contractors = () => {
         {/* Create Contractor Dialog Box */}
         <CreateContractorDialog newContractor={newContractor} setNewContractor={setNewContractor} 
             open={createContractor} onCreate={handleDialogCreate} onClose={handleDialogClose}
-            inputMask={inputMask}
+            inputMask={inputMask} waiting={waiting}
         />
     </>);
 }

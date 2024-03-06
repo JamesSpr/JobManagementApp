@@ -340,7 +340,7 @@ export const Table = <T extends object>({data, setData, tableMeta, columns, colu
                             >
                                 {row.getVisibleCells().map(cell => {
                                     return (
-                                        <td key={cell.id} style={{padding: '4px 5px'}}>
+                                        <td key={cell.id} style={{padding: '6px 4px'}}>
                                         {
                                             flexRender(
                                                 cell.column.columnDef.cell,
@@ -430,16 +430,16 @@ export const FileUploadSection = ({onSubmit, waiting, id, type, button}: {onSubm
     </>
 )
 
-export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=false, buttonVariant}: 
-{name: string, waiting?: boolean, onClick?: () => void, disabled?: boolean, centerButton?: boolean, buttonVariant?: "text" | "outlined" | "contained" }) => {
-    let buttonStyle = "progressButton";
+export const ProgressButton = ({name, waiting, onClick, disabled, centerButton=false, buttonVariant, className}: 
+{name: string, waiting?: boolean, onClick?: () => void, disabled?: boolean, centerButton?: boolean, buttonVariant?: "text" | "outlined" | "contained", className?: string }) => {
+    let buttonStyle = "progress-button";
     if(centerButton) {
         buttonStyle += " centered";
     }
 
     return (
-        <Box sx={{ m: 1, position: 'relative' }} className={buttonStyle}>
-            <Button name={name.toLowerCase()} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled || !waiting: waiting}>{name}</Button>
+        <Box className={buttonStyle}>
+            <Button name={name.toLowerCase()} className={className ?? ''} variant={buttonVariant} onClick={onClick} disabled={disabled ? disabled || !waiting: waiting}>{name}</Button>
             {waiting && (
                 <CircularProgress size={24} 
                     sx={{
@@ -479,6 +479,14 @@ export const ProgressIconButton = ({waiting, onClick, children, disabled, style}
             </IconButton>
         </Box>
 
+    )
+}
+
+export const LoadingProgress = () => {
+    return (
+        <div className="center-loading">
+            <CircularProgress />
+        </div>
     )
 }
 
@@ -523,7 +531,7 @@ export const BasicDialog:FC<BasicDialogType> = ({open, close, action, dialogActi
                                 <Button onClick={action}>Okay</Button>
                                 :
                             <>
-                                {waiting ? 
+                                {waiting !== undefined ? 
                                     <ProgressButton onClick={action} waiting={waiting} name="Yes"/>
                                     : <Button onClick={action}>Yes</Button>
                                 }

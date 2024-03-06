@@ -24,13 +24,14 @@ export type FieldErrorContactType = {
     country: boolean
 }
 
-const CreateContractorDialog = ({ newContractor, setNewContractor, open, onCreate, onClose, inputMask }: {
+const CreateContractorDialog = ({ newContractor, setNewContractor, open, onCreate, onClose, inputMask, waiting }: {
     open:boolean
     onCreate: (value: ContractorType) => void
     onClose: (event: any, reason: string, value: ContractorType) => void
     newContractor: ContractorType
     setNewContractor: React.Dispatch<React.SetStateAction<ContractorType>>
     inputMask: (name: string, value: any) => any
+    waiting: boolean
 }) => {
     const [fieldError, setFieldError] = useState<FieldErrorType>({
         name: false, abn: false, bsb: false, bankAccountName: false, bankAccountNumber: false, contacts: [{
@@ -94,7 +95,7 @@ const CreateContractorDialog = ({ newContractor, setNewContractor, open, onCreat
             title='Create New Contractor' dialogActions={<></>}
             fullWidth maxWidth='sm' center
         >
-            <Stepper onComplete={handleCreate} completeButtonName='Create'>
+            <Stepper onComplete={handleCreate} completeButtonName='Create' waiting={waiting}>
                 <Step name='Bank Details' key={'bankStep'} validation={validateBankDetails}>
                     <BankDetailsForm
                         value={newContractor} setValue={setNewContractor} 

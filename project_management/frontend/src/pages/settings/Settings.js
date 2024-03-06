@@ -261,7 +261,7 @@ export default function Setting() {
             <Divider variant='middle' sx={{margin: '20px auto 5px auto', width:'80%'}}/>
                 <Accordion title={"Stepper Example"}>
                     <div className='stepper-wrapper'>
-                        <Stepper onComplete={()=>{}} completeButtonName='Done'>
+                        <Stepper onComplete={()=>{}} completeButtonName='Done' waiting={false}>
                             <Step name="Select Job">
                                 <h4>Step One</h4>
                                 <p>This is how we do step one...</p>
