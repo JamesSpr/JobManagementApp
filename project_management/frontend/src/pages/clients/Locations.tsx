@@ -6,7 +6,7 @@ import { AusStates, LocationType, RegionType, SnackType } from '../../types/type
 
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { InputField, Table, useSkipper } from '../../components/Components';
+import { BasicDialog, InputField, Table, useSkipper } from '../../components/Components';
 import { ClientCreateDialogType } from './Client';
 
 const Locations = ({locations, setLocations, regions, client, setUpdateRequired, setSnack, createDialog, setCreateDialog }:{
@@ -291,6 +291,11 @@ const Locations = ({locations, setLocations, regions, client, setUpdateRequired,
         },
     }
 
+    const handleCloseAlert = () => {
+        setDeleteRow('');
+        setOpenAlert(false);
+    }
+
     return (
     <>
         <Table columns={columns} data={locations} tableMeta={tableMeta} autoResetPageIndex={autoResetPageIndex} skipAutoResetPageIndex={skipAutoResetPageIndex} pagination={true}/>
@@ -349,16 +354,24 @@ const Locations = ({locations, setLocations, regions, client, setUpdateRequired,
 
         
         {/* Delete Alert Dialog */}
-        <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
+        {/* <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
             <DialogTitle>Delete Location</DialogTitle>
             <DialogContent>
                 <DialogContentText>Are you sure you want to delete this location? This action will be permanent.</DialogContentText>
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => {handleDelete(deleteRow)}}>Yes</Button>
-                <Button onClick={() => {setDeleteRow(''); setOpenAlert(false)}}>No</Button>
+                <Button onClick={() => { setOpenAlert(false)}}>No</Button>
             </DialogActions>
-        </Dialog>
+        </Dialog> */}
+
+        <BasicDialog open={openAlert} close={handleCloseAlert}
+            title='Delete Location'
+            maxWidth='md'
+            action={() => handleDelete(deleteRow)}
+        >
+            <p>Are you sure you want to delete this location? This action will be permanent.</p>
+        </BasicDialog>
     </> 
     )
 }

@@ -1,28 +1,27 @@
 import os
 import shutil
-import re
-from django.utils import timezone
-import graphene
+import base64
 from datetime import datetime
+import graphene
+from django.utils import timezone
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 from graphene import relay
 from graphql_jwt.decorators import login_required
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
 from django.db import connection
-from accounts.models import CustomUser
-from myob.models import MyobUser
-from api.services.create_completion_documents import CreateCompletionDocuments
-from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
+
 from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Expense, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
-# from .services.import_csv import UploadClientContactsCSV, UploadRegionsCSV, UploadClientsCSV, UploadInvoiceDetailsCSV, UploadJobsCSV, UploadLocationsCSV
-# from .services.data_extraction import ExtractBillDetails
+from .services.create_completion_documents import CreateCompletionDocuments
+from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .services.create_quote import CreateQuote
 from .services.file_processing import PDFToImage
+from accounts.models import CustomUser
+from myob.models import MyobUser
 
-main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
+
+MAIN_FOLDER_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
 
 class CustomNode(graphene.relay.Node):
     class Meta:
@@ -178,6 +177,7 @@ class ClientInputType(graphene.InputObjectType):
     myob_uid = graphene.String()
     name = graphene.String()
     display_name = graphene.String()
+    abn = graphene.String()
 
 class LocationInputType(graphene.InputObjectType):
     id = graphene.String()
@@ -352,8 +352,8 @@ class CreateJob(graphene.Mutation):
 
                 # Check folder name and rename if they're different
                 if old_folder_name != str(job):
-                    old_folder = os.path.join(main_folder_path, old_folder_name)
-                    new_folder = os.path.join(main_folder_path, str(job))
+                    old_folder = os.path.join(MAIN_FOLDER_PATH, old_folder_name)
+                    new_folder = os.path.join(MAIN_FOLDER_PATH, str(job))
                     try:
                         os.rename(old_folder, new_folder)
                     except FileNotFoundError:
@@ -392,7 +392,7 @@ class CreateJob(graphene.Mutation):
 
             ## Create new folder
             folder_name = str(job)
-            new_folder = os.path.join(main_folder_path, folder_name)
+            new_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
 
             folders = ["Photos", "Photos/Inspection", "Photos/Onsite", "Estimates", "Documentation", "Accounts", "Accounts/Aurify"]
 
@@ -421,7 +421,7 @@ class CheckFolder(graphene.Mutation):
 
         ## Create new folder
         folder_name = str(job)
-        new_folder = os.path.join(main_folder_path, folder_name)
+        new_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
         folders = ["Photos", "Photos/Inspection", "Photos/Onsite", "Estimates", "Documentation", "Accounts", "Accounts/Aurify"]
 
         if not os.path.exists(new_folder):
@@ -447,6 +447,57 @@ class DeleteJob(graphene.Mutation):
             job.delete()
             return self(success=True)
         return self(success = False)
+
+class CreateJobInMyob(graphene.Mutation):
+    class Arguments:
+        job_id = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    uid = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, job_id):
+
+        if not Job.objects.filter(id = job_id).exists():
+            return self(success=False, message="Job Not Found.")
+
+        job = Job.objects.get(id=job_id)
+
+        if job.myob_uid:
+            return self(success=True, message="Job is already linked to MYOB")
+        
+        if job.client.name == "BGIS" and not job.po:
+            return self(success=False, message="BGIS Job needs to have PO before sending to MYOB")
+        
+        job_identifier = ""
+        if job.po:
+            job_identifier = job.po
+        elif job.other_id:
+            job_identifier = job.other_id
+
+        if job_identifier == "":
+            return self(success=False, message="Job Identifier Error. Please contact developer")
+
+        job_data = {
+            "identifier": job_identifier,
+            "name": (job.location.name + " " + job.title)[0:30],
+            "description": str(job),
+            "customer_uid": job.client.myob_uid,
+        }
+        
+        from myob.schema import CreateMyobJob
+        post_response = CreateMyobJob.mutate(root, info, job_data)
+
+        if not post_response.success:
+            print("Error:", post_response.text)
+            return self(success=False, message=post_response.message)
+            
+        job.myob_uid = post_response.uid
+        job.save()
+
+        return self(success=True, message="")
 
 class UpdateJob(graphene.Mutation):
     class Arguments:
@@ -550,8 +601,8 @@ class UpdateJob(graphene.Mutation):
                                             new_date=job.overdue_date.replace(tzinfo=timezone.get_current_timezone()))
 
         if old_job_str != str(job):
-            old_folder = os.path.join(main_folder_path, old_job_str)
-            new_folder = os.path.join(main_folder_path, str(job))
+            old_folder = os.path.join(MAIN_FOLDER_PATH, old_job_str)
+            new_folder = os.path.join(MAIN_FOLDER_PATH, str(job))
             try:
                 os.rename(old_folder, new_folder)
             except FileNotFoundError:
@@ -573,16 +624,16 @@ class UpdateJob(graphene.Mutation):
                 print("Creating New")
                 estimate = Estimate.objects.create(job_id=job, name=est.name, quote_by=CustomUser.objects.get(id=est.quote_by.id))
                 try:
-                    if not os.path.exists(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())):
-                        os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
+                    if not os.path.exists(os.path.join(MAIN_FOLDER_PATH, str(job).strip(), "Estimates", str(estimate.name).strip())):
+                        os.mkdir(os.path.join(MAIN_FOLDER_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
                 except Exception as e:
                     print("File Name Error for:", str(job).strip())
                     message = "Job Saved. There is an error with the folder name, please correct in file system."
 
             # If the estimate name is changed, update the existing folder name
             if est.name != estimate.name:
-                current_estimate_folder = os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip())
-                new_estimate_folder = os.path.join(main_folder_path, str(job).strip(), "Estimates", str(est.name).strip())
+                current_estimate_folder = os.path.join(MAIN_FOLDER_PATH, str(job).strip(), "Estimates", str(estimate.name).strip())
+                new_estimate_folder = os.path.join(MAIN_FOLDER_PATH, str(job).strip(), "Estimates", str(est.name).strip())
                 if os.path.exists(current_estimate_folder):
                     os.rename(current_estimate_folder, new_estimate_folder)
 
@@ -650,7 +701,7 @@ class CreateEstimate(graphene.Mutation):
             return self(success=False, message=["Estimate name can not contain the characters:"] + illegal_characters)
 
         try:
-            os.mkdir(os.path.join(main_folder_path, str(job).strip(), "Estimates", str(estimate.name).strip()))
+            os.mkdir(os.path.join(MAIN_FOLDER_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
         except:
             return self(success=False, message="Job Folder Cannot Be Found. Please Check OneDrive")
 
@@ -737,7 +788,7 @@ class CreateEstimateHeader(graphene.Mutation):
         estHeader.save()
 
         estItem = EstimateItem()
-        estItem.header_id = estHeader.strip()
+        estItem.header_id = estHeader
         estItem.save()
 
         return self(success=True, estimate_header=estHeader)
@@ -801,8 +852,8 @@ class DeleteEstimate(graphene.Mutation):
     def mutate(self, root, info, id):
         estimate = Estimate.objects.get(id=id)
 
-        if os.path.exists(os.path.join(main_folder_path, str(estimate.job_id), "Estimates", str(estimate.name))):
-            shutil.rmtree(os.path.join(main_folder_path, str(estimate.job_id), "Estimates", str(estimate.name)))
+        if os.path.exists(os.path.join(MAIN_FOLDER_PATH, str(estimate.job_id), "Estimates", str(estimate.name))):
+            shutil.rmtree(os.path.join(MAIN_FOLDER_PATH, str(estimate.job_id), "Estimates", str(estimate.name)))
 
         estimate.delete()
 
@@ -821,8 +872,7 @@ class ClientType(DjangoObjectType):
 
 class CreateClient(graphene.Mutation):
     class Arguments:
-        name = graphene.String()
-        myob_uid = graphene.String()
+        details = ClientInputType()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -830,16 +880,23 @@ class CreateClient(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, name, myob_uid):
-        if(Client.objects.filter(name=name).exists()):
+    def mutate(self, root, info, details):
+        if(Client.objects.filter(name=details.name).exists() or Client.objects.filter(abn=details.abn).exists()):
             return self(success=False, message="Client Already Exists")
         
-        client = Client()
-        client.name = name
-        client.myob_uid = myob_uid
-        client.save()
+        import myob.schema as myob
+        response = myob.CreateCustomer.mutate(root, info, details)
 
-        return self(success=True, message="Client Successfully Added", client=client)
+        if response.success:
+            client = Client()
+            client.myob_uid = response.myob_uid
+            client.name = details.name
+            client.abn = details.abn
+            client.save()
+
+            return self(success=True, message=response.message, client=client)
+        
+        return self(success=False, message=response.message)
 
 class UpdateClient(graphene.Mutation):
     class Arguments:
@@ -852,16 +909,36 @@ class UpdateClient(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, details):
-        if(not Client.objects.filter(id=details.id).exists()):
+        if not Client.objects.filter(id=details.id).exists():
             return self(success=False, message="Client Not Found")
         
+        # Prepare new client object
         client = Client.objects.get(id=details.id)
         client.name = details.name
         client.display_name = details.display_name
-        if details.myob_uid: client.myob_uid = details.myob_uid
-        client.save()
+        client.abn = details.abn
 
-        return self(success=True, message="Client Successfully Updated", client=client)
+        import myob.schema as myob
+        myob_update = myob.UpdateCustomer.mutate(root, info, client)
+
+        if myob_update.success:
+            client.save()
+            return self(success=True, message="Client Successfully Updated", client=client)
+        
+        return self(success=False, message=myob_update.message)
+
+class DeleteClient(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+ 
+    ok = graphene.Boolean()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, id):
+        client = Client.objects.get(id=id)
+        client.delete()
+        return self(ok=True)
 
 class LocationType(DjangoObjectType):
     class Meta:
@@ -883,11 +960,11 @@ class CreateLocation(graphene.Mutation):
     @login_required
     def mutate(self, root, info, client, new_location):
         
-        if(Location.objects.filter(client = Client.objects.get(name=client), name = new_location.name).exists()):
+        if(Location.objects.filter(client = Client.objects.get(id=client), name = new_location.name).exists()):
             return self(success=False, message="Location Already Exists")
 
         location = Location()
-        location.client = Client.objects.get(name=client)
+        location.client = Client.objects.get(id=client)
         location.client_ref = "{:0>4}".format(new_location.client_ref)
         location.region = Region.objects.get(id=new_location.region)
         location.name = new_location.name
@@ -912,7 +989,7 @@ class UpdateLocation(graphene.Mutation):
     def mutate(self, root, info, client, locations):
         for loc in locations:
             location = Location.objects.get(id=loc.id)
-            # location.client = Client.objects.get(name=client),
+            location.client = Client.objects.get(id=client)
             location.client_ref = "{:0>4}".format(loc.client_ref)
             location.region = Region.objects.get(id=loc.region)
             location.name = loc.name
@@ -964,7 +1041,7 @@ class CreateRegion(graphene.Mutation):
     @login_required
     def mutate(self, root, info, client, region):
         client_region = Region()
-        client_region.client = Client.objects.get(name=client)
+        client_region.client = Client.objects.get(id=client)
         client_region.short_name = region.shortName.strip()
         client_region.name = region.name.strip()
         client_region.email = region.email.strip()
@@ -990,7 +1067,7 @@ class UpdateRegion(graphene.Mutation):
                 return self(success=False, message="Error Finding Region")
             
             client_region = Region.objects.get(id=region.id)
-            client_region.client = Client.objects.get(name=client)
+            client_region.client = Client.objects.get(id=client)
             client_region.short_name = region.shortName.strip()
             client_region.name = region.name.strip()
             client_region.email = region.email.strip()
@@ -1017,19 +1094,6 @@ class DeleteRegion(graphene.Mutation):
         return self(success=True)
 
 
-class DeleteClient(graphene.Mutation):
-    ok = graphene.Boolean()
-
-    class Arguments:
-        name = graphene.ID()
-
-    @classmethod
-    @login_required
-    def mutate(self, root, info, name):
-        client = Client.objects.get(name=name)
-        client.delete()
-        return self(ok=True)
-
 class ContractorContactType(DjangoObjectType):
     class Meta:
         model = ContractorContact
@@ -1051,14 +1115,14 @@ class CreateContact(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, contact, client):
-        if ClientContact.objects.filter(first_name=contact.first_name, last_name=contact.last_name, client=Client.objects.get(name=client)).exists():
+        if ClientContact.objects.filter(first_name=contact.first_name, last_name=contact.last_name, client=Client.objects.get(id=client)).exists():
             return self(success=False, message="Contact Already Exists")
             
         client_contact = ClientContact()
         client_contact.first_name = contact.first_name.strip()
         client_contact.last_name = contact.last_name.strip()
         client_contact.position = contact.position.strip()
-        client_contact.client = Client.objects.get(name=client)
+        client_contact.client = Client.objects.get(id=client)
         client_contact.active = True
 
         # Format Phone Input
@@ -1086,7 +1150,7 @@ class UpdateContact(graphene.Mutation):
     def mutate(self, root, info, contacts, client):
         for contact in contacts:
             client_contact = ClientContact(id=contact.id)
-            client_contact.client = Client.objects.get(name=client)
+            client_contact.client = Client.objects.get(id=client)
             client_contact.first_name = contact.first_name.strip()
             client_contact.last_name = contact.last_name.strip()
             client_contact.position = contact.position.strip()
@@ -1179,6 +1243,10 @@ class DeleteContractor(graphene.Mutation):
     @login_required
     def mutate(self, root, info, id):
         contractor = Contractor.objects.get(id=id)
+        contacts = ContractorContact.objects.filter(company=contractor)
+
+        for contact in contacts:
+            contact.delete()
 
         if not contractor:
             return self(success=False)
@@ -1201,19 +1269,24 @@ class BillType(DjangoObjectType):
 class BillInput(graphene.InputObjectType):
     id = graphene.String()
     myobUid = graphene.String()
-    job = graphene.String()
+    supplier = ContractorType()
+    job = JobType()
     contractor = graphene.String()
     invoiceNumber = graphene.String()
     invoiceDate = graphene.Date()
-    amount = graphene.Float()
     processDate = graphene.Date()
+    amount = graphene.Decimal()
+    billType = graphene.String()
     thumbnailPath = graphene.String()
+    filePath = graphene.String()
+
 
 class CreateBill(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
         jobId = graphene.String()
         newBill = BillInput()
+        attachment = graphene.String()
+        attachmentName = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -1221,26 +1294,59 @@ class CreateBill(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, newBill, jobId, uid): 
-        contractor = Contractor.objects.get(id=newBill.contractor)
-        
-        if Bill.objects.filter(supplier=contractor, invoice_number=newBill['invoiceNumber']).exists():
-            return self(success=False, message="Bill Already Exists", bill=Bill.objects.get(supplier=contractor, invoice_number=newBill['invoiceNumber']))
+    def mutate(self, root, info, jobId, newBill, attachment, attachmentName): 
+        from myob.schema import CreateMyobBill
 
-        job = Job.objects.get(po=jobId)
+        job = Job.objects.get(id=jobId)
+        supplier = Contractor.objects.get(id=newBill['contractor'])
+
+        # Check to see if bill already exists in the system
+        if Bill.objects.filter(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).exists():
+            print(Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).id)
+            return self(success=False, message="Bill Already Exists", error=Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber']))
+
+        # Ensure Job is in MYOB
+        if not job.myob_uid:
+            res = CreateJobInMyob.mutate(root, info, job)
+            if not res.success:
+                return self(success=False, message="Please sync job with MYOB before creating invoice!")               
+
+        folder_name = str(job)
+        job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
+
+        if not os.path.exists(job_folder):
+            return self(success=False, message="Job Folder Does Not Exist", error="Folder Not Found")
+
+        accounts_folder = os.path.join(job_folder, "Accounts", supplier.name)
+
+        if not os.path.exists(accounts_folder):
+            os.mkdir(accounts_folder)
+        
+        # Read PDF and write to file
+        pdf = base64.b64decode(attachment, validate=True)
+        with open(os.path.join(accounts_folder, attachmentName), 'wb') as f:
+            f.write(pdf)
+
+        print("Creating Bill")
 
         bill = Bill()
         bill.job = job
-        bill.myob_uid = uid
-        bill.supplier = contractor
-        bill.process_date = datetime.date.today()
-        bill.amount = newBill['amount'], 2
+        bill.supplier = supplier
+        bill.amount = newBill['amount']
         bill.invoice_date = newBill['invoiceDate']
         bill.invoice_number = newBill['invoiceNumber']
-        # bill.file_path = newBill['imagePath']
+        bill.bill_type = newBill['billType']
         bill.thumbnail_path = newBill['thumbnailPath']
-        bill.save()
+        bill.file_path = os.path.join(accounts_folder, attachmentName)
 
+        create_bill = CreateMyobBill.mutate(root, info, str(job), job.myob_uid, supplier.myob_uid, newBill, attachment, attachmentName)
+        bill.myob_uid = create_bill.uid
+
+        if not create_bill.success:
+            print(create_bill)
+            return self(success=True, message="Bill could not be created")
+                
+        bill.save()
         return self(success=True, message="Bill Successfully Created", bill=bill)
     
 class UpdateBill(graphene.Mutation):
@@ -1443,8 +1549,8 @@ class TransferEstimate(graphene.Mutation):
         except Exception as e:
             return self(success=False, message="Not found: " + str(e))
 
-        if os.path.exists(os.path.join(main_folder_path, str(estimate.job_id), "Estimates", str(estimate.name))):
-            shutil.move(os.path.join(main_folder_path, str(estimate.job_id), "Estimates", str(estimate.name)), os.path.join(main_folder_path, str(job), "Estimates", str(estimate.name)))
+        if os.path.exists(os.path.join(MAIN_FOLDER_PATH, str(estimate.job_id), "Estimates", str(estimate.name))):
+            shutil.move(os.path.join(MAIN_FOLDER_PATH, str(estimate.job_id), "Estimates", str(estimate.name)), os.path.join(MAIN_FOLDER_PATH, str(job), "Estimates", str(estimate.name)))
 
         estimate.job_id = job
         estimate.save()
@@ -1467,11 +1573,11 @@ class TransferInvoice(graphene.Mutation):
         except Exception as e:
             return self(success=False, message="Not found: " + str(e))
 
-        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for " + invoice.job.po + ".pdf")):
-            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "Invoice for " + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "Invoice for " + new_job.po + ".pdf"))
+        if os.path.exists(os.path.join(MAIN_FOLDER_PATH, str(invoice.job), "Accounts", "Aurify", "Invoice for " + invoice.job.po + ".pdf")):
+            shutil.move(os.path.join(MAIN_FOLDER_PATH, str(invoice.job), "Accounts", "Aurify", "Invoice for " + invoice.job.po + ".pdf"), os.path.join(MAIN_FOLDER_PATH, str(new_job), "Accounts", "Aurify", "Invoice for " + new_job.po + ".pdf"))
 
-        if os.path.exists(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - " + invoice.job.po + ".pdf")):
-            shutil.move(os.path.join(main_folder_path, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - " + invoice.job.po + ".pdf"), os.path.join(main_folder_path, str(new_job), "Accounts", "Aurify", "INV" + invoice.number + " - " + new_job.po + ".pdf"))
+        if os.path.exists(os.path.join(MAIN_FOLDER_PATH, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - " + invoice.job.po + ".pdf")):
+            shutil.move(os.path.join(MAIN_FOLDER_PATH, str(invoice.job), "Accounts", "Aurify", "INV" + invoice.number + " - " + invoice.job.po + ".pdf"), os.path.join(MAIN_FOLDER_PATH, str(new_job), "Accounts", "Aurify", "INV" + invoice.number + " - " + new_job.po + ".pdf"))
 
         invoice.job = new_job
         invoice.save()
@@ -1719,7 +1825,7 @@ class Query(graphene.ObjectType):
     @login_required
     def resolve_locations(root, info, client=None, **kwargs):
         if client:
-            locations = Location.objects.filter(client = Client.objects.get(name=client)).order_by('client_ref')
+            locations = Location.objects.filter(client = Client.objects.get(id=client)).order_by('client_ref')
             return locations
 
         return Location.objects.all().order_by('client_ref')
@@ -1750,21 +1856,21 @@ class Query(graphene.ObjectType):
     @login_required
     def resolve_clients(root, info, client=None, **kwargs):
         if client:
-            return Client.objects.filter(name=client)
+            return Client.objects.filter(id=client)
 
         return Client.objects.all().order_by('id')
 
     @login_required
     def resolve_client_contacts(root, info, client=None, **kwargs):
         if client:
-            return ClientContact.objects.filter(client=Client.objects.get(name=client))
+            return ClientContact.objects.filter(client=Client.objects.get(id=client))
 
         return ClientContact.objects.all().order_by('-active', 'first_name')
     
     @login_required
     def resolve_regions(root, info, client=None, **kwargs):
         if client:
-            return Region.objects.filter(client = Client.objects.get(name=client))
+            return Region.objects.filter(client = Client.objects.get(id=client))
         return Region.objects.all()
     
     @login_required
@@ -1832,6 +1938,7 @@ class Mutation(graphene.ObjectType):
     create_job = CreateJob.Field()
     update_job = UpdateJob.Field()
     delete_job = DeleteJob.Field()
+    create_job_in_myob = CreateJobInMyob.Field()
 
     create_client = CreateClient.Field()
     update_client = UpdateClient.Field()

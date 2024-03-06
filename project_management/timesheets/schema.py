@@ -9,7 +9,7 @@ from graphql_jwt.decorators import login_required
 
 from timesheets.models import Timesheet, WorkDay, Employee, PayrollCategory, MyobJob, SyncSettings
 from myob.models import MyobUser
-from myob.schema import check_user_token_auth, GetEmployees, GetJobs, GetPayrollCategories, GetPayrollDetails
+from myob.schema import GetMyobEmployees, GetMyobJobs, GetPayrollCategories, GetPayrollDetails, CreateTimesheet
 
 
 class MyobJobType(DjangoObjectType):
@@ -50,7 +50,7 @@ class PayrollCategoryType(DjangoObjectType):
         model = PayrollCategory
         fields = '__all__'
 
-class GetMyobEmployees(graphene.Mutation):
+class GetMyobActiveEmployees(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
     employees = graphene.List(EmployeeType)
@@ -62,10 +62,11 @@ class GetMyobEmployees(graphene.Mutation):
         if not jobSync.success:
             return self(success=False, message=jobSync.message)
         
-        get_employees = GetEmployees.mutate(root, info)
+        get_employees = GetMyobEmployees.mutate(root, info)
         if not get_employees.success:
             return self(success=False, message=get_employees.message)
         employees = get_employees.employees
+        employees = employees['Items']
 
         not_included = ["David Phillips", "Leo Sprague", "Colin Baggott", "Robert Stapleton", "Brett Macpherson"]
         active_employees = []
@@ -300,14 +301,15 @@ class SyncMyobJobs(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, ):
+    def mutate(self, root, info):
         LastJobSync = SyncSettings.objects.get(id=1)
         filter = f"LastModified gt datetime'{LastJobSync.jobs}'"
 
-        get_jobs = GetJobs.mutate(root, info, filter)
+        get_jobs = GetMyobJobs.mutate(root, info, filter)
         if not get_jobs.success:
             return self(success=False, message=get_jobs.message)
-        jobs = get_jobs.jobs
+        jobs = json.loads(get_jobs.jobs)
+        jobs = jobs["Items"]
 
         # Update the pay basis for employees to ensure correct pay
         for j in jobs:
@@ -339,6 +341,7 @@ class GetMyobPayrollDetails(graphene.Mutation):
         if not get_payroll_details.success:
             return self(success=False, message=get_payroll_details.message)
         payroll_details = get_payroll_details.payroll_details
+        payroll_details = payroll_details['Items']
 
         # Update the pay basis for employees to ensure correct pay
         for employee in payroll_details:
@@ -381,15 +384,7 @@ class SubmitTimesheets(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, timesheets, start_date, end_date):
-        env = environ.Env()
-        env.read_env(env.str('ENV_PATH', '../myob/.env'))
-
-        user = check_user_token_auth(uid, info.context.user)
-        if user == None:
-            return self(success=False, message="MYOB User Authentication Error")
-        
-        user = MyobUser.objects.get(id=uid)
+    def mutate(self, root, info, uid, timesheets, start_date, end_date):       
         processed = []
 
         all_timesheet_data = []
@@ -538,24 +533,13 @@ class SubmitTimesheets(graphene.Mutation):
 
             all_timesheet_data.append(timesheet_data)
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Payroll/Timesheet/{sheet.employee.myob_uid}"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("PUT", url, headers=headers, data=json.dumps(timesheet_data))
+            create_timesheet = CreateTimesheet.mutate(root, info, timesheet_data)
 
-            print(response)
-            print(response.text)
-            if response.status_code != 200:
-                print(timesheet_data)
-
-            if response.status_code == 200:
+            if create_timesheet.success:
                 sheet.sent_to_myob = True
                 sheet.save()
             else:
+                print(timesheet_data)
                 submissionError = True
                 failed += sheet.employee.name + ", "
 
@@ -644,6 +628,8 @@ class Query(graphene.ObjectType):
     @login_required
     def resolve_sync_settings(root, info, **kwargs):
         return SyncSettings.objects.all().order_by('id')
+    
+    active_employees = graphene.List(EmployeeType)
 
 class QuickMutate(graphene.Mutation):
     success = graphene.Boolean()
@@ -662,7 +648,7 @@ class QuickMutate(graphene.Mutation):
 class Mutation(graphene.ObjectType):
     get_myob_payroll_categories = GetMyobPayrollCategories.Field()
     get_myob_payroll_details = GetMyobPayrollDetails.Field()
-    get_myob_employees = GetMyobEmployees.Field()
+    get_myob_active_employees = GetMyobActiveEmployees.Field()
     
     delete_timesheet_entry = DeleteTimesheetEntry.Field()
 

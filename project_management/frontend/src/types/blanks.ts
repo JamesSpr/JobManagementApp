@@ -3,7 +3,8 @@ import { ClientType, ContactType, ContractorType, ContractorContactType, Invoice
 export const blankClient: ClientType = {
     id: '',
     name: '',
-    displayName: ''
+    displayName: '',
+    abn: ''
 }
 
 export const blankRegion: RegionType = {

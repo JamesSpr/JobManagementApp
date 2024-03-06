@@ -243,6 +243,7 @@ const Contacts = ({contacts, setContacts, regions, client, setUpdateRequired, se
                         position
                         phone
                         email
+                        active
                         region {
                             id
                         }
@@ -305,58 +306,33 @@ const Contacts = ({contacts, setContacts, regions, client, setUpdateRequired, se
             autoResetPageIndex={autoResetPageIndex} skipAutoResetPageIndex={skipAutoResetPageIndex}/>
 
         {/* Create Client Contact Dialog Box */}
-        <Dialog open={createDialog['Contacts']} onClose={handleClose}>
-            <DialogContent>
-                <span className="dialogTitle">
-                        <h1
-                            style={{display: 'inline-block', position: 'relative', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
-                            Create new Contact
-                        </h1>
-                        <IconButton onClick={() => handleClose()} style={{float: 'right', padding: '0px 0px 4px 0px'}}>
-                            <CloseIcon />
-                        </IconButton>
-                </span>
-                <Grid container spacing={1} direction={'column'} alignItems={"center"} justifyContent={"center"}>
-                    <Grid item xs={12}>
-                        <InputField type="string" label="First Name" value={newContact['firstName']} onChange={(e) => setNewContact(prev => ({...prev, 'firstName':e.target.value}))}/>
-                        <InputField type="string" label="Last Name" value={newContact['lastName']} onChange={(e) => setNewContact(prev => ({...prev, 'lastName':e.target.value}))}/>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <InputField type="string" label="Position" value={newContact['position']} onChange={(e) => setNewContact(prev => ({...prev, 'position':e.target.value}))}/>
-                        <InputField type="string" label="Phone" value={newContact['phone']} onChange={(e) => setNewContact(prev => ({...prev, 'phone':e.target.value}))}/>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <InputField type="string" label="Email" value={newContact['email']} onChange={(e) => setNewContact(prev => ({...prev, 'email':e.target.value}))}/>
-                        <InputField type="select" label="Region" value={newContact['region']} onChange={(e) => setNewContact(prev => ({...prev, 'region':e.target.value}))}
-                        >
-                            <option key={"blank_newRegion"} value={''}></option>
-                            {regions?.map((region) => (
-                            <option key={region.id} value={region.id}>{region.shortName}</option>
-                            ))}
-                        </InputField>
-                    </Grid>
-                    <Grid item xs={12}>
-                        <Button sx={{paddingTop: '25px'}} onClick={handleCreate}>Create</Button>
-                    </Grid>
+        <BasicDialog open={createDialog['Contacts']} close={handleClose}
+            title="Create New Contact"
+            action={handleCreate}
+            center fullWidth maxWidth="sm"
+        >
+            <Grid container spacing={1} direction={'column'} alignItems={"center"} justifyContent={"center"}>
+                <Grid item xs={12}>
+                    <InputField type="string" label="First Name" value={newContact['firstName']} onChange={(e) => setNewContact(prev => ({...prev, 'firstName':e.target.value}))}/>
+                    <InputField type="string" label="Last Name" value={newContact['lastName']} onChange={(e) => setNewContact(prev => ({...prev, 'lastName':e.target.value}))}/>
                 </Grid>
-            </DialogContent>
-        </Dialog>
+                <Grid item xs={12}>
+                    <InputField type="string" label="Position" value={newContact['position']} onChange={(e) => setNewContact(prev => ({...prev, 'position':e.target.value}))}/>
+                    <InputField type="string" label="Email" value={newContact['email']} onChange={(e) => setNewContact(prev => ({...prev, 'email':e.target.value}))}/>
+                </Grid>
+                <Grid item xs={12}>
+                    <InputField type="string" label="Phone" value={newContact['phone']} onChange={(e) => setNewContact(prev => ({...prev, 'phone':e.target.value}))}/>
+                    <InputField type="select" label="Region" value={newContact['region']} onChange={(e) => setNewContact(prev => ({...prev, 'region':e.target.value}))}
+                    >
+                        <option key={"blank_newRegion"} value={''}></option>
+                        {regions?.map((region) => (
+                        <option key={region.id} value={region.id}>{region.shortName}</option>
+                        ))}
+                    </InputField>
+                </Grid>
+            </Grid>
+        </BasicDialog>
 
-        {/* Delete Alert Dialog */}
-        {/* <BasicDialog title="Delete Contact" open={openAlert} close={() => setOpenAlert(false))} action={() => {handleDelete(deleteRow)}}>
-            <p>Are you sure you want to delete this contact? This action will be permanent.</p>            
-        </BasicDialog> */}
-
-        {/* <Dialog open={openAlert} onClose={() => setOpenAlert(false)}>
-            <DialogTitle>Delete Contact</DialogTitle>
-            <DialogContent>
-                <DialogContentText>Are you sure you want to delete this contact? This action will be permanent.</DialogContentText>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => {handleDelete(deleteRow)}}>Yes</Button>
-                <Button onClick={() => {setDeleteRow(''); setOpenAlert(false)}}>No</Button>
-            </DialogActions>
-        </Dialog> */}
     </>    
     )
 }

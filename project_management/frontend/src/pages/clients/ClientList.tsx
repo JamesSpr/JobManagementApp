@@ -3,12 +3,12 @@ import axios from "axios";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import useAuth from "../auth/useAuth";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Footer, InputField, ProgressButton, SnackBar } from "../../components/Components";
+import { BasicDialog, Footer, InputField, ProgressButton, ProgressIconButton, SnackBar, Table } from "../../components/Components";
 import { useReactTable, getCoreRowModel, flexRender, SortingState, getSortedRowModel, VisibilityState, } from '@tanstack/react-table'
 import { SnackType } from "../../types/types";
 import { Box, CircularProgress, Grid, Typography, Button, Dialog, DialogContent, IconButton } from "@mui/material";
 
-import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
 
 interface ClientType {
     id: '', 
@@ -22,7 +22,7 @@ const ClientList = () => {
     const navigate = useNavigate();
 
     const [createClient, setCreateClient] = useState(false);
-    const [newClient, setNewClient] = useState('');
+    const [newClient, setNewClient] = useState({name: '', abn: ''});
     const [data, setData] = useState<ClientType[]>([]);
     const [createWait, setCreateWait] = useState(false);
 
@@ -73,52 +73,46 @@ const ClientList = () => {
     {                
         accessorKey: 'name',
         header: () => 'Client List',
-        size: 500,
+        size: 350,
         enableSorting: false
     },
     ], []);
 
     const [sorting, setSorting] = useState<SortingState>([{id: 'id', desc: false}])
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({id: false})
-    const table = useReactTable({
-        data,
-        columns,
-        state: {
-            sorting,
-            columnVisibility
-        },
-        getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        onColumnVisibilityChange: setColumnVisibility,
-        onSortingChange: setSorting,
-        enableSorting: true,
-    });   
-    
+
     const handleCreate = async () => {
         setCreateWait(true);
+
+        for(let field in newClient) {
+            if(field == "") {
+                setSnack({active:false, variant:"error", message: "Please ensure all fields are filled."})
+                return
+            }
+        }
 
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
                 query: `
-                mutation myobCreateClient($uid:String!, $name: String!) { 
-                    create_client: myobCreateClient(uid: $uid, name: $name) {
+                mutation createClient($details: ClientInputType!) { 
+                    create: createClient(details: $details) {
                         success
                         message
                         client {
                             id
-                            name
                             myobUid
+                            name
+                            abn
                         }
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
-                    name: newClient,
+                    details: newClient,
                 },
             }),
         }).then((response) => {
-            const res = response?.data?.data?.create_client;
+            const res = response?.data?.data?.create;
 
             if(res.success){
                 setCreateClient(false);
@@ -132,12 +126,15 @@ const ClientList = () => {
 
         }).catch((err) =>  {
             console.log(err);
-            setSnack({active:true, variant: "error", message: "Error Creating new Client"})
+            setSnack({active:true, variant: "error", message: "Server Error when Creating new Client"})
         }).finally(() => {
             setCreateWait(false);
         });
     }
 
+    const handleInput =  (e: { target: { value: string, name: string }; }) => {
+        setNewClient(prev => ({...prev, [e.target.name]: e.target.value}))
+    }
 
     return ( 
         <>
@@ -149,57 +146,11 @@ const ClientList = () => {
                 <Grid item xs={1}/>
                 <Grid item xs={10}>
                 {data.length > 0 ? 
-                    <table style={{tableLayout: 'fixed', maxWidth: '800px', borderCollapse: 'separate'}}>
-                        <thead>
-                            {table.getHeaderGroups().map(headerGroup => (
-                                <tr key={headerGroup.id}>
-                                {headerGroup.headers.map(header => {
-                                    return (
-                                        <th key={header.id} colSpan={header.colSpan} style={{fontWeight: 'bold', padding: '10px 5px 10px 5px',  width: header.getSize()}} >
-                                                {header.isPlaceholder ? null : (
-                                                <>
-                                                    <div {...{onClick: header.column.getToggleSortingHandler(),
-                                                    }}>
-                                                        {flexRender(
-                                                            header.column.columnDef.header,
-                                                            header.getContext()
-                                                        )}
-                                                        {{
-                                                            asc: ' ▲',
-                                                            desc: ' ▼',
-                                                        }[header.column.getIsSorted() as string] ?? null}
-                                                    </div>
-                                                </>
-                                                )}
-                                        </th>
-                                    );
-                                })}
-                                </tr>
-                            ))}
-                        </thead>
-                        <tbody>
-                            {table.getRowModel().rows.map(row => {
-                                return (
-                                    <tr key={row.id} 
-                                        onDoubleClick={(e) => {navigate(`/client/${row.original.name}`)}}
-                                    >
-                                        {row.getVisibleCells().map(cell => {
-                                            return (
-                                                <td key={cell.id} style={{padding: '10px 5px 10px 10px'}}>
-                                                {
-                                                    flexRender(
-                                                        cell.column.columnDef.cell,
-                                                        cell.getContext()
-                                                    )
-                                                }
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    <Table data={data} columns={columns}
+                        rowOnDoubleClick={row => {navigate(`/client/${row.original.id}`)}}
+                        sorting={sorting}
+                        columnVisibility={columnVisibility}
+                    />
                 : 
                     <Box sx={{display: 'flex', paddingLeft: 'calc(50% - 20px)', paddingTop: '10px'}}>
                         <CircularProgress />
@@ -211,36 +162,31 @@ const ClientList = () => {
 
             {/* Footer AppBar with Controls */}
             <Footer>
-                <ProgressButton name="Create New Client" waiting={createWait} onClick={() => setCreateClient(true)} />
+                <ProgressIconButton onClick={() => setCreateClient(true)} waiting={createWait}>
+                    <AddIcon />
+                </ProgressIconButton>
             </Footer>
     
              {/* Create Client Contact Dialog Box */}
-             <Dialog open={createClient} onClose={() => setCreateClient(false)} fullWidth={true} maxWidth={'sm'}>
-                <DialogContent>
-                    <Grid container spacing={1} direction={'column'} alignItems={"center"} justifyContent={"center"}>
-                        <span className="dialogTitle">
-                            <h1
-                                style={{display: 'inline-block', position: 'relative', width: 'calc(100% - 48px)', textAlign: 'center', fontWeight: 'bold'}}>
-                                Create new Contact
-                            </h1>
-                            <IconButton onClick={() => setCreateClient(false)} style={{float: 'right', padding: '0px 0px 4px 0px'}}>
-                                <CloseIcon />
-                            </IconButton>
-                        </span>
-                        <Grid item xs={12}>
-                            <InputField type="text" label="Client Name" value={newClient} onChange={(e) => setNewClient(e.target.value)}/>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Button sx={{paddingTop: '25px'}} onClick={handleCreate}>Create</Button>
-                        </Grid>
+             <BasicDialog open={createClient} close={() => setCreateClient(false)}
+                title="Create New Contact" 
+                action={handleCreate}
+                waiting={createWait}
+                center fullWidth maxWidth="sm"
+            >
+                <Grid container spacing={1} direction={'column'} alignItems={"center"} justifyContent={"center"}>
+                    <Grid item xs={12}>
+                        <InputField type="text" name="name" label="Client Name" value={newClient.name} onChange={handleInput}/>
                     </Grid>
-                </DialogContent>
-            </Dialog>
+                    <Grid item xs={12}>
+                        <InputField type="text" name="abn" label="Client ABN" value={newClient.abn} onChange={handleInput}/>
+                    </Grid>
+                </Grid>
+            </BasicDialog>
     
             <SnackBar snack={snack} setSnack={setSnack} />
         </>
     )
-
 }
 
 

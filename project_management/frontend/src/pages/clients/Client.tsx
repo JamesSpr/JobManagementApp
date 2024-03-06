@@ -1,6 +1,6 @@
 import React, { FC, ReactNode, useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Footer, SnackBar, TabComponent, Tooltip } from "../../components/Components";
+import { Footer, ProgressIconButton, SnackBar, TabComponent, Tooltip } from "../../components/Components";
 import { ClientType, ContactType, LocationType, RegionType, SnackType } from "../../types/types";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { usePrompt } from "../../hooks/promptBlocker";
@@ -29,34 +29,16 @@ const Client = () => {
     const navigate = useNavigate();
     const { client } = useParams();
 
-    const [details, setDetails] = useState<ClientType>({id:'', name:'', displayName:''})
+    const [details, setDetails] = useState<ClientType>({id:'', name:'', displayName:'', abn:''})
     const [contacts, setContacts] = useState<ContactType[]>([]);
     const [locations, setLocations] = useState<LocationType[]>([]);
     const [regions, setRegions] = useState<RegionType[]>([]);
     
     const [snack, setSnack] = useState<SnackType>({active: false, variant: 'info', message: ''})
     const [updateRequired, setUpdateRequired] = useState(false);
+    const [waiting, setWaiting] = useState(false);
     const [loading, setLoading] = useState(false);
     const [createDialog, setCreateDialog] = useState<ClientCreateDialogType>({Locations: false, Contacts: false, Regions: false})
-
-    const [tabValue, setTabValue] = useState(0); // Active Tab tabValue
-
-    const tabOptions = ["Client", "Regions", "Locations", "Contacts"]
-    const tabItems = [
-        <Home client={client} details={details} setDetails={setDetails} setUpdateRequired={setUpdateRequired} setSnack={setSnack}/>, 
-        
-        <Regions regions={regions} setRegions={setRegions} client={client}
-            setUpdateRequired={setUpdateRequired} setSnack={setSnack} 
-            createDialog={createDialog} setCreateDialog={setCreateDialog}/>,
-
-        <Locations locations={locations} setLocations={setLocations} regions={regions} client={client}
-            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
-            createDialog={createDialog} setCreateDialog={setCreateDialog} />, 
-
-        <Contacts contacts={contacts} setContacts={setContacts} regions={regions} client={client} 
-            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
-            createDialog={createDialog} setCreateDialog={setCreateDialog} />
-    ]
 
     if(!client){
         client === "" ? navigate('/clients') : navigate('/missing', { replace: true, state: {missing: "client"} })
@@ -64,31 +46,6 @@ const Client = () => {
 
     // Navigation Blocker
     usePrompt('You have unsaved changes. Are you sure you want to leave?', updateRequired && !loading);
-
-    // Keyboard shortcuts
-    const handleKeyPress = useCallback((e: { code: string; metaKey: any; ctrlKey: any; preventDefault: () => void; }) => {
-        if (e.code === 'KeyS' && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-            e.preventDefault();
-            // console.log(saveCommand)
-            // if(!saveCommand) {
-                
-            //     console.log("Updating")
-            //     saveCommand = true;
-            //     handleUploadChanges();
-            // }
-        }
-    }, [])
-
-    useEffect(() => {
-        // Attach event listener
-        document.addEventListener('keydown', handleKeyPress);
-        
-        // Remove event listener
-        return () => {
-            document.addEventListener('keydown', handleKeyPress)
-        }
-
-    }, [handleKeyPress]);
 
     // Fetch Clients Data
     useEffect(() => {
@@ -105,6 +62,7 @@ const Client = () => {
                             id
                             name
                             displayName
+                            abn
                         }
                         clientContacts(client: $client) {
                             id
@@ -153,6 +111,8 @@ const Client = () => {
                 setLocations(locations);
                 setRegions(res?.regions);
                 setLoading(false);
+                
+                setApp((prev: any) => ({...prev, title: res?.clients[0].name}))
             });
         }
         fetchData();
@@ -163,11 +123,9 @@ const Client = () => {
         
     }, [])
 
-    useEffect(() => {
-        setApp((prev: any) => ({...prev, title: client}))
-    }, [loading])
-
     const handleSave = async () => {
+        setWaiting(true);
+        
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
@@ -178,18 +136,18 @@ const Client = () => {
                     $regions: [RegionInput]!, 
                     $client: String!
                 ) {
-                    update_client: updateClient(details:$details) {
+                    client: updateClient(details:$details) {
                         success
                         message
                     }
-                    update_location: updateLocation(locations: $locations, client: $client) {
+                    location: updateLocation(locations: $locations, client: $client) {
                         success
                         message
                     }
-                    update_contact: updateContact(contacts: $contacts, client: $client) {
+                    contact: updateContact(contacts: $contacts, client: $client) {
                         success
                     }
-                    update_region: updateRegion(regions: $regions, client: $client) {
+                    region: updateRegion(regions: $regions, client: $client) {
                         success
                         message
                     }
@@ -205,20 +163,47 @@ const Client = () => {
         }),
         }).then((response) => {
             const res = response?.data?.data;
-            if(res.update_location?.success & res.update_contact?.success & res.update_region?.success){
-                setSnack({active: true, variant: 'success', message: "Changes Saved Successfully."});
+            if(res.client?.success & res.location?.success & res.contact?.success & res.region?.success){
+                setSnack({active: true, variant: 'success', message: "Changes Saved Successfully"});
                 setUpdateRequired(false);
             }
             else {
                 console.log("error",res)
-                setSnack({active: true, variant: 'error', message: 'Error saving changes.'});
+                let errorMessage = ""
+                for(const update in res) {
+                    if(!res[update].success) {
+                        errorMessage += res[update].message + "\n"
+                    }
+                }
+                setSnack({active: true, variant: 'error', message:`Error saving changes:\n${errorMessage}`});
             }
         }).catch((err) => {
             console.log("Error", err)
-            setSnack({active: true, variant: 'error', message: 'Error saving changes.'});
+            setSnack({active: true, variant: 'error', message: 'Server Error when saving changes'});
+        }).finally(() => {
+            setWaiting(false);
         })
 
     }
+
+    
+    const [tabValue, setTabValue] = useState(0); // Active Tab tabValue
+    const tabOptions = ["Client", "Regions", "Locations", "Contacts"]
+    const tabItems = [
+        <Home client={client} details={details} setDetails={setDetails} setUpdateRequired={setUpdateRequired} setSnack={setSnack}/>, 
+        
+        <Regions regions={regions} setRegions={setRegions} client={client}
+            setUpdateRequired={setUpdateRequired} setSnack={setSnack} 
+            createDialog={createDialog} setCreateDialog={setCreateDialog}/>,
+
+        <Locations locations={locations} setLocations={setLocations} regions={regions} client={client}
+            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
+            createDialog={createDialog} setCreateDialog={setCreateDialog} />, 
+
+        <Contacts contacts={contacts} setContacts={setContacts} regions={regions} client={client} 
+            setUpdateRequired={setUpdateRequired} setSnack={setSnack}
+            createDialog={createDialog} setCreateDialog={setCreateDialog} />
+    ]
 
     return (
     <>
@@ -228,7 +213,9 @@ const Client = () => {
 
         <Footer>
             <Tooltip title="Save Changes">
-                <IconButton disabled={!updateRequired} onClick={handleSave}><SaveIcon /></IconButton>
+                <ProgressIconButton waiting={waiting} disabled={!updateRequired} onClick={handleSave}>
+                    <SaveIcon />
+                </ProgressIconButton>
             </Tooltip>
             {tabValue > 0 ?
                 <Tooltip title={`Create New ${tabOptions[tabValue].slice(0, -1)}`}>

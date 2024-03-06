@@ -173,13 +173,11 @@ const Timesheets = () => {
 
                 if(res?.success) {
                     setPayrollDetails(JSON.parse(res.details));
-                    setFilterPayrollEmployees(true);
                 }
                 else {
                     console.log(response)
                     setSnack({variant: "error", message: res?.message + " - Error getting Payroll Details. Please contact Developer", active: true});
                 }
-                setLoading(false);
 
             })
         }
@@ -194,18 +192,17 @@ const Timesheets = () => {
     }, [, endDate])
 
     useEffect(() => {
-        if(payrollDetails.length > 0 && employees.length > 0) {
+        if(loading && payrollDetails.length > 0 && employees.length > 0) {
             setPayrollDetails(payrollDetails.filter((item: any) => {
                 return employees.some((e) => {
                     return e.myobUid === item['Employee']['UID'];
                 })
             }))
             
-            setFilterPayrollEmployees(false);
+            setLoading(false);
         }   
-        setLoading(false);
 
-    }, [filterPayrollEmployees])
+    }, [payrollDetails, employees])
 
     return ( <> 
         { 

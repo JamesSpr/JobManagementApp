@@ -226,7 +226,7 @@ const BillHome = ({open, onClose, job, contractors, employees, setJob, setSnack 
                     creating ?
                         creating == "bill" ?
                             <CreateBill
-                                setJob={setJob} id={job.po}
+                                setJob={setJob} id={job.id}
                                 contractors={contractors} 
                                 attachment={attachment}
                                 newBill={newObject as BillType} 

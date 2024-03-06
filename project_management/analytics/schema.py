@@ -1,40 +1,12 @@
 import graphene
 from graphene_django import DjangoObjectType
-from graphene import relay
 from graphql_jwt.decorators import login_required
 from .models import Account, Transaction, Sync
 from datetime import datetime
-import environ
-import requests
-import json
 
 import sys
 sys.path.append("..")
-from myob.models import MyobUser
-from myob.schema import checkTokenAuth
-
-def getAllData(url, headers):
-    if "?$" in url:
-        url+= "&$"
-    else:
-        url += "?$"
-
-    url += "top=1000"
-    response = requests.request("GET", url, headers=headers, data={})
-    res = json.loads(response.text)
-    data = res
-    counter = 1
-
-    if 'NextPageLink' in res:
-        while res['NextPageLink'] != None:
-            skip = 1000*counter
-            response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
-            res = json.loads(response.text)
-            data['Items'].extend(res['Items'])
-            counter += 1
-            # print(f"Fetched: {skip} records")
-
-    return data
+from myob.schema import GetGeneralJournal, GetAccounts
 
 
 class AccountInputType(graphene.InputObjectType):
@@ -110,53 +82,32 @@ class UpdateTransactions(graphene.Mutation):
         return self(success=False)
 
 class SyncTransactions(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-
     success = graphene.Boolean()
     data = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, ):
+        last_sync_date = Sync.objects.filter(sync_type="TRA").order_by('-sync_date_time').values()[0]['sync_date_time']
+        last_sync_date = last_sync_date.strftime("%Y-%m-%dT%H:%M:%S")
+        now_datetime = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        filter = ''
+        if last_sync_date:
+            filter = f"DateOccurred gt datetime'{last_sync_date}' and DateOccurred le datetime'{now_datetime}'"
 
-            last_sync_date = Sync.objects.filter(sync_type="TRA").order_by('-sync_date_time').values()[0]['sync_date_time']
-            last_sync_date = last_sync_date.strftime("%Y-%m-%dT%H:%M:%S")
-            now_datetime = datetime.today().strftime("%Y-%m-%dT%H:%M:%S")
-            print(last_sync_date, now_datetime)
-            if last_sync_date:
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction?$filter=DateOccurred gt datetime'{last_sync_date}' and DateOccurred le datetime'{now_datetime}'"
-            else:
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
+        general_journal = GetGeneralJournal.mutate(root, info, filter)
 
-            general_journal = getAllData(url, headers)
-            print(general_journal)
+        # Update Transactions
+        if(general_journal['Items']):
+            UpdateTransactions.mutate(root, info, general_journal['Items'])
+
+        sync = Sync()
+        sync.sync_type = "TRA"
+        sync.save()
+
+        return self(success=True)
         
-            # Update Transactions
-            if(general_journal['Items']):
-                UpdateTransactions.mutate(root, info, general_journal['Items'])
-
-            sync = Sync()
-            sync.sync_type = "TRA"
-            sync.save()
-
-            return self(success=True)
-        else:
-            return self(success=False, data="MYOB Connection Error")
-
 class SyncAccounts(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -167,33 +118,15 @@ class SyncAccounts(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, uid):
-        env = environ.Env()
-        environ.Env.read_env()
+        accounts = GetAccounts.mutate(root, info)
+        print(accounts)
+        UpdateAccounts.mutate(root, info, accounts['Items'])
 
-        if MyobUser.objects.filter(id=uid).exists():
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        sync = Sync()
+        sync.sync_type = "ACC"
+        sync.save()
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Account"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-
-            accounts = getAllData(url, headers)
-            print(accounts)
-            UpdateAccounts.mutate(root, info, accounts['Items'])
-
-            sync = Sync()
-            sync.sync_type = "ACC"
-            sync.save()
-
-            return self(success=True)
-        else:
-            return self(success=False, data="MYOB Connection Error")
+        return self(success=True)
     
 class SyncType(DjangoObjectType):
     class Meta:

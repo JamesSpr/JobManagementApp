@@ -2,9 +2,8 @@ import React, { useState, useEffect }  from 'react';
 import { axiosPrivate } from '../../hooks/axios';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Grid, Typography,} from '@mui/material';
-import axios from 'axios';
 import useAuth from '../auth/useAuth';
-import { InputField } from '../../components/Components';
+import { InputField, ProgressButton } from '../../components/Components';
 
 const MyobActivate = () => {
 
@@ -13,11 +12,13 @@ const MyobActivate = () => {
     const code = searchParams.get('code');
     const navigate = useNavigate();
 
-    const [queries, setQueries] = useState({client: "CompanyName eq 'BGIS'", contractor: "CompanyName eq 'Buildlogic Pty Ltd'", 
+    const [queries, setQueries] = useState({customer: "CompanyName eq 'BGIS'", contractor: "CompanyName eq 'Buildlogic Pty Ltd'", 
                                             bill: "Number eq '00006510'", order: "Number eq '00001570'", invoice: "Number eq '00001481'",
                                              job: "Number eq 'PO8172189'", timesheet: "Employee/Name eq 'James Sprague'", custom: "Payroll/PayrollCategory/Wage",
                                              contractorName: "", contractorABN: "", clientName: "",});
+
     const [fields, setFields] = useState({invoice: ""})
+    const [waiting, setWaiting] = useState({getJobs: false, getCustomer: false, getgeneralJournal: false, getAccounts: false,})
 
     if(code) {
         useEffect(() => {
@@ -148,30 +149,30 @@ const MyobActivate = () => {
     }
 
     const getAccounts = async () => {
+        setWaiting(prev => ({...prev, getAccounts: true}))
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobGetAccounts($uid:String!) {
-                    myob_get_accounts: myobGetAccounts(uid:$uid) {
+                query: `mutation getAccounts {
+                    accounts: getAccounts {
                         success
                         message
                     }
                 }`,
-                variables: {
-                    uid: auth?.myob?.id,
-                }
+                variables: {}
             })
         }).then((response) => {
             // console.log("success", response);
-            const res = response.data?.data?.myob_get_accounts;
+            const res = response.data?.data?.accounts;
             if(res.success) {
                 // console.log(res.message)
-                const accounts = JSON.parse(res.message);
-                console.log("Accounts:", accounts)
+                console.log("Accounts:", JSON.parse(res.message))
             }
             else {
-                console.log("error!", JSON.parse(res.message) ?? "");
+                console.log("Error:", JSON.parse(res.message) ?? "");
             }
+        }).finally(() => {
+            setWaiting(prev => ({...prev, getAccounts: false}))
         })
     }
 
@@ -204,58 +205,61 @@ const MyobActivate = () => {
     }
 
     const getGeneralJournal = async () => {
+        setWaiting(prev => ({...prev, generalJournal: true}))
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobGetGeneralJournal($uid:String!) {
-                    generalJournal: myobGetGeneralJournal(uid:$uid) {
+                query: `mutation getGeneralJournal() {
+                    generalJournal: getGeneralJournal() {
                         success
                         message
+                        generalJournal
                     }
                 }`,
-                variables: {
-                    uid: auth?.myob?.id,
-                }
+                variables: {}
             })
         }).then((response) => {
             // console.log("success", response);
             const res = response.data?.data?.generalJournal;
             if(res.success) {
-                // console.log(res.message)
-                const generalJournal = JSON.parse(res.message);
-                console.log("General Journal:", generalJournal)
+                console.log("General Journal:", JSON.parse(res.generalJournal))
             }
             else {
-                console.log("error!", JSON.parse(res.message) ?? "");
+                console.log("Error:", res.message);
             }
+        }).finally(()  => {
+            setWaiting(prev => ({...prev, generalJournal: false}))
         })
     }
 
-    const getClients = async () => {
+    const getCustomer = async () => {
+        setWaiting(prev => ({...prev, getCustomer: true}));
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobGetClients($uid:String!, $client:String!) {
-                    myob_get_clients: myobGetClients(uid:$uid, client:$client) {
+                query: `mutation getCustomers($filter:String!) {
+                    customers: getCustomers(filter:$filter) {
                         success
                         message
+                        customers
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
-                    client: queries?.client,
+                    filter: queries?.customer,
                 },
             })
         }).then((response) => {
             // console.log("success", response);
-            const res = response.data?.data?.myob_get_clients;
+            const res = response.data?.data?.customers;
+
             if(res.success) {
-                const clients = JSON.parse(res.message);
-                console.log("Clients:", clients)
+                console.log("Customer:", JSON.parse(res.customers))
             }
             else {
-                console.log("error!");
+                console.log("Error:", res.message);
             }
+        }).finally(() => {
+            setWaiting(prev => ({...prev, getCustomer: false}));
         })
     }
 
@@ -355,20 +359,19 @@ const MyobActivate = () => {
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobGetTimesheets($uid:String!, $timesheet:String!) {
-                    myob_get_timesheets: myobGetTimesheets(uid:$uid, timesheet:$timesheet) {
+                query: `mutation GetTimesheets($timesheet:String!) {
+                    timesheets: GetTimesheets(timesheet:$timesheet) {
                         success
                         message
                     } 
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
                     timesheet: queries.timesheet,
                 },
             })
         }).then((response) => {
             // console.log("success", response);
-            const res = response.data?.data?.myob_get_timesheets;
+            const res = response.data?.data?.timesheets;
             if(res.success) {
                 const bill = JSON.parse(res.message);
                 console.log("Timesheets:", bill)
@@ -407,29 +410,30 @@ const MyobActivate = () => {
     }
 
     const getJobs = async () => {
+        setWaiting(prev => ({...prev, getJobs: true}))
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobGetJobs($uid:String!, $job:String!) {
-                    myob_get_jobs: myobGetJobs(uid:$uid, job:$job) {
+                query: `mutation getMyobJobs($filter:String!) {
+                    jobs: getMyobJobs(filter:$filter) {
                         success
                         message
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
-                    job: queries.job,
+                    filter: queries.job,
                 }
             })
         }).then((response) => {
-            const res = response.data?.data?.myob_get_jobs;
+            const res = response.data?.data?.jobs;
             if(res.success) {
-                const jobs = JSON.parse(res.message);
-                console.log("Jobs:", jobs)
+                console.log("Jobs:", JSON.parse(res.message))
             }
             else {
-                console.log("error!", JSON.parse(res.message) ?? "");
+                console.log("Error:", JSON.parse(res.message) ?? "");
             }
+        }).finally(() => {
+            setWaiting(prev => ({...prev, getJobs: false}))
         })
     }
 
@@ -479,7 +483,7 @@ const MyobActivate = () => {
             // console.log("success", response);
             const res = response.data?.data?.myob_sync_clients;
             if(res.success) {
-                // console.log(res.message)
+                // console.log(res.message)`
                 const clients = JSON.parse(res.message);
                 console.log("Clients:", clients)
             }
@@ -857,18 +861,18 @@ const MyobActivate = () => {
                         <Typography variant="h6">MYOB Requests</Typography>
                     </Grid>
                     <Grid item xs={12}>
-                        <Button style={{width: '150px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={getAccounts}>Get Accounts</Button>
+                        <ProgressButton name="Get Accounts" buttonVariant='outlined' onClick={getAccounts} waiting={waiting.getAccounts} />
                         <Button style={{width: '150px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={getTaxCodes}>Get Tax Codes</Button>
-                        <Button style={{width: '210px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={getGeneralJournal}>Get General Journal</Button>
+                        <ProgressButton name='Get General Journal' buttonVariant='outlined' onClick={getGeneralJournal} waiting={waiting.getGeneralJournal} />
                         <Button style={{width: '180px', margin: 'auto 5px', padding: '2px'}} variant='outlined' onClick={customFunction}>Custom Function</Button>
                     </Grid>
                     <Grid item xs={12}>
                         <InputField width={500} label="Job Filter" value={queries.job} onChange={(e) => setQueries(prev => ({...prev, job: e.target.value}))}/>
-                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getJobs}>Get Jobs</Button>
+                        <ProgressButton  name='Get Jobs' buttonVariant='outlined' onClick={getJobs} waiting={waiting.getJobs}/>
                     </Grid>
                     <Grid item xs={12}>
-                        <InputField width={500} label="Client Filter" value={queries.client} onChange={(e) => setQueries(prev => ({...prev, client: e.target.value}))}/>
-                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getClients}>Get Clients</Button>
+                        <InputField width={500} label="Customer Filter" value={queries.customer} onChange={(e) => setQueries(prev => ({...prev, customer: e.target.value}))}/>
+                        <ProgressButton name='Get Customer' buttonVariant='outlined' onClick={getCustomer} waiting={waiting.getCustomer}/>
                     </Grid>
                     <Grid item xs={12}>
                         <InputField width={500} label="Contractor Filter" value={queries.contractor} onChange={(e) => setQueries(prev => ({...prev, contractor: e.target.value}))}/>

@@ -71,16 +71,14 @@ const CompanyDashboard = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `
-                    mutation syncTransactions($uid:String!) {
-                        transactions: syncTransactions(uid: $uid) {
+                    mutation syncTransactions() {
+                        transactions: syncTransactions() {
                             success
                             data
                         }
                     }
                 `,
-                variables: {
-                    uid: auth?.myob?.id
-                }
+                variables: {}
             }),
         }).then((response) => {
             const res = response?.data?.data.transactions;

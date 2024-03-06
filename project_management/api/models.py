@@ -42,6 +42,7 @@ class Client(models.Model):
     name = models.CharField(max_length=100)
     display_name = models.CharField(max_length=50, blank=True, null=True)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
+    abn = models.CharField(max_length=16)
 
     @classmethod
     def get_default_id(cls):

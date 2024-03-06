@@ -19,7 +19,6 @@ import environ
 import requests
 import urllib.parse
 import inspect
-import time
 
 
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
@@ -36,7 +35,7 @@ def is_valid_myob_user(uid, user):
     return False
 
 # Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
-def checkTokenAuth(uid, usr):
+def check_user_token_auth(uid, usr):
     env = environ.Env()
     environ.Env.read_env()
 
@@ -71,13 +70,187 @@ def checkTokenAuth(uid, usr):
             user.save()
             
             print('MYOB Auth Refreshed By', user.username)
-            return True
+            return user
         else:
             print('MYOB Auth Active')
-            return True
+            return user
     else:
         print('Error with MYOB User Auth')
-        return False
+        return None
+    
+def get_myob_user(user):
+    user = CustomUser.objects.get(email=user)
+
+    if user.myob_access and user.myob_user:    
+        return user.myob_user
+    
+    return None
+
+# Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
+def check_user_token_auth_new(usr):
+    env = environ.Env()
+    environ.Env.read_env()
+
+    print(f'Checking MYOB Auth from {inspect.stack()[1][0].f_locals["self"].__name__}')
+
+    user = get_myob_user(usr)
+    if user is None:
+        print('Error with MYOB User Auth')
+        return None
+
+    if timezone.now() >= (user.access_expires_at - timedelta(minutes=2)):
+        
+        link = "https://secure.myob.com/oauth2/v1/authorize"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        payload = {
+            'client_id': env('CLIENT_ID'),
+            'client_secret': env('CLIENT_SECRET'),
+            'refresh_token': user.refresh_token,
+            'grant_type':'refresh_token',
+        }
+        # print(payload)
+        response = requests.post(link, data=payload, headers=headers)
+
+        if not response.status_code == 200:
+            print("MYOB Authentication error for", user.username)
+            print(response)
+            return False
+
+        res = json.loads(response.text)
+
+        user.access_token = res['access_token']
+        user.refresh_token = res['refresh_token']
+        user.access_expires_at = timezone.now() + timedelta(seconds=int(res['expires_in']))
+        user.save()
+        
+        print('MYOB Auth Refreshed By', user.username)
+        return user
+    else:
+        print('MYOB Auth Active')
+        return user
+
+
+def myob_get(user, url, filter='', all=False):
+    """ Basic Get request to myob with option for filter
+
+    ``user`` is the myob user object
+    ``url`` is the myob endpoint for the get request
+    ``filter`` is an optional string with the odata query for the myob endpoint
+    
+    returns json object with the response data
+
+    """
+
+    env = environ.Env()
+    environ.Env.read_env()
+
+    headers = {                
+        'Authorization': f'Bearer {user.access_token}',
+        'x-myobapi-key': env('CLIENT_ID'),
+        'x-myobapi-version': 'v2',
+        'Accept-Encoding': 'gzip,deflate',
+    }
+
+    get_filter = "" if filter == "" else "?$filter=" + filter
+    if all:
+        get_filter += "&$top=1000" if filter else "?$top=1000"
+
+    print(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}{get_filter}/")
+    response = requests.get(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}{get_filter}", headers=headers) 
+
+    if response.status_code != 200:
+        print(response.status_code, response.text)
+        return None
+
+    if not all:
+        return json.loads(response.text)
+    
+    res = json.loads(response.text)
+    data = res
+    counter = 1
+    
+    while res['NextPageLink'] != None:
+        skip = 1000*counter
+        response = requests.get(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}/{get_filter}{'?' if get_filter == '' else '&'}$skip={skip}", headers=headers)
+        
+        if response.status_code != 200:
+            print(response.status_code, response.text)
+            raise BaseException("Get Request Failed")
+            
+        res = json.loads(response.text)
+        data['Items'].extend(res['Items'])
+        counter += 1
+
+    # print(f"Fetched: {skip} records from {url}")
+
+    return data
+
+def myob_post(user, url, payload):
+    """ Basic Post request to myob with a payload
+
+        ``user`` is the myob user object
+        ``url`` is the myob endpoint for the get request
+        ``payload`` is the payload for the request
+    
+        returns the requests data
+    """
+
+    env = environ.Env()
+    environ.Env.read_env()
+
+    headers = {                
+        'Authorization': f'Bearer {user.access_token}',
+        'x-myobapi-key': env('CLIENT_ID'),
+        'x-myobapi-version': 'v2',
+        'Accept-Encoding': 'gzip,deflate',
+    }
+
+    response = requests.post(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}", headers=headers, data=payload)
+    
+    if response.status_code != 200 and response.status_code != 201:
+        print(response.status_code, response.text)
+        return None
+    
+    return response
+
+def myob_put(user, url, payload):
+    """ Basic Put request to myob with a payload
+
+        ``user`` is the myob user object
+        ``url`` is the myob endpoint for the get request
+        ``payload`` is the payload for the request
+    
+        returns the requests data
+    """
+
+    # if "UID" not in payload:
+    #     raise BaseException("UID is required for a put request")
+    # if "RowVersion" not in payload:
+    #     raise BaseException("RowVersion is required for a put request")
+
+    env = environ.Env()
+    environ.Env.read_env()
+
+    headers = {                
+        'Authorization': f'Bearer {user.access_token}',
+        'x-myobapi-key': env('CLIENT_ID'),
+        'x-myobapi-version': 'v2',
+        'Accept-Encoding': 'gzip,deflate',
+    }
+
+    response = requests.put(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}", headers=headers, data=payload)
+
+    
+    print(response.status_code, response.text)
+    if response.status_code != 200:
+        print(response.status_code, response.text)
+        return None
+
+    return response
+
+def get_response_uid(response):
+    return response.headers['Location'][-36:]
+
 class MyobUserType(DjangoObjectType):
     class Meta:
         model = MyobUser
@@ -126,6 +299,36 @@ class myobGetAccessToken(graphene.Mutation):
         response = requests.post(link, data=payload, headers=headers)
 
         return self(success=True, response=response.text)
+
+class myobRefreshToken(graphene.Mutation):
+    class Arguments:
+        uid = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, uid):
+        env = environ.Env()
+        environ.Env.read_env()
+
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
+
+        link = "https://secure.myob.com/oauth2/v1/authorize"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        payload = {
+            'client_id': env('CLIENT_ID'),
+            'client_secret': env('CLIENT_SECRET'),
+            'refresh_token': user.refresh_token,
+            'grant_type':'refresh_token',
+        }
+        # print(payload)
+        response = requests.post(link, data=payload, headers=headers)
+
+        return self(success=True, message=response.text)
 
 class updateOrCreateMyobAccount(graphene.Mutation):
     class Arguments:
@@ -189,141 +392,133 @@ class DeleteMyobUser(graphene.Mutation):
 
         return self(success=True)
 
-
-class myobRefreshToken(graphene.Mutation):
+class CustomerInputType(graphene.InputObjectType):
+    id = graphene.String()
+    myob_uid = graphene.String()
+    name = graphene.String()
+    display_name = graphene.String()
+    abn = graphene.String()
+          
+class GetCustomers(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
+        filter = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
+    customers = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, filter):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        endpoint = "Contact/Customer"
+        response = myob_get(user, endpoint, filter)
 
-            link = "https://secure.myob.com/oauth2/v1/authorize"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            payload = {
-                'client_id': env('CLIENT_ID'),
-                'client_secret': env('CLIENT_SECRET'),
-                'refresh_token': user.refresh_token,
-                'grant_type':'refresh_token',
-            }
-            # print(payload)
-            response = requests.post(link, data=payload, headers=headers)
+        return self(success=True, customers=json.dumps(response))
 
-            return self(success=True, message=response.text)
-
-        else:
-            return self(success=False, message="User Not Found")
-
-class myobGetClients(graphene.Mutation):
+class CreateCustomer(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        client = graphene.String()
+        customer = CustomerInputType()
 
     success = graphene.Boolean()
     message = graphene.String()
+    myob_uid = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, client):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, customer):
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        if(Client.objects.filter(name=customer.name).exists()):
+            return self(success=False, message="Client Already Exists in Database")
 
-            client_filter = "" if client == "" else "?$filter=" + client
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer{client_filter}"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.get(link, headers=headers)
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            return self(success=True, message=response.text)
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        # Check if the customer exists based on the ABN
+        customer_filter = f"SellingDetails/ABN eq '{customer.abn}'"
+        get_url = "Contact/Customer"
+        get_res = myob_get(user, get_url, customer_filter)
+
+        if len(get_res['Items']) > 0:
+            if len(get_res['Items'] > 1):
+                return self(success=False, message="There are multiple customers with the same ABN in MYOB. Please manually merge and retry")
+
+            return self(success=True, message="Customer Already Exists in MYOB. Customer info has been linked", myob_uid=get_res['Items'][0]['UID'])
         
-class myobCreateClient(graphene.Mutation):
+        # Post the new customer details to MYOB
+        post_url = "Contact/Customer"
+        payload = json.dumps({
+            'CompanyName': customer.name,
+            'IsActive': True,
+            'SellingDetails': {
+                'ABN': customer.abn,
+                'SaleLayout': 'NoDefault',
+                'InvoiceDelivery': 'Print',
+                'TaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'},
+                'FreightTaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'}
+            },
+        })
+        post_res = myob_post(user, post_url, payload)
+
+        if not post_res.status_code == 201:
+            return self(success=False, message=post_res.text)
+        
+        myob_uid = get_response_uid(post_res)
+
+        return self(success=True, message="New Customer Successfully Created", myob_uid=myob_uid)
+
+class UpdateCustomer(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        name = graphene.String()
+        customer = CustomerInputType()
 
     success = graphene.Boolean()
     message = graphene.String()
-    client = graphene.Field(ClientType)
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, name):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, customer):
 
-        if(Client.objects.filter(name=name).exists()):
-            return self(success=False, message="Client Already Exists")
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
+        
+        # Check if the customer exists based on the ABN
+        filter = f"UID eq guid'{customer.myob_uid}'"
+        get_endpoint = "Contact/Customer"
+        get_res = myob_get(user, get_endpoint, filter)
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        # If ABN has been updated we need to check the new ABN is not going to be the same as another client
+        if customer.abn != get_res['Items'][0]['SellingDetails']['ABN']:
+            filter_abn_check = f"SellingDetails/ABN eq '{customer.abn}'"
+            get_res_abn_check = myob_get(user, get_endpoint, filter_abn_check)
 
-            # html_name = urllib.parse.quote(name)
-            client_filter = "" if name == "" else f"?$filter=CompanyName eq'{name}'"
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer{client_filter}"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.get(link, headers=headers)
-            res = json.loads(response.text)
+            if len(get_res_abn_check['Items']) >= 1:
+                return self(success=False, message="The ABN entered already exists for another client, you may already have this client in MYOB.")
+        
+        # Update the myob customer details
+        put_endpoint = f"Contact/Customer/{customer.myob_uid}"
+        payload = json.dumps({
+            'UID': customer.myob_uid,
+            'CompanyName': customer.name,
+            'SellingDetails': {
+                'ABN': customer.abn,
+                'TaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'},
+                'FreightTaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'}
+            },
+            'RowVersion': get_res['Items'][0]['RowVersion']
+        })
+        put_res = myob_put(user, put_endpoint, payload)
 
-            if(len(res['Items']) > 0):
-                return self(success=False, message="Client Already Exists in MYOB")
-            
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer/"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            payload = json.dumps({
-                'CompanyName': name,
-                'IsActive': True,
-                'SellingDetails': {
-                    'SaleLayout': 'NoDefault',
-                    'InvoiceDelivery': 'Print',
-                    'TaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'},
-                    'FreightTaxCode': {'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4'}
-                },
-            })
-            response = requests.post(link, headers=headers, data=payload)
-
-            if not response.status_code == 201:
-                return self(success=False, message=response.text)
-            
-            myob_uid = response.headers['Location'][-36:]
-            
-            client = Client()
-            client.name = name
-            client.myob_uid = myob_uid
-            client.save()
-
-            return self(success=True, client=client, message="Client Successfully Created")
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        if put_res.status_code != 200:
+            print(put_res.status_code, put_res.text)
+            return self(success=False, message="Error Updating MYOB Customer" + put_res.text)
+        
+        return self(success=True, message="Customer Successfully Updated")
+        
 
 class myobGetContractors(graphene.Mutation):
     class Arguments:
@@ -339,23 +534,21 @@ class myobGetContractors(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
             
-            contractor_filter = "" if contractor == "" else "?$filter=" + contractor
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier{contractor_filter}"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.get(link, headers=headers)
+        contractor_filter = "" if contractor == "" else "?$filter=" + contractor
+        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier{contractor_filter}"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.get(link, headers=headers)
 
-            return self(success=True, message=response.text)
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message=response.text)
 
 
 class myobContractorContactInput(graphene.InputObjectType):
@@ -401,183 +594,181 @@ class myobCreateContractor(graphene.Mutation):
         if Contractor.objects.filter(abn=contractor.abn).exists():
             return self(success=False, message="Contractor Already Exists. Check ABN")
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/?$filter=BuyingDetails/ABN eq '{contractor.abn.strip()}'"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            check_existing = requests.get(link, headers=headers)
+        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/?$filter=BuyingDetails/ABN eq '{contractor.abn.strip()}'"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        check_existing = requests.get(link, headers=headers)
 
-            existing = json.loads(check_existing.text)
-            existing = existing['Items']
+        existing = json.loads(check_existing.text)
+        existing = existing['Items']
 
 
-            if len(existing) > 0:
-                existing = existing[0]
-                print(existing)
+        if len(existing) > 0:
+            existing = existing[0]
+            print(existing)
 
-                # Create the contractor with the existing MYOB account
-                new_contractor = Contractor()
-                new_contractor.myob_uid = existing['UID']
-                new_contractor.name = existing['CompanyName']
-                new_contractor.abn = existing['BuyingDetails']['ABN']
-                new_contractor.bsb = existing['PaymentDetails']['BSBNumber']
-                new_contractor.bank_account_name = existing['PaymentDetails']['BankAccountName']
-                new_contractor.bank_account_number = existing['PaymentDetails']['BankAccountNumber']
-                new_contractor.save()
-
-                for i, contact in enumerate(existing['Addresses']):
-                    new_contractor_contact = ContractorContact()
-                    new_contractor_contact.company = new_contractor
-                    new_contractor_contact.location = i
-                    new_contractor_contact.contact_name = contact['ContactName']
-                    new_contractor_contact.address = contact['Street']
-                    new_contractor_contact.locality = contact['City']
-                    new_contractor_contact.state = contact['State']
-                    new_contractor_contact.postcode = contact['PostCode']
-                    new_contractor_contact.country = contact['Country']
-                    new_contractor_contact.phone1 = contact['Phone1']
-                    new_contractor_contact.phone2 = contact['Phone2']
-                    new_contractor_contact.phone3 = contact['Phone3']
-                    new_contractor_contact.fax = contact['Fax']
-                    new_contractor_contact.email = contact['Email']
-                    new_contractor_contact.website = contact['Website']
-                    new_contractor_contact.save()
-
-                # Update Contractor Details in MYOB if required
-                put_payload = {'RowVersion': existing['RowVersion']}
-                    
-                if not existing['CompanyName']:
-                    put_payload.update({'CompanyName': contractor['name']})
-
-                if not existing['BuyingDetails']['ABN']:
-                    put_payload.update({'BuyingDetails': {'ABN': contractor.abn.strip()}})
-
-                if not existing['PaymentDetails']['BSBNumber']:
-                    put_payload.update({'PaymentDetails': {'BSBNumber': contractor['bsb']}})
-
-                if not existing['PaymentDetails']['BankAccountName']:
-                    put_payload.update({'PaymentDetails': {'BankAccountName': contractor['bank_account_name']}})
-
-                if not existing['PaymentDetails']['BankAccountNumber']:
-                    put_payload.update({'PaymentDetails': {'BankAccountNumber': contractor['bank_account_number'].strip()}})
-
-                if len(existing['Addresses']) == 0:
-                    contact_addresses = []
-                    for i, contact in enumerate(contractor.contacts):
-                        contact_addresses.append({
-                            'Location': i,
-                            'ContactName': contact.contact_name.strip(),
-                            'Street': contact.address.strip(),
-                            'City': contact.locality.strip(),
-                            'State': contact.state.strip(),
-                            'Postcode': contact.postcode.strip(),
-                            'Country': contact.country.strip(),
-                            'Phone1': contact.phone1.strip(),
-                            'Phone2': contact.phone2.strip(),
-                            'Phone3': contact.phone3.strip(),
-                            'Fax': contact.fax.strip(),
-                            'Email': contact.email.strip(),
-                            'Website': contact.website.strip(),
-                        })
-
-                if len(put_payload) > 1:
-                    put_link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{existing['UID']}"
-                    response = requests.put(put_link, headers=headers, data=put_payload)
-
-                    if not response.status_code == 200:
-                        print(response.text)
-                        print("MYOB Update Unsuccessful")
-
-                return self(success=True, message="Contractor Existed in MYOB")
-
-            contact_addresses = []
-            for i, contact in enumerate(contractor.contacts):
-                contact_addresses.append({
-                    'Location': i,
-                    'ContactName': contact.contact_name.strip(),
-                    'Street': contact.address.strip(),
-                    'City': contact.locality.strip(),
-                    'State': contact.state.strip(),
-                    'Postcode': contact.postcode.strip(),
-                    'Country': contact.country.strip(),
-                    'Phone1': contact.phone1.strip(),
-                    'Phone2': contact.phone2.strip(),
-                    'Phone3': contact.phone3.strip(),
-                    'Fax': contact.fax.strip(),
-                    'Email': contact.email.strip(),
-                    'Website': contact.website.strip(),
-                })
-
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            payload = json.dumps({
-                'CompanyName': contractor['name'],
-                'Addresses': contact_addresses,
-                'BuyingDetails': {
-                    'ABN': contractor.abn.strip(),
-                    'IsReportable': True,
-                    'TaxCode': {
-                        'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
-                    },
-                    'FreightTaxCode': {
-                        'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
-                    },
-                },
-                'PaymentDetails': {
-                    'BSBNumber': contractor['bsb'].strip(),
-                    'BankAccountName': contractor['bank_account_name'].strip(),
-                    'BankAccountNumber': contractor['bank_account_number'].strip(),
-                },
-            })
-            response = requests.post(link, headers=headers, data=payload)
-
-            if not response.status_code == 201:
-                return self(success=False, message=response.text)
-
-            myob_uid = response.headers['Location'][-36:]
-
+            # Create the contractor with the existing MYOB account
             new_contractor = Contractor()
-            new_contractor.myob_uid = myob_uid
-            new_contractor.name = contractor.name.strip()
-            new_contractor.abn = contractor.abn.strip()
-            new_contractor.bsb = contractor.bsb.strip()
-            new_contractor.bank_account_name = contractor.bank_account_name.strip()
-            new_contractor.bank_account_number = contractor.bank_account_number.strip()
+            new_contractor.myob_uid = existing['UID']
+            new_contractor.name = existing['CompanyName']
+            new_contractor.abn = existing['BuyingDetails']['ABN']
+            new_contractor.bsb = existing['PaymentDetails']['BSBNumber']
+            new_contractor.bank_account_name = existing['PaymentDetails']['BankAccountName']
+            new_contractor.bank_account_number = existing['PaymentDetails']['BankAccountNumber']
             new_contractor.save()
 
-            for i, contact in enumerate(contractor.contacts):
+            for i, contact in enumerate(existing['Addresses']):
                 new_contractor_contact = ContractorContact()
                 new_contractor_contact.company = new_contractor
                 new_contractor_contact.location = i
-                new_contractor_contact.contact_name = contact.contact_name.strip()
-                new_contractor_contact.address = contact.address.strip()
-                new_contractor_contact.locality = contact.locality.strip()
-                new_contractor_contact.state = contact.state.strip()
-                new_contractor_contact.postcode = contact.postcode.strip()
-                new_contractor_contact.country = contact.country.strip()
-                new_contractor_contact.phone1 = contact.phone1.strip()
-                new_contractor_contact.phone2 = contact.phone2.strip()
-                new_contractor_contact.phone3 = contact.phone3.strip()
-                new_contractor_contact.fax = contact.fax.strip()
-                new_contractor_contact.email = contact.email.strip()
-                new_contractor_contact.website = contact.website.strip()
+                new_contractor_contact.contact_name = contact['ContactName']
+                new_contractor_contact.address = contact['Street']
+                new_contractor_contact.locality = contact['City']
+                new_contractor_contact.state = contact['State']
+                new_contractor_contact.postcode = contact['PostCode']
+                new_contractor_contact.country = contact['Country']
+                new_contractor_contact.phone1 = contact['Phone1']
+                new_contractor_contact.phone2 = contact['Phone2']
+                new_contractor_contact.phone3 = contact['Phone3']
+                new_contractor_contact.fax = contact['Fax']
+                new_contractor_contact.email = contact['Email']
+                new_contractor_contact.website = contact['Website']
                 new_contractor_contact.save()
 
-            return self(success=True, message=response.text)
-        else:
-            return self(success=False, message="MYOB Connection Error")
+            # Update Contractor Details in MYOB if required
+            put_payload = {'RowVersion': existing['RowVersion']}
+                
+            if not existing['CompanyName']:
+                put_payload.update({'CompanyName': contractor['name']})
+
+            if not existing['BuyingDetails']['ABN']:
+                put_payload.update({'BuyingDetails': {'ABN': contractor.abn.strip()}})
+
+            if not existing['PaymentDetails']['BSBNumber']:
+                put_payload.update({'PaymentDetails': {'BSBNumber': contractor['bsb']}})
+
+            if not existing['PaymentDetails']['BankAccountName']:
+                put_payload.update({'PaymentDetails': {'BankAccountName': contractor['bank_account_name']}})
+
+            if not existing['PaymentDetails']['BankAccountNumber']:
+                put_payload.update({'PaymentDetails': {'BankAccountNumber': contractor['bank_account_number'].strip()}})
+
+            if len(existing['Addresses']) == 0:
+                contact_addresses = []
+                for i, contact in enumerate(contractor.contacts):
+                    contact_addresses.append({
+                        'Location': i,
+                        'ContactName': contact.contact_name.strip(),
+                        'Street': contact.address.strip(),
+                        'City': contact.locality.strip(),
+                        'State': contact.state.strip(),
+                        'Postcode': contact.postcode.strip(),
+                        'Country': contact.country.strip(),
+                        'Phone1': contact.phone1.strip(),
+                        'Phone2': contact.phone2.strip(),
+                        'Phone3': contact.phone3.strip(),
+                        'Fax': contact.fax.strip(),
+                        'Email': contact.email.strip(),
+                        'Website': contact.website.strip(),
+                    })
+
+            if len(put_payload) > 1:
+                put_link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{existing['UID']}"
+                response = requests.put(put_link, headers=headers, data=put_payload)
+
+                if not response.status_code == 200:
+                    print(response.text)
+                    print("MYOB Update Unsuccessful")
+
+            return self(success=True, message="Contractor Existed in MYOB")
+
+        contact_addresses = []
+        for i, contact in enumerate(contractor.contacts):
+            contact_addresses.append({
+                'Location': i,
+                'ContactName': contact.contact_name.strip(),
+                'Street': contact.address.strip(),
+                'City': contact.locality.strip(),
+                'State': contact.state.strip(),
+                'Postcode': contact.postcode.strip(),
+                'Country': contact.country.strip(),
+                'Phone1': contact.phone1.strip(),
+                'Phone2': contact.phone2.strip(),
+                'Phone3': contact.phone3.strip(),
+                'Fax': contact.fax.strip(),
+                'Email': contact.email.strip(),
+                'Website': contact.website.strip(),
+            })
+
+        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        payload = json.dumps({
+            'CompanyName': contractor['name'],
+            'Addresses': contact_addresses,
+            'BuyingDetails': {
+                'ABN': contractor.abn.strip(),
+                'IsReportable': True,
+                'TaxCode': {
+                    'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
+                },
+                'FreightTaxCode': {
+                    'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
+                },
+            },
+            'PaymentDetails': {
+                'BSBNumber': contractor['bsb'].strip(),
+                'BankAccountName': contractor['bank_account_name'].strip(),
+                'BankAccountNumber': contractor['bank_account_number'].strip(),
+            },
+        })
+        response = requests.post(link, headers=headers, data=payload)
+
+        if not response.status_code == 201:
+            return self(success=False, message=response.text)
+
+        myob_uid = response.headers['Location'][-36:]
+
+        new_contractor = Contractor()
+        new_contractor.myob_uid = myob_uid
+        new_contractor.name = contractor.name.strip()
+        new_contractor.abn = contractor.abn.strip()
+        new_contractor.bsb = contractor.bsb.strip()
+        new_contractor.bank_account_name = contractor.bank_account_name.strip()
+        new_contractor.bank_account_number = contractor.bank_account_number.strip()
+        new_contractor.save()
+
+        for i, contact in enumerate(contractor.contacts):
+            new_contractor_contact = ContractorContact()
+            new_contractor_contact.company = new_contractor
+            new_contractor_contact.location = i
+            new_contractor_contact.contact_name = contact.contact_name.strip()
+            new_contractor_contact.address = contact.address.strip()
+            new_contractor_contact.locality = contact.locality.strip()
+            new_contractor_contact.state = contact.state.strip()
+            new_contractor_contact.postcode = contact.postcode.strip()
+            new_contractor_contact.country = contact.country.strip()
+            new_contractor_contact.phone1 = contact.phone1.strip()
+            new_contractor_contact.phone2 = contact.phone2.strip()
+            new_contractor_contact.phone3 = contact.phone3.strip()
+            new_contractor_contact.fax = contact.fax.strip()
+            new_contractor_contact.email = contact.email.strip()
+            new_contractor_contact.website = contact.website.strip()
+            new_contractor_contact.save()
+
+        return self(success=True, message=response.text)
         
 class myobUpdateContractor(graphene.Mutation):
     class Arguments:
@@ -593,65 +784,64 @@ class myobUpdateContractor(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            for contractor in contractors:
-                print("Updating Contractor:", contractor)
-                link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{contractor['myob_uid']}'"
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.get(link, headers=headers)
 
-                if not response.status_code == 200:
-                    return self(success=False, message=response.text)
-                    
-                res = json.loads(response.text)
-                res = res['Items'][0]
-                print(res['RowVersion'])
+        for contractor in contractors:
+            print("Updating Contractor:", contractor)
+            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{contractor['myob_uid']}'"
+            headers = {                
+                'Authorization': f'Bearer {user.access_token}',
+                'x-myobapi-key': env('CLIENT_ID'),
+                'x-myobapi-version': 'v2',
+                'Accept-Encoding': 'gzip,deflate',
+            }
+            response = requests.get(link, headers=headers)
 
-                link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{contractor['myob_uid']}"
-                payload = json.dumps({
-                    'UID': contractor['myob_uid'],
-                    'CompanyName': contractor['name'],
-                    'BuyingDetails': {
-                        'ABN': contractor['abn'],
-                        'IsReportable': True,
-                        'TaxCode': {
-                            'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
-                        },
-                        'FreightTaxCode': {
-                            'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
-                        },
-                    },
-                    'PaymentDetails': {
-                        'BSBNumber': contractor['bsb'],
-                        'BankAccountName': contractor['bank_account_name'],
-                        'BankAccountNumber': contractor['bank_account_number'].strip(),
-                    },
-                    'RowVersion': res['RowVersion']
-                })
-                response = requests.put(link, headers=headers, data=payload)
-
-                if not response.status_code == 200:
-                    return self(success=False, message=response.text)
+            if not response.status_code == 200:
+                return self(success=False, message=response.text)
                 
-                cont = Contractor.objects.get(id = contractor['id'])
-                cont.name = contractor['name']
-                cont.abn = contractor['abn']
-                cont.bsb = contractor['bsb']
-                cont.bank_account_name = contractor['bank_account_name']
-                cont.bank_account_number = contractor['bank_account_number']
-                cont.save()
+            res = json.loads(response.text)
+            res = res['Items'][0]
+            print(res['RowVersion'])
 
-                return self(success=True, message="Contractor Successfully Updated")
-            else:
-                return self(success=False, message="MYOB Connection Error")
+            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{contractor['myob_uid']}"
+            payload = json.dumps({
+                'UID': contractor['myob_uid'],
+                'CompanyName': contractor['name'],
+                'BuyingDetails': {
+                    'ABN': contractor['abn'],
+                    'IsReportable': True,
+                    'TaxCode': {
+                        'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
+                    },
+                    'FreightTaxCode': {
+                        'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
+                    },
+                },
+                'PaymentDetails': {
+                    'BSBNumber': contractor['bsb'],
+                    'BankAccountName': contractor['bank_account_name'],
+                    'BankAccountNumber': contractor['bank_account_number'].strip(),
+                },
+                'RowVersion': res['RowVersion']
+            })
+            response = requests.put(link, headers=headers, data=payload)
+
+            if not response.status_code == 200:
+                return self(success=False, message=response.text)
+            
+            cont = Contractor.objects.get(id = contractor['id'])
+            cont.name = contractor['name']
+            cont.abn = contractor['abn']
+            cont.bsb = contractor['bsb']
+            cont.bank_account_name = contractor['bank_account_name']
+            cont.bank_account_number = contractor['bank_account_number']
+            cont.save()
+
+            return self(success=True, message="Contractor Successfully Updated")
 
 class myobGetInvoices(graphene.Mutation):
     class Arguments:
@@ -668,72 +858,69 @@ class myobGetInvoices(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            invoice_filter = "" if inv == "" else "?$filter=" + inv
+        invoice_filter = "" if inv == "" else "?$filter=" + inv
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service{invoice_filter}"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-            
-            ## Save Invoice as PDF
-            if not response.status_code == 200:
-                return self(success=False, message=response.text)
-
-            res = json.loads(response.text)
-            res = res['Items']
-
-            if not as_pdf:
-                return self(success=True, message=json.dumps(res))
-
-            if len(res) > 1:
-                for invoice in res:
-                    # Get invoice from MYOB
-                    url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
-                
-                    headers = {                
-                        'Authorization': f'Bearer {user.access_token}',
-                        'x-myobapi-key': env('CLIENT_ID'),
-                        'x-myobapi-version': 'v2',
-                        'Accept-Encoding': 'gzip,deflate',
-                        'Accept': 'Application/PDF'
-                    }
-                    pdf_response = requests.request("GET", url, headers=headers, data={})
-
-                    with open(f"./myob/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
-                        f.write(pdf_response.content)
-
-                return self(success=True, message=response.text)
-
-            invoice = res[0]
-
-            # Get invoice from MYOB
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service{invoice_filter}"
         
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Accept': 'Application/PDF'
-            }
-            pdf_response = requests.request("GET", url, headers=headers, data={})
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        
+        ## Save Invoice as PDF
+        if not response.status_code == 200:
+            return self(success=False, message=response.text)
 
-            with open(f"./myob/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
-                f.write(pdf_response.content)
+        res = json.loads(response.text)
+        res = res['Items']
+
+        if not as_pdf:
+            return self(success=True, message=json.dumps(res))
+
+        if len(res) > 1:
+            for invoice in res:
+                # Get invoice from MYOB
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
+            
+                headers = {                
+                    'Authorization': f'Bearer {user.access_token}',
+                    'x-myobapi-key': env('CLIENT_ID'),
+                    'x-myobapi-version': 'v2',
+                    'Accept-Encoding': 'gzip,deflate',
+                    'Accept': 'Application/PDF'
+                }
+                pdf_response = requests.request("GET", url, headers=headers, data={})
+
+                with open(f"./myob/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
+                    f.write(pdf_response.content)
 
             return self(success=True, message=response.text)
 
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        invoice = res[0]
+
+        # Get invoice from MYOB
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+            'Accept': 'Application/PDF'
+        }
+        pdf_response = requests.request("GET", url, headers=headers, data={})
+
+        with open(f"./myob/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
+            f.write(pdf_response.content)
+
+        return self(success=True, message=response.text)
+
 
 class myobGetOrders(graphene.Mutation):
     class Arguments:
@@ -749,58 +936,42 @@ class myobGetOrders(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            filter = "" if query == "" else "?$filter=" + query
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service{filter}"
+        filter = "" if query == "" else "?$filter=" + query
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service{filter}"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        
+        return self(success=True, message=response.text)
             
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-            
-            return self(success=True, message=response.text)
-            
-        else:
-            return self(success=False, message="MYOB Connection Error")
 
-class myobGetJobs(graphene.Mutation):
+class GetMyobJobs(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        job = graphene.String()
+        filter = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
+    jobs = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, job):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, filter):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        endpoint = "GeneralLedger/Job"
+        response = myob_get(user, endpoint, filter, all=True)
 
-            job_filter = "" if job == "" else "?$filter=" + job
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job{job_filter}"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-
-            return self(success=True, message=response.text)
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message="Successfully retrieved jobs", jobs=json.dumps(response))
 
 class myobGetBills(graphene.Mutation):
     class Arguments:
@@ -816,55 +987,41 @@ class myobGetBills(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            bill_filter = "" if bill == "" else "?$filter=" + bill
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service{bill_filter}"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
+        bill_filter = "" if bill == "" else "?$filter=" + bill
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service{bill_filter}"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
 
-            return self(success=True, message=response.text)
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message=response.text)
 
-class myobGetAccounts(graphene.Mutation):
+class GetAccounts(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
+        filter = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, filter=''):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        endpoint = "GeneralLedger/Account"
+        response = myob_get(user, endpoint, filter, all=True)
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Account?$top=1000"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-
-            return self(success=True, message=response.text)
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message=json.dumps(response))
 
 class myobGetTaxCodes(graphene.Mutation):
     class Arguments:
@@ -879,76 +1036,48 @@ class myobGetTaxCodes(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/TaxCode?$top=1000"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/TaxCode?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
 
-            return self(success=True, message=response.text)
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message=response.text)
 
-class myobGetGeneralJournal(graphene.Mutation):
+class GetGeneralJournal(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
+        filter = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
+    general_journal = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid):
+    def mutate(self, root, info, filter=''):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/JournalTransaction"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
+        endpoint = "GeneralLedger/JournalTransaction"
+        general_journal = myob_get(user, endpoint, filter, all=True)
 
-            general_journal = getAllData(url, headers)
+        return self(success=True, general_journal=json.dumps(general_journal))
 
-            return self(success=True, message=json.dumps(general_journal))
-        else:
-            return self(success=False, message="MYOB Connection Error")
-
-def getAllData(url, headers):
-    url += "?$top=1000"
-    response = requests.request("GET", url, headers=headers, data={})
-    res = json.loads(response.text)
-    data = res
-    counter = 1
-
-    while res['NextPageLink'] != None:
-        skip = 1000*counter
-        response = requests.request("GET", f"{url}&$skip={skip}", headers=headers, data={})
-        res = json.loads(response.text)
-        data['Items'].extend(res['Items'])
-        counter += 1
-        print(f"Fetched: {skip} records")
-
-    return data
 
 class myobRepairJobSync(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
         job_id = graphene.String()
 
     success = graphene.Boolean()
@@ -957,65 +1086,29 @@ class myobRepairJobSync(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, job_id):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, job_id):
+        user = check_user_token_auth(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            job = Job.objects.get(id=job_id)
+        job = Job.objects.get(id=job_id)
 
-            job_filter = f"?$filter=Number eq '{job.po}'"
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job{job_filter}"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-            res = json.loads(response.text)
+        filter = f"Number eq '{job.po}'"
+        endpoint = "GeneralLedger/Job"
+        
+        response = myob_get(user, endpoint, filter)
 
-            if len(res['Items']) > 0:
-                job.myob_uid = res['Items'][0]['UID']
-                job.save()
-                return self(success=True, message="Job Link Repaired")
-            else:
-                job.myob_uid = ''
-                job.save()
-                create_job = myobCreateJob()
-                create_job_res = create_job.mutate(root, info, uid, job_id)
-                return self(success=True, message=create_job_res.message)
+        if len(response['Items']) > 0:
+            job.myob_uid = response['Items'][0]['UID']
+            job.save()
+            return self(success=True, message="Job Link Repaired")
 
-                # url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
-                # payload = json.dumps({
-                #     "Number": job.po,
-                #     "Name": (job.location.name + " " + job.title)[0:30],
-                #     "Description": str(job),
-                #     "IsHeader": False,
-                #     "LinkedCustomer": {"UID": job.client.myob_uid,},
-                # })
-                # headers = {                
-                #     'Authorization': f'Bearer {user.access_token}',
-                #     'x-myobapi-key': env('CLIENT_ID'),
-                #     'x-myobapi-version': 'v2',
-                #     'Accept-Encoding': 'gzip,deflate',
-                # }
-                # post_response = requests.request("POST", url, headers=headers, data=payload)
+        job.myob_uid = ''
+        job.save()
+        create_job = CreateMyobJob.mutate(root, info, job)
+        # create_job_res = create_job.mutate(root, info, uid, job_id)
+        return self(success=True, message=create_job.message)
 
-                # if(post_response.status_code != 201):
-                #     print("Error:", job)
-                #     return self(success=False, message=json.dumps(post_response.text))
-                # else:
-                #     print("Uploaded:", job, post_response.headers['Location'][-36:])
-                #     job.myob_uid = post_response.headers['Location'][-36:]
-                #     job.save()
-                #     return self(success=True, message=json.dumps("Job Linked to MYOB"), uid=job.myob_uid)
-
-        else:
-            return self(success=False, message="MYOB Connection Error")
 
 class myobSyncJobs(graphene.Mutation):
     class Arguments:
@@ -1031,15 +1124,31 @@ class myobSyncJobs(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            jobs = []
-            
-            print("MYOB Job Sync - Beginning Download")
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000"
-            
+        jobs = []
+        
+        print("MYOB Job Sync - Beginning Download")
+
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
+        jobs = res
+        counter = 1
+
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000&$skip={skip}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1048,81 +1157,70 @@ class myobSyncJobs(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
-            jobs = res
-            counter = 1
+            jobs['Items'].extend(res['Items'])
+            counter += 1
 
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000&$skip={skip}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                jobs['Items'].extend(res['Items'])
-                counter += 1
+        print("MYOB Job Sync - Download Complete")
 
-            print("MYOB Job Sync - Download Complete")
+        for myob_job in jobs['Items']:
+            if 'PO' in myob_job['Number'] and '_' not in myob_job['Number']:
+                job_num = myob_job['Number'][2:]
+                if not job_num == "":
+                    job = Job.objects.get(po=job_num) if Job.objects.filter(po=job_num).exists() else None 
+                    if job:
+                        # print(myob_job['UID'])
+                        job.myob_uid = myob_job['UID']
+                        job.save()
 
-            for myob_job in jobs['Items']:
-                if 'PO' in myob_job['Number'] and '_' not in myob_job['Number']:
-                    job_num = myob_job['Number'][2:]
-                    if not job_num == "":
-                        job = Job.objects.get(po=job_num) if Job.objects.filter(po=job_num).exists() else None 
-                        if job:
-                            # print(myob_job['UID'])
-                            job.myob_uid = myob_job['UID']
-                            job.save()
+        print("MYOB Job Sync - References Updated")
+        print("MYOB Job Sync - Beginning Upload")
+        
+        error_responses = {}
+        all_jobs = Job.objects.filter(myob_uid__isnull=True)
+        for one_job in all_jobs:
+            if not "_" in str(one_job.po):
+                # print(one_job)
+                estimate = Estimate.objects.filter(job_id=one_job.id).exclude(approval_date=None)
+                if estimate:
+                    url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
+                    payload = json.dumps({
+                        "Number": one_job.po,
+                        "Name": (one_job.location.name + " " + one_job.title)[0:30],
+                        "Description": str(one_job),
+                        "IsHeader": False,
+                        "LinkedCustomer": {"UID": job.client.myob_uid,},
+                    })
+                    headers = {                
+                        'Authorization': f'Bearer {user.access_token}',
+                        'x-myobapi-key': env('CLIENT_ID'),
+                        'x-myobapi-version': 'v2',
+                        'Accept-Encoding': 'gzip,deflate',
+                    }
+                    post_response = requests.request("POST", url, headers=headers, data=payload)
 
-            print("MYOB Job Sync - References Updated")
-            print("MYOB Job Sync - Beginning Upload")
-            
-            error_responses = {}
-            all_jobs = Job.objects.filter(myob_uid__isnull=True)
-            for one_job in all_jobs:
-                if not "_" in str(one_job.po):
-                    # print(one_job)
-                    estimate = Estimate.objects.filter(job_id=one_job.id).exclude(approval_date=None)
-                    if estimate:
-                        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
-                        payload = json.dumps({
-                            "Number": one_job.po,
-                            "Name": (one_job.location.name + " " + one_job.title)[0:30],
-                            "Description": str(one_job),
-                            "IsHeader": False,
-                            "LinkedCustomer": {"UID": job.client.myob_uid,},
-                        })
-                        headers = {                
-                            'Authorization': f'Bearer {user.access_token}',
-                            'x-myobapi-key': env('CLIENT_ID'),
-                            'x-myobapi-version': 'v2',
-                            'Accept-Encoding': 'gzip,deflate',
-                        }
-                        post_response = requests.request("POST", url, headers=headers, data=payload)
+                    if(post_response.status_code != 201):
+                        print("Error:", one_job)
+                        error_responses.update({one_job.po: json.loads(post_response.text)})
+                    else:
+                        print("Uploaded:", one_job, post_response.headers['Location'][-36:])
+                        one_job.myob_uid = post_response.headers['Location'][-36:]
+                        one_job.save()
 
-                        if(post_response.status_code != 201):
-                            print("Error:", one_job)
-                            error_responses.update({one_job.po: json.loads(post_response.text)})
-                        else:
-                            print("Uploaded:", one_job, post_response.headers['Location'][-36:])
-                            one_job.myob_uid = post_response.headers['Location'][-36:]
-                            one_job.save()
+        
+        print("MYOB Job Sync - Upload Complete")
 
-            
-            print("MYOB Job Sync - Upload Complete")
+        return self(success=True, message=json.dumps(jobs['Items']), errors=json.dumps(error_responses))
 
-            return self(success=True, message=json.dumps(jobs['Items']), errors=json.dumps(error_responses))
-        else:
-            return self(success=False, message="MYOB Connection Error")
+class JobInputType(graphene.InputObjectType):
+    uid = graphene.String()
+    identifier = graphene.String()
+    name = graphene.String()
+    description = graphene.String()
+    customer_uid = graphene.String()
 
-class myobCreateJob(graphene.Mutation):
+class CreateMyobJob(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        job_id = graphene.String()
+        job = JobInputType()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -1130,58 +1228,29 @@ class myobCreateJob(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, job_id):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, job):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        endpoint = "GeneralLedger/Job/"
+        payload = json.dumps({
+            "Number": job.identifier,
+            "Name": job.name,
+            "Description": job.description,
+            "IsHeader": False,
+            "LinkedCustomer": {"UID": job.customer_uid},
+        })
+        post_response = myob_post(user, endpoint, payload)
 
-            job = Job.objects.get(id=job_id)
+        if(post_response.status_code != 201):
+            print("Error:", job)
+            return self(success=False, message=json.dumps(post_response.text))
 
-            if job.myob_uid:
-                return self(success=False, message=json.dumps("Job is already linked to MYOB"))
-
-            if job.client.name == "BGIS" and not job.po:
-                return self(success=False, message=json.dumps("BGIS Job needs to have PO before sending to MYOB"))
-
-            job_name = ""
-            if job.po:
-                job_name = job.po
-            elif job.other_id:
-                job_name = job.other_id
-
-            if job_name == "":
-                return self(success=False, message=json.dumps("Job Identifier Error. Please contact developer"))
-
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
-            payload = json.dumps({
-                "Number": job_name,
-                "Name": (job.location.name + " " + job.title)[0:30],
-                "Description": str(job),
-                "IsHeader": False,
-                "LinkedCustomer": {"UID": job.client.myob_uid,},
-            })
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            post_response = requests.request("POST", url, headers=headers, data=payload)
-
-            if(post_response.status_code != 201):
-                print("Error:", job)
-                return self(success=False, message=json.dumps(post_response.text))
-            else:
-                print("Uploaded:", job, post_response.headers['Location'][-36:])
-                job.myob_uid = post_response.headers['Location'][-36:]
-                job.save()
-                return self(success=True, message=json.dumps("Job Linked to MYOB"), uid=job.myob_uid)
+        job_uid = get_response_uid(post_response)
         
-        return self(success=False, message=json.dumps("Error Connecting to MYOB"))
-
+        return self(success=True, message=json.dumps("Job Linked to MYOB"), uid=job_uid)
+     
 class myobSyncClients(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -1195,13 +1264,29 @@ class myobSyncClients(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            clients = []
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000"
-            
+        clients = []
+
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
+        clients = res
+        counter = 1
+
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000&$skip={skip}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1210,33 +1295,16 @@ class myobSyncClients(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
-            clients = res
-            counter = 1
+            clients['Items'].extend(res['Items'])
+            counter += 1
 
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000&$skip={skip}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                clients['Items'].extend(res['Items'])
-                counter += 1
-
-            for myob_client in clients['Items']:
-                client = Client.objects.get(name=myob_client['CompanyName']) if Client.objects.filter(name=myob_client['CompanyName']).exists() else None 
-                if client:
-                    client.myob_uid = myob_client['UID']
-                    client.save()
-            
-            return self(success=True, message=json.dumps(clients['Items']))
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        for myob_client in clients['Items']:
+            client = Client.objects.get(name=myob_client['CompanyName']) if Client.objects.filter(name=myob_client['CompanyName']).exists() else None 
+            if client:
+                client.myob_uid = myob_client['UID']
+                client.save()
+        
+        return self(success=True, message=json.dumps(clients['Items']))
 
 class myobSyncContractors(graphene.Mutation):
     class Arguments:
@@ -1251,13 +1319,29 @@ class myobSyncContractors(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            contractors = []
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000"
-            
+        contractors = []
+
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
+        contractors = res
+        counter = 1
+
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000&$skip={skip}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1266,40 +1350,23 @@ class myobSyncContractors(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
-            contractors = res
-            counter = 1
+            contractors['Items'].extend(res['Items'])
+            counter += 1
 
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000&$skip={skip}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                contractors['Items'].extend(res['Items'])
-                counter += 1
+        for myob_contractor in contractors['Items']:
+            contractor = Contractor.objects.get(myob_uid=myob_contractor['UID']) if Contractor.objects.filter(myob_uid=myob_contractor['UID']).exists() else None 
+            if contractor:
+                print(contractor)
+                contractor.myob_uid = myob_contractor['UID']
+                contractor.name = myob_contractor['CompanyName']
+                contractor.abn = myob_contractor['BuyingDetails']['ABN']
+                contractor.bsb = myob_contractor['PaymentDetails']['BSBNumber']
+                contractor.bank_account_name = myob_contractor['PaymentDetails']['BankAccountName']
+                contractor.bank_account_number = myob_contractor['PaymentDetails']['BankAccountNumber']
 
-            for myob_contractor in contractors['Items']:
-                contractor = Contractor.objects.get(myob_uid=myob_contractor['UID']) if Contractor.objects.filter(myob_uid=myob_contractor['UID']).exists() else None 
-                if contractor:
-                    print(contractor)
-                    contractor.myob_uid = myob_contractor['UID']
-                    contractor.name = myob_contractor['CompanyName']
-                    contractor.abn = myob_contractor['BuyingDetails']['ABN']
-                    contractor.bsb = myob_contractor['PaymentDetails']['BSBNumber']
-                    contractor.bank_account_name = myob_contractor['PaymentDetails']['BankAccountName']
-                    contractor.bank_account_number = myob_contractor['PaymentDetails']['BankAccountNumber']
-
-                    contractor.save()
-            
-            return self(success=True, message=json.dumps(contractors['Items']))
-        else:
-            return self(success=False, message="MYOB Connection Error")
+                contractor.save()
+        
+        return self(success=True, message=json.dumps(contractors['Items']))
 
 class myobSyncInvoices(graphene.Mutation):
     class Arguments:
@@ -1314,13 +1381,29 @@ class myobSyncInvoices(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            invoices = []
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000"
-            
+        invoices = []
+
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
+        invoices = res
+        counter = 1
+
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000&$skip={skip}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1329,43 +1412,26 @@ class myobSyncInvoices(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
-            invoices = res
-            counter = 1
-
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000&$skip={skip}"
+            invoices['Items'].extend(res['Items'])
+            counter += 1
             
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                invoices['Items'].extend(res['Items'])
-                counter += 1
-                
-            bgis = Client.objects.get(name='BGIS')
-            for invoice in invoices['Items']:
-                if invoice['Customer']['UID'] == bgis.myob_uid:
-                    if invoice['CustomerPurchaseOrderNumber']:
-                        po = invoice['CustomerPurchaseOrderNumber'].split('_')[0] if '_' in invoice['CustomerPurchaseOrderNumber'] else invoice['CustomerPurchaseOrderNumber']
-                        job = Job.objects.get(po=po[2:]) if Job.objects.filter(po=po[2:]).exists() else None 
-                        inv = Invoice.objects.get(number=invoice['Number']) if Invoice.objects.filter(number=invoice['Number']).exists() else False
-                        if inv:
-                            if not invoice['UID'] == inv.myob_uid: inv.myob_uid = invoice['UID']
-                            if not inv.date_issued: inv.date_issued = datetime.strptime(invoice['Date'].split('T')[0], '%Y-%m-%d')
-                            if invoice['Status'] == "Closed" and invoice['LastPaymentDate']:
-                                if not inv.date_paid: inv.date_paid = datetime.strptime(invoice['LastPaymentDate'].split('T')[0], '%Y-%m-%d')
+        bgis = Client.objects.get(name='BGIS')
+        for invoice in invoices['Items']:
+            if invoice['Customer']['UID'] == bgis.myob_uid:
+                if invoice['CustomerPurchaseOrderNumber']:
+                    po = invoice['CustomerPurchaseOrderNumber'].split('_')[0] if '_' in invoice['CustomerPurchaseOrderNumber'] else invoice['CustomerPurchaseOrderNumber']
+                    job = Job.objects.get(po=po[2:]) if Job.objects.filter(po=po[2:]).exists() else None 
+                    inv = Invoice.objects.get(number=invoice['Number']) if Invoice.objects.filter(number=invoice['Number']).exists() else False
+                    if inv:
+                        if not invoice['UID'] == inv.myob_uid: inv.myob_uid = invoice['UID']
+                        if not inv.date_issued: inv.date_issued = datetime.strptime(invoice['Date'].split('T')[0], '%Y-%m-%d')
+                        if invoice['Status'] == "Closed" and invoice['LastPaymentDate']:
+                            if not inv.date_paid: inv.date_paid = datetime.strptime(invoice['LastPaymentDate'].split('T')[0], '%Y-%m-%d')
 
-                            inv.save()
-                            print(invoice['Number'], invoice['Status'])
+                        inv.save()
+                        print(invoice['Number'], invoice['Status'])
 
-            return self(success=True, message=json.dumps(invoices['Items']))
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message=json.dumps(invoices['Items']))
 
 class myobSyncBills(graphene.Mutation):
     class Arguments:
@@ -1380,13 +1446,29 @@ class myobSyncBills(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            bills = []
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
-            
+        bills = []
+
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
+        bills = res
+        counter = 1
+
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1395,59 +1477,42 @@ class myobSyncBills(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
-            bills = res
-            counter = 1
+            bills['Items'].extend(res['Items'])
+            counter += 1
+    
+        relevant_bills = []
+        for bill in bills['Items']:
+            if len(bill['Lines']) > 0:
+                if Contractor.objects.filter(myob_uid=bill['Supplier']['UID']).exists():
+                    if bill['Lines'][0]['Job']:
+                        job_UID = bill['Lines'][0]['Job']['UID']
+                        if Job.objects.filter(myob_uid=job_UID).exists():
+                            job = Job.objects.get(myob_uid=job_UID)
+                            relevant_bills.append(bill)
 
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                bills['Items'].extend(res['Items'])
-                counter += 1
-        
-            relevant_bills = []
-            for bill in bills['Items']:
-                if len(bill['Lines']) > 0:
-                    if Contractor.objects.filter(myob_uid=bill['Supplier']['UID']).exists():
-                        if bill['Lines'][0]['Job']:
-                            job_UID = bill['Lines'][0]['Job']['UID']
-                            if Job.objects.filter(myob_uid=job_UID).exists():
-                                job = Job.objects.get(myob_uid=job_UID)
-                                relevant_bills.append(bill)
+                            # Create Bill
+                            if(not Bill.objects.filter(myob_uid=bill['UID']).exists()):
+                                b = Bill()
+                                b.job = job
+                                b.myob_uid = bill['UID']
+                                b.supplier = Contractor.objects.get(myob_uid=bill['Supplier']['UID'])
+                                b.process_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
+                                b.invoice_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
+                                b.invoice_number = bill['SupplierInvoiceNumber']
+                                b.amount = bill['TotalAmount']
+                            else:
+                                b = Bill.objects.get(myob_uid=bill['UID'])
+                                b.job = job
+                                b.myob_uid = bill['UID']
+                                b.supplier = Contractor.objects.get(myob_uid=bill['Supplier']['UID'])
+                                b.process_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
+                                b.invoice_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
+                                b.invoice_number = bill['SupplierInvoiceNumber']
+                                b.amount = bill['TotalAmount']
+                            
+                            b.save()
 
-                                # Create Bill
-                                if(not Bill.objects.filter(myob_uid=bill['UID']).exists()):
-                                    b = Bill()
-                                    b.job = job
-                                    b.myob_uid = bill['UID']
-                                    b.supplier = Contractor.objects.get(myob_uid=bill['Supplier']['UID'])
-                                    b.process_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
-                                    b.invoice_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
-                                    b.invoice_number = bill['SupplierInvoiceNumber']
-                                    b.amount = bill['TotalAmount']
-                                else:
-                                    b = Bill.objects.get(myob_uid=bill['UID'])
-                                    b.job = job
-                                    b.myob_uid = bill['UID']
-                                    b.supplier = Contractor.objects.get(myob_uid=bill['Supplier']['UID'])
-                                    b.process_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
-                                    b.invoice_date = datetime.strptime(bill['Date'].split("T")[0], "%Y-%m-%d")
-                                    b.invoice_number = bill['SupplierInvoiceNumber']
-                                    b.amount = bill['TotalAmount']
-                                
-                                b.save()
-
-            return self(success=True, message=json.dumps(relevant_bills))
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message=json.dumps(relevant_bills))
 
 class myobSyncRemittance(graphene.Mutation):
     class Arguments:
@@ -1462,68 +1527,42 @@ class myobSyncRemittance(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            remittance = []
+        user = user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment?$top=1000&$filter=Account/DisplayID eq '1-1120' and Date gt datetime'2023-01-01'"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-            res = json.loads(response.text)
-            remittance = res
-            counter = 1
+        remittance = []
 
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment?$top=1000&$skip={skip}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                remittance['Items'].extend(res['Items'])
-                counter += 1
+        endpoint = "Sale/CustomerPayment"
+        remittance = myob_get(user, endpoint, all=True)
 
-            relevant_advice = []
-            for advice in remittance['Items']:
-                if len(advice['Invoices']) > 0 and 'BGIS' in advice['Memo']:
-                    relevant_advice.append(advice)
-                    
-                    if RemittanceAdvice.objects.filter(myob_uid=advice['UID']).exists():
-                        remittance_advice = RemittanceAdvice.objects.get(myob_uid=advice['UID'])
+        relevant_advice = []
+        for advice in remittance['Items']:
+            if len(advice['Invoices']) > 0 and 'BGIS' in advice['Memo']:
+                relevant_advice.append(advice)
+                
+                if RemittanceAdvice.objects.filter(myob_uid=advice['UID']).exists():
+                    remittance_advice = RemittanceAdvice.objects.get(myob_uid=advice['UID'])
+                else:
+                    remittance_advice = RemittanceAdvice()
+
+                remittance_advice.myob_uid = advice['UID']
+                remittance_advice.date = advice['Date'].split('T')[0]
+                remittance_advice.amount = advice['AmountReceived']
+                remittance_advice.client = Client.objects.get(name="BGIS")
+                remittance_advice.save()
+
+                for inv in advice['Invoices']:
+                    if Invoice.objects.filter(myob_uid=inv['UID']).exists():
+                        invoice = Invoice.objects.get(myob_uid=inv['UID'])
+                        invoice.remittance = remittance_advice
+                        if not invoice.date_paid: invoice.date_paid = remittance_advice.date
+                        invoice.save()
                     else:
-                        remittance_advice = RemittanceAdvice()
-
-                    remittance_advice.myob_uid = advice['UID']
-                    remittance_advice.date = advice['Date'].split('T')[0]
-                    remittance_advice.amount = advice['AmountReceived']
-                    remittance_advice.client = Client.objects.get(name="BGIS")
-                    remittance_advice.save()
-
-                    for inv in advice['Invoices']:
-                        if Invoice.objects.filter(myob_uid=inv['UID']).exists():
-                            invoice = Invoice.objects.get(myob_uid=inv['UID'])
-                            invoice.remittance = remittance_advice
-                            if not invoice.date_paid: invoice.date_paid = remittance_advice.date
-                            invoice.save()
-                        else:
-                            print(inv['Number'])
+                        print(inv['Number'])
 
 
             return self(success=True, message=json.dumps(relevant_advice))
-        else:
-            return self(success=False, message="MYOB Connection Error")
 
 
 class myobImportContractorsFromBills(graphene.Mutation):
@@ -1539,15 +1578,30 @@ class myobImportContractorsFromBills(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            ## Get Bills
-            bills = []
+        ## Get Bills
+        bills = []
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
-            
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
+        bills = res
+        counter = 1
+
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1556,68 +1610,51 @@ class myobImportContractorsFromBills(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
-            bills = res
-            counter = 1
+            bills['Items'].extend(res['Items'])
+            counter += 1
 
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                bills['Items'].extend(res['Items'])
-                counter += 1
+        contractors = []
+        
+        for bill in bills['Items']:
+            if 'Lines' in bill.keys() and bill['Lines']:
+                for line in bill['Lines']:
+                    if 'Job' in line.keys() and line['Job']:
+                        uid = line['Job']['UID']
+                        job = Job.objects.get(myob_uid=uid) if Job.objects.filter(myob_uid=uid).exists() else None 
+                        if job:
+                            # print(job)
+                            # print(bill['Supplier']['Name'], bill['Supplier']['UID'])
+                            contractor, created = Contractor.objects.get_or_create(
+                                myob_uid = bill['Supplier']['UID']
+                            )
+                            contractor.name = bill['Supplier']['Name']
 
-            contractors = []
-            
-            for bill in bills['Items']:
-                if 'Lines' in bill.keys() and bill['Lines']:
-                    for line in bill['Lines']:
-                        if 'Job' in line.keys() and line['Job']:
-                            uid = line['Job']['UID']
-                            job = Job.objects.get(myob_uid=uid) if Job.objects.filter(myob_uid=uid).exists() else None 
-                            if job:
-                                # print(job)
-                                # print(bill['Supplier']['Name'], bill['Supplier']['UID'])
-                                contractor, created = Contractor.objects.get_or_create(
-                                    myob_uid = bill['Supplier']['UID']
-                                )
-                                contractor.name = bill['Supplier']['Name']
+                            # OPTIMISE - Get all contractors then find in that list. Not individual contractors
+                            if contractor.abn == "":
+                                link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{bill['Supplier']['UID']}'"
+                                headers = {                
+                                    'Authorization': f'Bearer {user.access_token}',
+                                    'x-myobapi-key': env('CLIENT_ID'),
+                                    'x-myobapi-version': 'v2',
+                                    'Accept-Encoding': 'gzip,deflate',
+                                }
+                                
+                                response = requests.get(link, headers=headers)
+                                res = json.loads(response.text)
+                                supp = res['Items']
 
-                                # OPTIMISE - Get all contractors then find in that list. Not individual contractors
-                                if contractor.abn == "":
-                                    link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{bill['Supplier']['UID']}'"
-                                    headers = {                
-                                        'Authorization': f'Bearer {user.access_token}',
-                                        'x-myobapi-key': env('CLIENT_ID'),
-                                        'x-myobapi-version': 'v2',
-                                        'Accept-Encoding': 'gzip,deflate',
-                                    }
-                                    
-                                    response = requests.get(link, headers=headers)
-                                    res = json.loads(response.text)
-                                    supp = res['Items']
+                                contractor.abn = supp[0]['BuyingDetails']['ABN']
+                                contractor.bsb = supp[0]['PaymentDetails']['BSBNumber'] if not isna(supp[0]['PaymentDetails']['BSBNumber'] ) else ""
+                                contractor.bank_account_number = supp[0]['PaymentDetails']['BankAccountNumber'] if not isna(supp[0]['PaymentDetails']['BankAccountNumber']) else ""
+                                contractor.bank_account_name = supp[0]['PaymentDetails']['BankAccountName'] if not isna(supp[0]['PaymentDetails']['BankAccountName']) else ""
+                            contractor.save()
 
-                                    contractor.abn = supp[0]['BuyingDetails']['ABN']
-                                    contractor.bsb = supp[0]['PaymentDetails']['BSBNumber'] if not isna(supp[0]['PaymentDetails']['BSBNumber'] ) else ""
-                                    contractor.bank_account_number = supp[0]['PaymentDetails']['BankAccountNumber'] if not isna(supp[0]['PaymentDetails']['BankAccountNumber']) else ""
-                                    contractor.bank_account_name = supp[0]['PaymentDetails']['BankAccountName'] if not isna(supp[0]['PaymentDetails']['BankAccountName']) else ""
-                                contractor.save()
+                            if created:
+                                contractors.append(contractor)
 
-                                if created:
-                                    contractors.append(contractor)
-
-                # contractors.update({contractor.name: contractor.uid})
-            
-            return self(success=True, message=json.dumps(contractors))
-        else:
-            return self(success=False, message="MYOB Connection Error")
+            # contractors.update({contractor.name: contractor.uid})
+        
+        return self(success=True, message=json.dumps(contractors))
 
 class myobImportClientFromABN(graphene.Mutation):
     class Arguments:
@@ -1633,40 +1670,37 @@ class myobImportClientFromABN(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            ## Get Contractor by ABN
+        ## Get Contractor by ABN
+        name = urllib.parse.quote(name)
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$filter=CompanyName eq '{name}'"
 
-            name = urllib.parse.quote(name)
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$filter=CompanyName eq '{name}'"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
 
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-            res = json.loads(response.text)
+        if res['Items'] and not len(res['Items']) > 0:
+            return self(success=False, message="Client not found with the provided details")
+        
+        clientDetails = res['Items'][0]
+        
+        if(Client.objects.filter(myob_uid=clientDetails['UID']).exists()):
+            return self(success=False, message="Client Already Exists")
+        
+        client = Client()
+        client.name = clientDetails['CompanyName']
+        client.myob_uid = clientDetails['UID']
+        client.save()
 
-            if res['Items'] and not len(res['Items']) > 0:
-                return self(success=False, message="Client not found with the provided details")
-            
-            clientDetails = res['Items'][0]
-            
-            if(Client.objects.filter(myob_uid=clientDetails['UID']).exists()):
-                return self(success=False, message="Client Already Exists")
-            
-            client = Client()
-            client.name = clientDetails['CompanyName']
-            client.myob_uid = clientDetails['UID']
-            client.save()
-
-            return self(success=True, message="Client Imported")
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        return self(success=True, message="Client Imported")
         
 class myobImportContractorFromABN(graphene.Mutation):
     class Arguments:
@@ -1683,43 +1717,42 @@ class myobImportContractorFromABN(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            ## Get Contractor by ABN
 
-            name = urllib.parse.quote(name)
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=CompanyName eq '{name}' and BuyingDetails/ABN eq '{abn}'"
+        ## Get Contractor by ABN
 
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-            res = json.loads(response.text)
+        name = urllib.parse.quote(name)
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=CompanyName eq '{name}' and BuyingDetails/ABN eq '{abn}'"
 
-            if len(res['Items']) == 0:
-                return self(success=False, message="Contractor not found with the provided details")
-            
-            contractorDetails = res['Items'][0]
-            
-            if Contractor.objects.filter(myob_uid = contractorDetails['UID']).exists():
-                return self(success=False, message="Contractor already exists in the system")
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
 
-            contractor = Contractor.objects.create(myob_uid = contractorDetails['UID'])
-            contractor.name = contractorDetails['CompanyName']
-            contractor.abn = contractorDetails['BuyingDetails']['ABN']
-            contractor.bsb = contractorDetails['PaymentDetails']['BSBNumber'] if not isna(contractorDetails['PaymentDetails']['BSBNumber'] ) else ""
-            contractor.bank_account_number = contractorDetails['PaymentDetails']['BankAccountNumber'] if not isna(contractorDetails['PaymentDetails']['BankAccountNumber']) else ""
-            contractor.bank_account_name = contractorDetails['PaymentDetails']['BankAccountName'] if not isna(contractorDetails['PaymentDetails']['BankAccountName']) else ""
-            contractor.save()
+        if len(res['Items']) == 0:
+            return self(success=False, message="Contractor not found with the provided details")
+        
+        contractorDetails = res['Items'][0]
+        
+        if Contractor.objects.filter(myob_uid = contractorDetails['UID']).exists():
+            return self(success=False, message="Contractor already exists in the system")
 
-            return self(success=True, message="Contractor Imported")
-        else:
-            return self(success=False, message="MYOB Connection Error")
+        contractor = Contractor.objects.create(myob_uid = contractorDetails['UID'])
+        contractor.name = contractorDetails['CompanyName']
+        contractor.abn = contractorDetails['BuyingDetails']['ABN']
+        contractor.bsb = contractorDetails['PaymentDetails']['BSBNumber'] if not isna(contractorDetails['PaymentDetails']['BSBNumber'] ) else ""
+        contractor.bank_account_number = contractorDetails['PaymentDetails']['BankAccountNumber'] if not isna(contractorDetails['PaymentDetails']['BankAccountNumber']) else ""
+        contractor.bank_account_name = contractorDetails['PaymentDetails']['BankAccountName'] if not isna(contractorDetails['PaymentDetails']['BankAccountName']) else ""
+        contractor.save()
+
+        return self(success=True, message="Contractor Imported")
 
 
 class myobImportBGISInvoices(graphene.Mutation):
@@ -1735,15 +1768,30 @@ class myobImportBGISInvoices(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            print("Importing BGIS Invoices")
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            invoices = []
 
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000"
-            
+        invoices = []
+
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(response.text)
+        invoices = res
+        counter = 1
+
+        while res['NextPageLink'] != None:
+            skip = 1000*counter
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000&$skip={skip}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -1752,46 +1800,29 @@ class myobImportBGISInvoices(graphene.Mutation):
             }
             response = requests.request("GET", url, headers=headers, data={})
             res = json.loads(response.text)
-            invoices = res
-            counter = 1
+            invoices['Items'].extend(res['Items'])
+            counter += 1
 
-            while res['NextPageLink'] != None:
-                skip = 1000*counter
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000&$skip={skip}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                res = json.loads(response.text)
-                invoices['Items'].extend(res['Items'])
-                counter += 1
+        invs = []
+        bgis = Client.objects.get(name='BGIS')
+        for invoice in invoices['Items']:
+            # print(invoice)
+            if invoice['Customer']['UID'] == bgis.myob_uid:
+                if invoice['CustomerPurchaseOrderNumber']:
+                    po = invoice['CustomerPurchaseOrderNumber'].split('_')[0] if '_' in invoice['CustomerPurchaseOrderNumber'] else invoice['CustomerPurchaseOrderNumber']
+                    job = Job.objects.get(po=po[2:]) if Job.objects.filter(po=po[2:]).exists() else None 
+                    if job:
+                        new_invoice, created = Invoice.objects.get_or_create(myob_uid=invoice['UID'])
+                        new_invoice.number = invoice['Number']
+                        new_invoice.date_created = invoice['Date'].split('T')[0]
+                        new_invoice.date_paid = invoice['LastPaymentDate'].split('T')[0]
+                        new_invoice.amount = round(float(invoice['Subtotal']), 2)
+                        new_invoice.save()
 
-            invs = []
-            bgis = Client.objects.get(name='BGIS')
-            for invoice in invoices['Items']:
-                # print(invoice)
-                if invoice['Customer']['UID'] == bgis.myob_uid:
-                    if invoice['CustomerPurchaseOrderNumber']:
-                        po = invoice['CustomerPurchaseOrderNumber'].split('_')[0] if '_' in invoice['CustomerPurchaseOrderNumber'] else invoice['CustomerPurchaseOrderNumber']
-                        job = Job.objects.get(po=po[2:]) if Job.objects.filter(po=po[2:]).exists() else None 
-                        if job:
-                            new_invoice, created = Invoice.objects.get_or_create(myob_uid=invoice['UID'])
-                            new_invoice.number = invoice['Number']
-                            new_invoice.date_created = invoice['Date'].split('T')[0]
-                            new_invoice.date_paid = invoice['LastPaymentDate'].split('T')[0]
-                            new_invoice.amount = round(float(invoice['Subtotal']), 2)
-                            new_invoice.save()
-
-                            invs.append(invoice)
-                    
-            print("Imported BGIS Invoices")
-            return self(success=True, message=json.dumps(invs))
-        else:
-            return self(success=False, message="MYOB Connection Error")
+                        invs.append(invoice)
+                
+        print("Imported BGIS Invoices")
+        return self(success=True, message=json.dumps(invs))
 
 class myobCreateInvoice(graphene.Mutation):
     class Arguments:
@@ -1808,248 +1839,246 @@ class myobCreateInvoice(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            print("Creating Invoice")
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            job = Job.objects.get(id=job) if Job.objects.filter(id=job).exists() else None 
+        print("Creating Invoice")
 
-            # Error Checking
-            if not job:
-                return self(success=False, message="Job Not Found!")
+        job = Job.objects.get(id=job) if Job.objects.filter(id=job).exists() else None 
 
-            if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
-                return self(success=False, message="No Approved Estimate to use as Invoice.")
+        # Error Checking
+        if not job:
+            return self(success=False, message="Job Not Found!")
 
-            if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
-                return self(success=False, message="More than 1 estimate approved. Please fix and try again.")
+        if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
+            return self(success=False, message="No Approved Estimate to use as Invoice.")
 
-            estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
+        if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
+            return self(success=False, message="More than 1 estimate approved. Please fix and try again.")
 
-            if estimate.price == 0.0:
-                return self(success=False, message="Estimate price is $0. Please check job.")
+        estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
 
-            if not job.myob_uid:
-                return self(success=False, message="Please sync job with MYOB before creating invoice.")
+        if estimate.price == 0.0:
+            return self(success=False, message="Estimate price is $0. Please check job.")
 
-            if not job.completion_date:
-                return self(success=False, message="Job completion date not recorded.")
+        if not job.myob_uid:
+            return self(success=False, message="Please sync job with MYOB before creating invoice.")
 
-            if Invoice.objects.filter(job=job).exists():
-                return self(success=False, message="Invoice already exists for this job.")
+        if not job.completion_date:
+            return self(success=False, message="Job completion date not recorded.")
 
-            invoice = []
+        if Invoice.objects.filter(job=job).exists():
+            return self(success=False, message="Invoice already exists for this job.")
 
-            folder_name = str(job)
-            job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
+        invoice = []
 
-            if not os.path.exists(job_folder):
-                return self(success=False, message="Job Folder does not exist.")
+        folder_name = str(job)
+        job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
 
-            accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
+        if not os.path.exists(job_folder):
+            return self(success=False, message="Job Folder does not exist.")
 
-            if not os.path.exists(accounts_folder):
-                os.mkdir(accounts_folder)
+        accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
 
-            if not os.path.exists(accounts_folder):
-                return self(success=False, message="Jobs Accounts Folder does not exist.")
+        if not os.path.exists(accounts_folder):
+            os.mkdir(accounts_folder)
 
-            estimate_folder = os.path.join(job_folder, "Estimates", estimate.name.strip())
-            
-            if not os.path.exists(estimate_folder):
-                return self(success=False, message="Job Estimate Folder does not exist.")
+        if not os.path.exists(accounts_folder):
+            return self(success=False, message="Jobs Accounts Folder does not exist.")
 
-            if job.client.name == "BGIS":
-                ## Check the required invoice files that are stored in the relevant estimate folder
-                found = {"approval": False, "estimate": False}
-                paths = {"invoice": "", "approval": "", "estimate": ""}
-                
-                # Only need approval and breakdown on jobs > $500
-                if estimate.price > 500.00:
-                    if not os.path.exists(estimate_folder):
-                        return self(success=False, message="Jobs Estimate Folder does not exist!")
-
-                    estimate_file = None
-                    for files in os.listdir(estimate_folder):
-                        print(files)
-                        if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
-                            found['approval'] = True
-                            paths['approval'] = os.path.join(estimate_folder, files)
-                        if "BGIS Estimate" in files and not found["estimate"]:
-                            if files.endswith(".pdf"):
-                                found["estimate"] = True
-                                paths["estimate"] = os.path.join(estimate_folder, files)
-                            else:
-                                estimate_file = os.path.join(estimate_folder, files)
-                    
-                    if not found["estimate"] and not estimate_file == None :
-                        print("Converting Spreadsheet to PDF", estimate_file)
-                        # Convert excel sheet to pdf
-                        # df = pd.read_excel(estimate_file)
-                        # df.to_html(estimate_file.strip(".xlsm") + ".html")
-                        # pdfkit.from_file(estimate_file.strip(".xlsm") + ".html", estimate_file.strip(".xlsm") + ".pdf")
-                        
-                        p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
-                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
-                        estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
-                        p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
-
-                        # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                        # time.sleep(1)
-                        # books = xlApp.Workbooks.Open(estimate_file)
-                        # ws = books.Worksheets[0]
-                        # ws.Visible = 1
-                        # ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
-                        # xlApp.ActiveWorkbook.Close()
-
-                        # xlApp.Quit()
-                        # del xlApp
-
-                        found["estimate"] = True
-                        paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
-
-                else:
-                    found['approval'] = True
-                    found['estimate'] = True
-
-                if estimate.price > 500.00 and not all(found.values()):
-                    error_str = " "
-                    for [key, val] in found.items():
-                        if not val:
-                            error_str += key.capitalize() + ", "
-
-                    return self(success=False, message="Not all required invoice files can be found:" + error_str[:-2])
-            
-            elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
-                found = {"not_required": True}
-                paths = {"invoice": ""}
-            else:
-                ## Check the required invoice files that are stored in the relevant estimate folder
-                found = {"purchaseOrder": False}
-                paths = {"invoice": "", "purchaseOrder": ""}
-
-                for files in os.listdir(estimate_folder):
-                    if job.po in files:
-                        if files.endswith(".pdf"):
-                            found["purchaseOrder"] = True
-                            paths["purchaseOrder"] = os.path.join(estimate_folder, files)
-                
-                if not found['purchaseOrder']:
-                    return self(success=False, message="Error. Purchase Order can not be found")
-
-            if job.location.region.bill_to_address == '':
-                shipToAddress = f"{job.client} {job.location}\n{job.location.getFullAddress()}"
-            else:
-                shipToAddress = job.location.region.bill_to_address
-
-            print("Posting Sale Order")
-
-            # 4-3000 Maintenance Income - e5495a96-41a3-4e65-b56d-43e585f2742d
-            # POST Invoice to MYOB
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service/"
-            payload = json.dumps({
-                "Date": datetime.today(), 
-                "Customer": {"UID": job.client.myob_uid},
-                "CustomerPurchaseOrderNumber": job.po,
-                "Comment": f"Please find details of progress claim C001 attached.",
-                "ShipToAddress": shipToAddress,
-                "IsTaxInclusive": False,
-                "Lines": [
-                    {
-                        "Type": "Transaction",
-                        "Description": str(job),
-                        "Account": {"UID": "e5495a96-41a3-4e65-b56d-43e585f2742d"},
-                        "TaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
-                        "Total": estimate.price,
-                        "Job": {"UID": job.myob_uid},
-                    }
-                ],
-                "JournalMemo": f"Sale: {job.client.name}",
-            }, default=str)
-
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Content-Type': 'application/json',
-            }
-            response = requests.request("POST", url, headers=headers, data=payload)
-
-            if(not response.status_code == 201):
-                print("Error:", job, response)
-                return self(success=False, message=json.loads(response.text))
-
-            # Get the invoice number and create new invoice model
-            invoice_uid = response.headers['Location'][-36:]
-            print("Invoice Created for", str(job), " - UID =", invoice_uid)
-
-            ## Confirm Creation and get details (number)
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter=UID eq guid'{invoice_uid}'"
-            
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            res = requests.request("GET", url, headers=headers, data={})
-            res = json.loads(res.text)
-
-            invoice = res['Items'][0]
-
-            new_invoice, created = Invoice.objects.get_or_create(myob_uid=invoice_uid)
-            new_invoice.number = invoice['Number']
-            new_invoice.date = invoice['Date'].split('T')[0]
-            new_invoice.amount = round(float(invoice['Subtotal']), 2)
-            new_invoice.job = job
-            new_invoice.save()
-            new_invoice.job.save() ## Update job stage
-
-            # Get invoice as PDF
-            print("Getting PDF")
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
+        estimate_folder = os.path.join(job_folder, "Estimates", estimate.name.strip())
         
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Accept': 'Application/PDF'
-            }
-            pdf_response = requests.request("GET", url, headers=headers, data={})
+        if not os.path.exists(estimate_folder):
+            return self(success=False, message="Job Estimate Folder does not exist.")
 
-            if(not pdf_response.status_code == 200):
-                print(pdf_response, "Error retrieving PDF for", job)
-                return self(success=False, message=json.loads(response.text))
+        if job.client.name == "BGIS":
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"approval": False, "estimate": False}
+            paths = {"invoice": "", "approval": "", "estimate": ""}
             
-            print("Writing Invoice to File")
-            with open(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", "wb") as f:
-                f.write(pdf_response.content)
+            # Only need approval and breakdown on jobs > $500
+            if estimate.price > 500.00:
+                if not os.path.exists(estimate_folder):
+                    return self(success=False, message="Jobs Estimate Folder does not exist!")
 
-            shutil.copyfile(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf")
-            paths['invoice'] = f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf"
+                estimate_file = None
+                for files in os.listdir(estimate_folder):
+                    print(files)
+                    if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
+                        found['approval'] = True
+                        paths['approval'] = os.path.join(estimate_folder, files)
+                    if "BGIS Estimate" in files and not found["estimate"]:
+                        if files.endswith(".pdf"):
+                            found["estimate"] = True
+                            paths["estimate"] = os.path.join(estimate_folder, files)
+                        else:
+                            estimate_file = os.path.join(estimate_folder, files)
+                
+                if not found["estimate"] and not estimate_file is None :
+                    print("Converting Spreadsheet to PDF", estimate_file)
+                    # Convert excel sheet to pdf
+                    # df = pd.read_excel(estimate_file)
+                    # df.to_html(estimate_file.strip(".xlsm") + ".html")
+                    # pdfkit.from_file(estimate_file.strip(".xlsm") + ".html", estimate_file.strip(".xlsm") + ".pdf")
+                    
+                    p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
+                    bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
+                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
+                    p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
 
-            print("Invoice Saved")
+                    # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
+                    # time.sleep(1)
+                    # books = xlApp.Workbooks.Open(estimate_file)
+                    # ws = books.Worksheets[0]
+                    # ws.Visible = 1
+                    # ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
+                    # xlApp.ActiveWorkbook.Close()
 
-            # Create Full Invoice using function from invoice_generator.py
-            print("Invoice Generation Starting")
-            result = generate_invoice(job, paths, invoice, accounts_folder)
-            if not result['success']:
-                return self(success=False, message=result['message'])
+                    # xlApp.Quit()
+                    # del xlApp
 
-            print("Invoice Generated")
-            return self(success=True, message=json.dumps(result['message']), number=invoice['Number'])
+                    found["estimate"] = True
+                    paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
+
+            else:
+                found['approval'] = True
+                found['estimate'] = True
+
+            if estimate.price > 500.00 and not all(found.values()):
+                error_str = " "
+                for [key, val] in found.items():
+                    if not val:
+                        error_str += key.capitalize() + ", "
+
+                return self(success=False, message="Not all required invoice files can be found:" + error_str[:-2])
+        
+        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
+            found = {"not_required": True}
+            paths = {"invoice": ""}
         else:
-            return self(success=False, message="MYOB Connection Error")
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"purchaseOrder": False}
+            paths = {"invoice": "", "purchaseOrder": ""}
 
+            for files in os.listdir(estimate_folder):
+                if job.po in files:
+                    if files.endswith(".pdf"):
+                        found["purchaseOrder"] = True
+                        paths["purchaseOrder"] = os.path.join(estimate_folder, files)
+            
+            if not found['purchaseOrder']:
+                return self(success=False, message="Error. Purchase Order can not be found")
+
+        if job.location.region.bill_to_address == '':
+            shipToAddress = f"{job.client} {job.location}\n{job.location.getFullAddress()}"
+        else:
+            shipToAddress = job.location.region.bill_to_address
+
+        print("Posting Sale Order")
+
+        # 4-3000 Maintenance Income - e5495a96-41a3-4e65-b56d-43e585f2742d
+        # POST Invoice to MYOB
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service/"
+        payload = json.dumps({
+            "Date": datetime.today(), 
+            "Customer": {"UID": job.client.myob_uid},
+            "CustomerPurchaseOrderNumber": job.po,
+            "Comment": f"Please find details of progress claim C001 attached.",
+            "ShipToAddress": shipToAddress,
+            "IsTaxInclusive": False,
+            "Lines": [
+                {
+                    "Type": "Transaction",
+                    "Description": str(job),
+                    "Account": {"UID": "e5495a96-41a3-4e65-b56d-43e585f2742d"},
+                    "TaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
+                    "Total": estimate.price,
+                    "Job": {"UID": job.myob_uid},
+                }
+            ],
+            "JournalMemo": f"Sale: {job.client.name}",
+        }, default=str)
+
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+            'Content-Type': 'application/json',
+        }
+        response = requests.request("POST", url, headers=headers, data=payload)
+
+        if(not response.status_code == 201):
+            print("Error:", job, response)
+            return self(success=False, message=json.loads(response.text))
+
+        # Get the invoice number and create new invoice model
+        invoice_uid = response.headers['Location'][-36:]
+        print("Invoice Created for", str(job), " - UID =", invoice_uid)
+
+        ## Confirm Creation and get details (number)
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter=UID eq guid'{invoice_uid}'"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        res = requests.request("GET", url, headers=headers, data={})
+        res = json.loads(res.text)
+
+        invoice = res['Items'][0]
+
+        new_invoice, created = Invoice.objects.get_or_create(myob_uid=invoice_uid)
+        new_invoice.number = invoice['Number']
+        new_invoice.date = invoice['Date'].split('T')[0]
+        new_invoice.amount = round(float(invoice['Subtotal']), 2)
+        new_invoice.job = job
+        new_invoice.save()
+        new_invoice.job.save() ## Update job stage
+
+        # Get invoice as PDF
+        print("Getting PDF")
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
+    
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+            'Accept': 'Application/PDF'
+        }
+        pdf_response = requests.request("GET", url, headers=headers, data={})
+
+        if(not pdf_response.status_code == 200):
+            print(pdf_response, "Error retrieving PDF for", job)
+            return self(success=False, message=json.loads(response.text))
+        
+        print("Writing Invoice to File")
+        with open(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", "wb") as f:
+            f.write(pdf_response.content)
+
+        shutil.copyfile(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf")
+        paths['invoice'] = f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf"
+
+        print("Invoice Saved")
+
+        # Create Full Invoice using function from invoice_generator.py
+        print("Invoice Generation Starting")
+        result = generate_invoice(job, paths, invoice, accounts_folder)
+        if not result['success']:
+            return self(success=False, message=result['message'])
+
+        print("Invoice Generated")
+        return self(success=True, message=json.dumps(result['message']), number=invoice['Number'])
 
 class BillInputType(graphene.InputObjectType):
     id = graphene.String()
     myobUid = graphene.String()
     supplier = myobContractorInput()
-    job = JobInput()
+    job = JobInputType()
     contractor = graphene.String()
     invoiceNumber = graphene.String()
     invoiceDate = graphene.Date()
@@ -2063,6 +2092,104 @@ class BillOutputType(DjangoObjectType):
     class Meta:
         model = Bill
         fields = '__all__'
+
+class CreateMyobBill(graphene.Mutation):
+    class Arguments:
+        job_name = graphene.String()
+        job_uid = graphene.String()
+        supplier_uid = graphene.String()
+        newBill = BillInputType()
+        attachment = graphene.String()
+        attachmentName = graphene.String()
+
+    success = graphene.Boolean()
+    message= graphene.String()
+    error = graphene.String()
+    uid = graphene.String()
+    bill = graphene.Field(BillOutputType)
+    
+    @classmethod
+    @login_required
+    def mutate(self, root, info, job_name, job_uid, supplier_uid, newBill, attachment, attachmentName):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
+
+        # Get shipToAddress from MYOB
+        filter = f"UID eq guid'{supplier_uid}'"
+        get_endpoint = "Contact/Supplier"
+        supplier_details = myob_get(user, get_endpoint, filter)
+
+        if len(supplier_details['Items']) < 1:
+            return self(success=False, message="Could Not Get Contractor Details From MYOB")
+
+        supplier_details = supplier_details['Items'][0]
+        shipToAddress = supplier_details['CompanyName'] # Default bill to as suppliers name
+        if supplier_details['Addresses'] is None:
+            return self(success=False, message="Please add an address to the supplier in MYOB")
+
+        if len(supplier_details) > 0 and len(supplier_details['Addresses']) > 0:
+            addressDetails = supplier_details['Addresses'][0]
+            shipToAddress = f"{supplier_details['CompanyName']}\n{addressDetails['Street']},\n{addressDetails['City']} {addressDetails['State']} {addressDetails['PostCode']}"
+
+        # 5-1100 Maintenance Subcontractors - d7a5adf7-a9c1-47b0-b11d-f72f62cd575d
+        # 5-2100 Maintenance Materials - 83c3ab74-1b2e-4002-9e38-65c99fbf2b46
+        
+        bill_account = "d7a5adf7-a9c1-47b0-b11d-f72f62cd575d"
+        if newBill['billType'] == 'material':
+            bill_account = "83c3ab74-1b2e-4002-9e38-65c99fbf2b46"
+
+        # POST Bill to MYOB
+        post_endpoint = "/Purchase/Bill/Service/"
+        payload = json.dumps({
+            "Date": newBill['invoiceDate'], 
+            "Supplier": {"UID": supplier_uid},
+            "SupplierInvoiceNumber": newBill['invoiceNumber'],
+            "ShipToAddress": shipToAddress,
+            "IsTaxInclusive": True,
+            "Lines": [
+                {
+                    "Type": "Transaction",
+                    "Description": job_name,
+                    "Account": {"UID": bill_account},
+                    "TaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
+                    "Total": round(newBill['amount'], 2),
+                    "Job": {"UID": job_uid},
+                }
+            ],
+            "FreightTaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
+            "JournalMemo": f"Purchase: {supplier_details['CompanyName']}",
+        }, default=str)
+
+        response = myob_post(user, post_endpoint, payload)
+
+        if not response.status_code == 201:
+            return self(success=False, message="Issue creating bill in MYOB", error=json.loads(response.text))
+
+        # Get the bill uid
+        bill_uid = get_response_uid(response)
+
+        print("Bill Created for", supplier_details['CompanyName'], "- UID =", bill_uid)
+
+        # # POST Bill Attachment to MYOB
+        attachment_endpoint = f"/Purchase/Bill/Service/{bill_uid}/Attachment"
+        attachment_payload = json.dumps({
+            "Attachments": [
+                {
+                    "FileBase64Content": attachment,
+                    "OriginalFileName": attachmentName,
+                }
+            ],
+        }, default=str)
+        attachment_response = myob_post(user, attachment_endpoint, attachment_payload)
+
+        if not attachment_response.status_code == 200:
+            print(attachment_response.status_code, attachment_response.text)
+            return self(success=True, message="Error Uploading Attachment. Please manually attach in MYOB", uid=bill_uid, error=response.text)
+
+        print("Attachment Added")
+
+        return self(success=True, message="Bill Created Successfully", uid=bill_uid, error=None)
 
 class myobUpdateBill(graphene.Mutation):
     class Arguments:
@@ -2080,254 +2207,85 @@ class myobUpdateBill(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
             
-            if not Bill.objects.filter(id = bill.id).exists():
-                return self(success=False, message="Cannot Find Bill")
-            
-            b = Bill.objects.get(id = bill.id)
+        if not Bill.objects.filter(id = bill.id).exists():
+            return self(success=False, message="Cannot Find Bill")
+        
+        b = Bill.objects.get(id = bill.id)
 
-            currentJob = b.job
+        currentJob = b.job
 
-            job = Job.objects.get(id = bill.job.id)
+        job = Job.objects.get(id = bill.job.id)
 
-            # Update the MYOB bill
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Content-Type': 'application/json',
-            }
+        # Update the MYOB bill
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+            'Content-Type': 'application/json',
+        }
 
-            # GET MYOB Bill
-            get_url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$filter=UID eq guid'{bill.myobUid}'"
-            get_response = requests.request("GET", get_url, headers=headers)
+        # GET MYOB Bill
+        get_url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$filter=UID eq guid'{bill.myobUid}'"
+        get_response = requests.request("GET", get_url, headers=headers)
 
-            if not get_response.status_code == 200:
-                print(get_response.status_code)
-                return self(success=False, message="Could Not Get Bill Details From MYOB")
+        if not get_response.status_code == 200:
+            print(get_response.status_code)
+            return self(success=False, message="Could Not Get Bill Details From MYOB")
 
-            if len(json.loads(get_response.text)['Items']) == 0:
-                print(json.loads(get_response.text))
-                return self(success=False, message="Could Not Get Bill Details From MYOB")
+        if len(json.loads(get_response.text)['Items']) == 0:
+            print(json.loads(get_response.text))
+            return self(success=False, message="Could Not Get Bill Details From MYOB")
 
-            myob_bill = json.loads(get_response.text)['Items'][0]
+        myob_bill = json.loads(get_response.text)['Items'][0]
 
-            if myob_bill['Status'] == "Closed":
-                return self(success=False, message="Can not update a Bill that has already been processed")
+        if myob_bill['Status'] == "Closed":
+            return self(success=False, message="Can not update a Bill that has already been processed")
 
-            # Update lines
-            myob_bill['SupplierInvoiceNumber'] = bill.invoiceNumber
-            myob_bill['Date'] = bill.invoiceDate
-            myob_bill['Lines'][0]['Description'] = str(job)
-            myob_bill['Lines'][0]['Total'] = round(bill.amount, 2)
-            myob_bill['Lines'][0]['Job']['UID'] = job.myob_uid
+        # Update lines
+        myob_bill['SupplierInvoiceNumber'] = bill.invoiceNumber
+        myob_bill['Date'] = bill.invoiceDate
+        myob_bill['Lines'][0]['Description'] = str(job)
+        myob_bill['Lines'][0]['Total'] = round(bill.amount, 2)
+        myob_bill['Lines'][0]['Job']['UID'] = job.myob_uid
 
-            myob_bill['Lines'][0]['Account']['UID']  = "d7a5adf7-a9c1-47b0-b11d-f72f62cd575d"
-            if bill.billType == 'material':
-                myob_bill['Lines'][0]['Account']['UID'] = "83c3ab74-1b2e-4002-9e38-65c99fbf2b46"
+        myob_bill['Lines'][0]['Account']['UID']  = "d7a5adf7-a9c1-47b0-b11d-f72f62cd575d"
+        if bill.billType == 'material':
+            myob_bill['Lines'][0]['Account']['UID'] = "83c3ab74-1b2e-4002-9e38-65c99fbf2b46"
 
-            # PUT Bill with updates to MYOB
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service/{bill.myobUid}"
-            payload = json.dumps(myob_bill, default=str)
-            response = requests.request("PUT", url, headers=headers, data=payload)
+        # PUT Bill with updates to MYOB
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service/{bill.myobUid}"
+        payload = json.dumps(myob_bill, default=str)
+        response = requests.request("PUT", url, headers=headers, data=payload)
 
-            if(not response.status_code == 200):
-                print(response.status_code, response.text)
-                return self(success=False, message="Issue updating bill in MYOB")
+        if(not response.status_code == 200):
+            print(response.status_code, response.text)
+            return self(success=False, message="Issue updating bill in MYOB")
 
-            # Update the bill
-            b.job = job
-            b.invoice_number = bill.invoiceNumber
-            b.invoice_date = bill.invoiceDate
-            b.amount = bill.amount
-            b.bill_type = bill.billType
+        # Update the bill
+        b.job = job
+        b.invoice_number = bill.invoiceNumber
+        b.invoice_date = bill.invoiceDate
+        b.amount = bill.amount
+        b.bill_type = bill.billType
 
-            if bill.filePath and currentJob != job:
-                folder_name = str(job)
-                job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
-                accounts_folder = os.path.join(job_folder, "Accounts", job.supplier.name)
-                if os.path.exists(bill.filePath):
-                    new_file_path = os.path.join(accounts_folder, bill.filePath.split('\\')[len(bill.filePath.split('\\'))-1])
-                    shutil.move(bill.filePath, new_file_path)
-                    b.file_path = new_file_path
-
-            b.save()
-
-            return self(success=True, message="Successfully Updated Bill", job=currentJob)
-
-        return self(success=False, message="MYOB Connection Error")
-
-class myobCreateBill(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-        jobId = graphene.String()
-        newBill = BillInputType()
-        attachment = graphene.String()
-        attachmentName = graphene.String()
-
-    success = graphene.Boolean()
-    message= graphene.String()
-    error = graphene.String()
-    uid = graphene.String()
-    bill = graphene.Field(BillOutputType)
-    
-    @classmethod
-    @login_required
-    def mutate(self, root, info, uid, jobId, newBill, attachment, attachmentName):
-        env = environ.Env()
-        environ.Env.read_env()
-
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            supplier = Contractor.objects.get(id=newBill['contractor'])
-            job = Job.objects.get(po=jobId)
-
-            if not job.myob_uid:
-                res = myobCreateJob.mutate(root, info, uid, job.id)
-                if not res.success:
-                    return self(success=False, message="Please sync job with MYOB before creating invoice!")               
-                
-                job = Job.objects.get(id=job.id)
-
-            # Check to see if bill already exists in the system
-            if Bill.objects.filter(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).exists():
-                print(Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).id)
-                return self(success=False, message="Bill Already Exists", error=Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber']))
-
+        if bill.filePath and currentJob != job:
             folder_name = str(job)
             job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
+            accounts_folder = os.path.join(job_folder, "Accounts", job.supplier.name)
+            if os.path.exists(bill.filePath):
+                new_file_path = os.path.join(accounts_folder, bill.filePath.split('\\')[len(bill.filePath.split('\\'))-1])
+                shutil.move(bill.filePath, new_file_path)
+                b.file_path = new_file_path
 
-            if not os.path.exists(job_folder):
-                return self(success=False, message="Job Folder Does Not Exist", error="Folder Not Found")
+        b.save()
 
-            accounts_folder = os.path.join(job_folder, "Accounts", supplier.name)
-
-            if not os.path.exists(accounts_folder):
-                os.mkdir(accounts_folder)
-                
-            pdf = base64.b64decode(attachment, validate=True)
-            with open(os.path.join(accounts_folder, attachmentName), 'wb') as f:
-                f.write(pdf)
-
-            print("Creating Bill")
-
-            # Get shipToAddress from MYOB
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{supplier.myob_uid}'"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.get(link, headers=headers)
-
-            if not response.status_code == 200:
-                return self(success=False, message="Could Not Get Contractor Details From MYOB", error=response.text)
-
-            res = json.loads(response.text)
-            contractorDetails = res['Items']
-
-            shipToAddress = supplier.name # Default bill to as suppliers name
-            if contractorDetails[0]['Addresses'] == None:
-                return self(success=False, message="Please add an address to the supplier in MYOB")
-
-            if len(contractorDetails) > 0 and len(contractorDetails[0]['Addresses']) > 0:
-                addressDetails = contractorDetails[0]['Addresses'][0]
-                shipToAddress = f"{contractorDetails[0]['CompanyName']}\n{addressDetails['Street']},\n{addressDetails['City']} {addressDetails['State']} {addressDetails['PostCode']}"
-
-            # 5-1100 Maintenance Subcontractors - d7a5adf7-a9c1-47b0-b11d-f72f62cd575d
-            # 5-2100 Maintenance Materials - 83c3ab74-1b2e-4002-9e38-65c99fbf2b46
-            
-            bill_account = "d7a5adf7-a9c1-47b0-b11d-f72f62cd575d"
-            if newBill['billType'] == 'material':
-                bill_account = "83c3ab74-1b2e-4002-9e38-65c99fbf2b46"
-
-            # POST Bill to MYOB
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service/"
-            payload = json.dumps({
-                "Date": newBill['invoiceDate'], 
-                "Supplier": {"UID": supplier.myob_uid},
-                "SupplierInvoiceNumber": newBill['invoiceNumber'],
-                "ShipToAddress": shipToAddress,
-                "IsTaxInclusive": True,
-                "Lines": [
-                    {
-                        "Type": "Transaction",
-                        "Description": str(job),
-                        "Account": {"UID": bill_account},
-                        "TaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
-                        "Total": round(newBill['amount'], 2),
-                        "Job": {"UID": job.myob_uid},
-                    }
-                ],
-                "FreightTaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
-                "JournalMemo": f"Purchase: {supplier.name}",
-            }, default=str)
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Content-Type': 'application/json',
-            }
-            response = requests.request("POST", url, headers=headers, data=payload)
-
-            if(not response.status_code == 201):
-                return self(success=False, message="Issue creating bill in MYOB", error=json.loads(response.text))
-
-            # Get the bill uid
-            bill_uid = response.headers['Location'][-36:]
-            print(bill_uid)
-
-            job = Job.objects.get(po=jobId)
-
-            bill = Bill()
-            bill.job = job
-            bill.myob_uid = bill_uid
-            bill.supplier = supplier
-            bill.amount = newBill['amount']
-            bill.invoice_date = newBill['invoiceDate']
-            bill.invoice_number = newBill['invoiceNumber']
-            bill.bill_type = newBill['billType']
-            bill.thumbnail_path = newBill['thumbnailPath']
-            bill.file_path = os.path.join(accounts_folder, attachmentName)
-            bill.save()
-
-            print("Bill Created for", supplier.name, "- UID =", bill_uid)
-
-            # # POST Bill Attachment to MYOB
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service/{bill_uid}/Attachment"
-            payload = json.dumps({
-                "Attachments": [
-                    {
-                        "FileBase64Content": attachment,
-                        "OriginalFileName": attachmentName,
-                    }
-                ],
-            }, default=str)
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Content-Type': 'application/json',
-            }
-            response = requests.request("POST", url, headers=headers, data=payload)
-
-            if not response.status_code == 200:
-                print(response)
-                return self(success=True, message="Error Uploading Attachment. Please manually attach in MYOB", uid=bill_uid, error=response.text)
-
-            print("Attachment Added")
-
-            return self(success=True, message="Bill Created Successfully", bill=bill, error=None)
-        return self(success=False, message="MYOB Authorisation Error", error="Can not authorise myob account")
-
+        return self(success=True, message="Successfully Updated Bill", job=currentJob)
+        
 class myobProcessPayment(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -2347,126 +2305,128 @@ class myobProcessPayment(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            client = Client.objects.get(id=client)
-    
-            total_amount = 0
-            for inv in invoices:
-                total_amount += inv.amount
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            if RemittanceAdvice.objects.filter(client = client, date=payment_date, amount=total_amount).exists():
-                return self(success=False, message="Remittance Advice Already Exists")
-            
-            print("Creating Remittance Advice")
-            
-            remittance_advice = RemittanceAdvice()
-            remittance_advice.client = client
-            remittance_advice.date = payment_date
-            remittance_advice.amount = total_amount
+        client = Client.objects.get(id=client)
 
-            # Create payment from the list of invoices provided
-            paid_invoices = []
-            external_invoices = []
-            for invoice in invoices:
-                if Invoice.objects.filter(number=invoice.number).exists():
-                    inv = Invoice.objects.get(number=invoice.number)
-                    if not inv.remittance == None:
-                        return self(success=False, message="Remittance Advice Already Exists.")
-                    
-                    paid_invoices.append({
-                        "UID": inv.myob_uid,
-                        "Type": "Invoice",
-                        "AmountApplied": round(float(inv.amount) * 1.1, 2),
-                        "AmountAppliedForeign": None
-                    })
+        total_amount = 0
+        for inv in invoices:
+            total_amount += inv.amount
 
-                else:
-                    external_invoices.append(invoice.number)
+        # Check remittance advice already exists in System
+        if RemittanceAdvice.objects.filter(client = client, date=payment_date, amount=total_amount).exists():
+            return self(success=False, message="Remittance Advice Already Exists")
+        
 
-            if len(external_invoices) > 0:
-                # Get the details of the invoices that are not saved in the system
-                for inv_num in external_invoices:
-                    # Fetch the invoice from MYOB to include in the paid invoices
-                    url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$filter=Number eq '{inv_num}'"
-                    headers = {                
-                        'Authorization': f'Bearer {user.access_token}',
-                        'x-myobapi-key': env('CLIENT_ID'),
-                        'x-myobapi-version': 'v2',
-                        'Accept-Encoding': 'gzip,deflate',
-                    }
-                    response = requests.request("GET", url, headers=headers, data={})
-                    
-                    ## Save Invoice as PDF
-                    if not response.status_code == 200:
-                        print(response.text)
-                        return self(success=False, message='Error Finding External Invoice')
-
-                    res = json.loads(response.text)
-                    ext_inv = res['Items'][0]
-
-                    paid_invoices.append({
-                        "UID": ext_inv['UID'],
-                        "Type": "Invoice",
-                        "AmountApplied": float(ext_inv['TotalAmount']),
-                        "AmountAppliedForeign": None
-                    })
-
-            if len(paid_invoices) < 1:
-                return self(success=False, message="No Invoices Found")
-            
-            # POST Payment to MYOB
-            # ANZ Online-Saver UID: "7c6557f4-d684-41f2-9e0b-2f53c06828d3"
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment/"
-            payload = json.dumps({
-                "Date": payment_date, 
-                "DepositTo": "Account",
-                "Account": {"UID": "7c6557f4-d684-41f2-9e0b-2f53c06828d3"},
-                "Customer": {"UID": client.myob_uid},
-                "Invoices": paid_invoices,
-                "PaymentMethod": "EFT",
-                "Memo": f"Payment: Transfer from {client.name}"
-            }, default=str)
-            headers = {
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Content-Type': 'application/json',
-            }
-            response = requests.request("POST", url, headers=headers, data=payload)
-
-    
-            print("Remittance Advice Uploaded")
-
-            if(not response.status_code == 201):
-                print(response.text)
-                return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
-
-            remittance_advice.myob_uid = response.headers['Location'][-36:]
-            remittance_advice.save()
-
-            # Update invoices after the payment is processed in myob
-            print("Updaing Invoices")
-            updatedInvoices = []
-            for inv in invoices:
-                invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
-                if invoice:
-                    if not inv.date_issued: invoice.date_issued = inv.date_issued
-                    invoice.date_paid = payment_date
-                    invoice.remittance = remittance_advice
-                    invoice.save()
-                    invoice.job.save()
-                    updatedInvoices.append(invoice)
-            
-            print("Invoices Updated")
-
-            return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
+        # Check remittance advice already exists in MYOB
 
 
-        print("Not Valid MYOB User")
-        return self(success=False, message="Error connecting to MYOB.", error=json.loads("MYOB Connection Error"))
+        print("Creating Remittance Advice")
+        
+        remittance_advice = RemittanceAdvice()
+        remittance_advice.client = client
+        remittance_advice.date = payment_date
+        remittance_advice.amount = total_amount
+
+        # Create payment from the list of invoices provided
+        paid_invoices = []
+        external_invoices = []
+        for invoice in invoices:
+            if Invoice.objects.filter(number=invoice.number).exists():
+                inv = Invoice.objects.get(number=invoice.number)
+                if not inv.remittance is None:
+                    return self(success=False, message="Remittance Advice Already Exists.")
+                
+                paid_invoices.append({
+                    "UID": inv.myob_uid,
+                    "Type": "Invoice",
+                    "AmountApplied": round(float(inv.amount) * 1.1, 2),
+                    "AmountAppliedForeign": None
+                })
+
+            else:
+                external_invoices.append(invoice.number)
+
+        if len(external_invoices) > 0:
+            # Get the details of the invoices that are not saved in the system
+            for inv_num in external_invoices:
+                # Fetch the invoice from MYOB to include in the paid invoices
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$filter=Number eq '{inv_num}'"
+                headers = {                
+                    'Authorization': f'Bearer {user.access_token}',
+                    'x-myobapi-key': env('CLIENT_ID'),
+                    'x-myobapi-version': 'v2',
+                    'Accept-Encoding': 'gzip,deflate',
+                }
+                response = requests.request("GET", url, headers=headers, data={})
+                
+                ## Save Invoice as PDF
+                if not response.status_code == 200:
+                    print(response.text)
+                    return self(success=False, message='Error Finding External Invoice')
+
+                res = json.loads(response.text)
+                ext_inv = res['Items'][0]
+
+                paid_invoices.append({
+                    "UID": ext_inv['UID'],
+                    "Type": "Invoice",
+                    "AmountApplied": float(ext_inv['TotalAmount']),
+                    "AmountAppliedForeign": None
+                })
+
+        if len(paid_invoices) < 1:
+            return self(success=False, message="No Invoices Found")
+        
+        # POST Payment to MYOB
+        # ANZ Online-Saver UID: "7c6557f4-d684-41f2-9e0b-2f53c06828d3"
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment/"
+        payload = json.dumps({
+            "Date": payment_date, 
+            "DepositTo": "Account",
+            "Account": {"UID": "7c6557f4-d684-41f2-9e0b-2f53c06828d3"},
+            "Customer": {"UID": client.myob_uid},
+            "Invoices": paid_invoices,
+            "PaymentMethod": "EFT",
+            "Memo": f"Payment: Transfer from {client.name}"
+        }, default=str)
+        headers = {
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+            'Content-Type': 'application/json',
+        }
+        response = requests.request("POST", url, headers=headers, data=payload)
+
+
+        print("Remittance Advice Uploaded")
+
+        if(not response.status_code == 201):
+            print(response.text)
+            return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
+
+        remittance_advice.myob_uid = response.headers['Location'][-36:]
+        remittance_advice.save()
+
+        # Update invoices after the payment is processed in myob
+        print("Updaing Invoices")
+        updatedInvoices = []
+        for inv in invoices:
+            invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
+            if invoice:
+                if not invoice.date_issued: invoice.date_issued = inv.date_issued
+                invoice.date_paid = payment_date
+                invoice.remittance = remittance_advice
+                invoice.save()
+                invoice.job.save()
+                updatedInvoices.append(invoice)
+        
+        print("Invoices Updated")
+
+        return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
 
 class InvoiceInput(graphene.InputObjectType):
     number = graphene.String()
@@ -2489,148 +2449,138 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-            converted = []
-            _invoices = invoices.copy()
-            new_uids = {}
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            while len(invoices) > 0:
-                query_limit = 35
+        converted = []
+        _invoices = invoices.copy()
+        new_uids = {}
 
-                # Build Query
-                queryFilter = ""
-                for i, inv in enumerate(invoices[:query_limit]):
-                    invoice = Invoice.objects.get(number=inv.number)
-                    queryFilter += f"UID eq guid'{invoice.myob_uid}'"
-                    if not (i + 1 == query_limit or i+1 == len(invoices)):
-                        queryFilter += " or "
+        while len(invoices) > 0:
+            query_limit = 35
 
-                # Check to see if the sale is an order
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter={queryFilter}"
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
+            # Build Query
+            queryFilter = ""
+            for i, inv in enumerate(invoices[:query_limit]):
+                invoice = Invoice.objects.get(number=inv.number)
+                queryFilter += f"UID eq guid'{invoice.myob_uid}'"
+                if not (i + 1 == query_limit or i+1 == len(invoices)):
+                    queryFilter += " or "
 
-                if not response.status_code == 200:
-                    return self(success=False, message="Error with MYOB Request", error=response.text)
-
-                res = json.loads(response.text)
-
-                res = res['Items']
-                if len(res) == 0:
-                    return self(success=True, message="Invoices Updated")
-
-                for i, order in enumerate(res):
-                    if order['Status'] == "ConvertedToInvoice":
-                        print("Already Converted:", order['Number'])
-                        for idx, inv in enumerate(invoices[:query_limit]):
-                            if inv['number'] == order['Number']:
-                                del invoices[idx]
-                                query_limit -= 1
-                        continue
-
-                    for line in order['Lines']:
-                        line.pop("RowID", None)
-
-                    order['Lines'].append({
-                        "Type": "Header",
-                        "Description": "Order Created on " + datetime.strptime(order['Date'].split('T')[0], "%Y-%m-%d").strftime('%d/%m/%Y'),
-                    })
-
-                    # Convert order to Invoice / POST to MYOB
-                    url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
-                    payload = json.dumps({
-                        "Date": datetime.now(), 
-                        "Number": order['Number'],
-                        "Customer": {"UID": order['Customer']['UID']},
-                        "CustomerPurchaseOrderNumber": order['CustomerPurchaseOrderNumber'],
-                        "Comment": order['Comment'],
-                        "ShipToAddorders": order['ShipToAddress'],
-                        "IsTaxInclusive": False,
-                        "Lines": order['Lines'],
-                        "JournalMemo": order['JournalMemo'],
-                        "Order": {
-                            "UID": order['UID']
-                        }
-                    }, default=str)
-                    headers = {                
-                        'Authorization': f'Bearer {user.access_token}',
-                        'x-myobapi-key': env('CLIENT_ID'),
-                        'x-myobapi-version': 'v2',
-                        'Accept-Encoding': 'gzip,deflate',
-                        'Content-Type': 'application/json',
-                    }
-                    response = requests.request("POST", url, headers=headers, data=payload)
-                    if not response.status_code == 201:
-                        return self(success=False, message=response.text)
-                    
-                    invoice_uid = response.headers['Location'][-36:]
-                    new_uids.update({order['Number']: invoice_uid})
-                    
-                    converted.append(order['Number'])
-                    del invoices[:query_limit]
-
-            updatedInvoices = []
-            for inv in _invoices:
-                invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
-                if invoice:
-                    if inv.number in new_uids: invoice.myob_uid = new_uids[inv.number]
-                    if not invoice.date_issued: invoice.date_issued = inv.date_issued
-                    if date_paid: invoice.date_paid = date_paid
-                    invoice.save()
-
-                    invoice.job.save() ## save job to update stage
-                    updatedInvoices.append(invoice)
-
-            return self(success=True, message="Orders have been converted", converted=converted)
-        return self(success=False, message="MYOB Connection Error")
-
-class myobCustomFunction(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-
-    success = graphene.Boolean()
-    message = graphene.String()
-    obj = graphene.String()
-    items = graphene.List(graphene.String)
-
-    @classmethod
-    @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        environ.Env.read_env()
-
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
-
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service"
+            # Check to see if the sale is an order
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter={queryFilter}"
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
                 'x-myobapi-version': 'v2',
                 'Accept-Encoding': 'gzip,deflate',
             }
+            response = requests.request("GET", url, headers=headers, data={})
 
-            response = getAllData(url, headers)
-            # res = json.loads(response.text)
-            res = response['Items']
+            if not response.status_code == 200:
+                return self(success=False, message="Error with MYOB Request", error=response.text)
 
-            for invoice in res:
-                if Invoice.objects.filter(number=invoice['Number']).exists():
-                    inv = Invoice.objects.get(number=invoice['Number'])
-                    if not inv.myob_uid == invoice['UID']:
-                        print(invoice['Number'])
-                        inv.myob_uid = invoice['UID']
-                        inv.save()
+            res = json.loads(response.text)
 
-        return self(success=False, message="MYOB Auth Error")
+            res = res['Items']
+            if len(res) == 0:
+                return self(success=True, message="Invoices Updated")
+
+            for i, order in enumerate(res):
+                if order['Status'] == "ConvertedToInvoice":
+                    print("Already Converted:", order['Number'])
+                    for idx, inv in enumerate(invoices[:query_limit]):
+                        if inv['number'] == order['Number']:
+                            del invoices[idx]
+                            query_limit -= 1
+                    continue
+
+                for line in order['Lines']:
+                    line.pop("RowID", None)
+
+                order['Lines'].append({
+                    "Type": "Header",
+                    "Description": "Order Created on " + datetime.strptime(order['Date'].split('T')[0], "%Y-%m-%d").strftime('%d/%m/%Y'),
+                })
+
+                # Convert order to Invoice / POST to MYOB
+                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
+                payload = json.dumps({
+                    "Date": datetime.now(), 
+                    "Number": order['Number'],
+                    "Customer": {"UID": order['Customer']['UID']},
+                    "CustomerPurchaseOrderNumber": order['CustomerPurchaseOrderNumber'],
+                    "Comment": order['Comment'],
+                    "ShipToAddorders": order['ShipToAddress'],
+                    "IsTaxInclusive": False,
+                    "Lines": order['Lines'],
+                    "JournalMemo": order['JournalMemo'],
+                    "Order": {
+                        "UID": order['UID']
+                    }
+                }, default=str)
+                headers = {                
+                    'Authorization': f'Bearer {user.access_token}',
+                    'x-myobapi-key': env('CLIENT_ID'),
+                    'x-myobapi-version': 'v2',
+                    'Accept-Encoding': 'gzip,deflate',
+                    'Content-Type': 'application/json',
+                }
+                response = requests.request("POST", url, headers=headers, data=payload)
+                if not response.status_code == 201:
+                    return self(success=False, message=response.text)
+                
+                invoice_uid = response.headers['Location'][-36:]
+                new_uids.update({order['Number']: invoice_uid})
+                
+                converted.append(order['Number'])
+                del invoices[:query_limit]
+
+        updatedInvoices = []
+        for inv in _invoices:
+            invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
+            if invoice:
+                if inv.number in new_uids: invoice.myob_uid = new_uids[inv.number]
+                if not invoice.date_issued: invoice.date_issued = inv.date_issued
+                if date_paid: invoice.date_paid = date_paid
+                invoice.save()
+
+                invoice.job.save() ## save job to update stage
+                updatedInvoices.append(invoice)
+
+        return self(success=True, message="Orders have been converted", converted=converted)
+
+## Test Function
+# class myobCustomFunction(graphene.Mutation):
+    # class Arguments:
+
+#     success = graphene.Boolean()
+#     message = graphene.String()
+#     obj = graphene.String()
+#     items = graphene.List(graphene.String)
+
+#     @classmethod
+#     @login_required
+#     def mutate(self, root, info):
+#         env = environ.Env()
+#         environ.Env.read_env()
+
+#         user = check_user_token_auth(uid, info.context.user)
+#         if user is None:
+#             return self(success=False, message="MYOB User Authentication Error")
+
+#         url = "Sale/Invoice/Service"
+#         response = myob_get(user, url, all=True)
+#         res = response['Items']
+
+#         for invoice in res:
+#             if Invoice.objects.filter(number=invoice['Number']).exists():
+#                 inv = Invoice.objects.get(number=invoice['Number'])
+#                 if not inv.myob_uid == invoice['UID']:
+#                     print(invoice['Number'])
+#                     inv.myob_uid = invoice['UID']
+#                     inv.save()
 
 class generateInvoice(graphene.Mutation):
     class Arguments:
@@ -2646,222 +2596,304 @@ class generateInvoice(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            print("Creating Invoice")
-            job = Job.objects.get(id=job) if Job.objects.filter(id=job).exists() else None 
-            # Error Checking
-            if not job:
-                return self(success=False, message="Job Not Found!")
+        print("Creating Invoice")
+        job = Job.objects.get(id=job) if Job.objects.filter(id=job).exists() else None 
+        # Error Checking
+        if not job:
+            return self(success=False, message="Job Not Found!")
 
-            if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
-                return self(success=False, message="No Approved Estimate to Invoice")
+        if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
+            return self(success=False, message="No Approved Estimate to Invoice")
 
-            if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
-                return self(success=False, message="More than 1 estimate approved!")
+        if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
+            return self(success=False, message="More than 1 estimate approved!")
 
-            estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
+        estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
 
-            if estimate.price == 0.0:
-                return self(success=False, message="Estimate price is $0. please check job!")
+        if estimate.price == 0.0:
+            return self(success=False, message="Estimate price is $0. please check job!")
 
-            if not job.myob_uid:
-                return self(success=False, message="Please sync job with MYOB before creating invoice!")
+        if not job.myob_uid:
+            return self(success=False, message="Please sync job with MYOB before creating invoice!")
 
-            if not job.completion_date:
-                return self(success=False, message="Job completion date not recorded!")
+        if not job.completion_date:
+            return self(success=False, message="Job completion date not recorded!")
+        
+        invoice = []
+
+        folder_name = str(job)
+        job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
+
+        if not os.path.exists(job_folder):
+            return self(success=False, message="Job Folder does not exist!")
+
+        accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
+        if not os.path.exists(accounts_folder):
+            os.mkdir(accounts_folder)
+
+        estimate_folder = os.path.join(job_folder, "Estimates", estimate.name)
+
+        if job.client.name == "BGIS":
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"invoice": False, "approval": False, "estimate": False}
+            paths = {"invoice": "", "approval": "", "estimate": ""}
+
+            for files in os.listdir(accounts_folder):
+                if "INV" in files:
+                    found['invoice'] = True
+                    paths['invoice'] = os.path.join(accounts_folder, files)
             
-            invoice = []
-
-            folder_name = str(job)
-            job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
-
-            if not os.path.exists(job_folder):
-                return self(success=False, message="Job Folder does not exist!")
-
-            accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
-            if not os.path.exists(accounts_folder):
-                os.mkdir(accounts_folder)
-
-            estimate_folder = os.path.join(job_folder, "Estimates", estimate.name)
-
-            if job.client.name == "BGIS":
-                ## Check the required invoice files that are stored in the relevant estimate folder
-                found = {"invoice": False, "approval": False, "estimate": False}
-                paths = {"invoice": "", "approval": "", "estimate": ""}
-
-                for files in os.listdir(accounts_folder):
-                    if "INV" in files:
-                        found['invoice'] = True
-                        paths['invoice'] = os.path.join(accounts_folder, files)
+            # Only need approval and breakdown on jobs > $500
+            if estimate.price > 500.00:
+                if not os.path.exists(estimate_folder):
+                    return self(success=False, message="Estimate has not been created for this job. Please check the estimate folder.")
                 
-                # Only need approval and breakdown on jobs > $500
-                if estimate.price > 500.00:
-                    if not os.path.exists(estimate_folder):
-                        return self(success=False, message="Estimate has not been created for this job. Please check the estimate folder.")
-                    
-                    estimate_file = None
-                    for files in os.listdir(estimate_folder):
-                        if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
-                            found['approval'] = True
-                            paths['approval'] = os.path.join(estimate_folder, files)
-                        if "BGIS Estimate" in files and not found["estimate"]:
-                            if files.endswith(".pdf"):
-                                found["estimate"] = True
-                                paths["estimate"] = os.path.join(estimate_folder, files)
-                            else:
-                                estimate_file = os.path.join(estimate_folder, files)
-                    
-                    if not found["estimate"] and not estimate_file == None :
-                        print("Converting Spreadsheet to PDF", estimate_file)
+                estimate_file = None
+                for files in os.listdir(estimate_folder):
+                    if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
+                        found['approval'] = True
+                        paths['approval'] = os.path.join(estimate_folder, files)
+                    if "BGIS Estimate" in files and not found["estimate"]:
+                        if files.endswith(".pdf"):
+                            found["estimate"] = True
+                            paths["estimate"] = os.path.join(estimate_folder, files)
+                        else:
+                            estimate_file = os.path.join(estimate_folder, files)
+                
+                if not found["estimate"] and not estimate_file is None :
+                    print("Converting Spreadsheet to PDF", estimate_file)
 
-                        p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
-                        bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
-                        estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
-                        p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
+                    p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
+                    bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
+                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
+                    p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
 
-                        found["estimate"] = True
-                        paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
-
-                else:
-                    found['approval'] = True
-                    found['estimate'] = True
-            elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
-                found = {"invoice": False}
-                paths = {"invoice": ""}
-
-                for files in os.listdir(accounts_folder):
-                    if "INV" in files:
-                        found['invoice'] = True
-                        paths['invoice'] = os.path.join(accounts_folder, files)
+                    found["estimate"] = True
+                    paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
 
             else:
-                ## Check the required invoice files that are stored in the relevant estimate folder
-                found = {"invoice": False, "purchaseOrder": False}
-                paths = {"invoice": "", "purchaseOrder": ""}
+                found['approval'] = True
+                found['estimate'] = True
+        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
+            found = {"invoice": False}
+            paths = {"invoice": ""}
 
-                for files in os.listdir(accounts_folder):
-                    if "INV" in files:
-                        found['invoice'] = True
-                        paths['invoice'] = os.path.join(accounts_folder, files)
-
-                for files in os.listdir(estimate_folder):
-                    if job.po in files:
-                        if files.endswith(".pdf"):
-                            found["purchaseOrder"] = True
-                            paths["purchaseOrder"] = os.path.join(estimate_folder, files)
-                
-                if not found['purchaseOrder']:
-                    return self(success=False, message="Error. Purchase Order can not be found")
-
-            # GET Invoice from MYOB
-            inv = Invoice.objects.get(job=job)
-            invoice_number = inv.number
-            invoice_uid = inv.myob_uid
-            
-            if not invoice_number or not invoice_uid:
-                return self(success=False, message=json.dumps("Invoice not found"))
-            
-            sale_type = "Order"
-            if inv.date_issued != None:
-                sale_type = "Invoice"
-
-            if not found['invoice']:
-                print("Getting PDF")
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
-            
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                    'Accept': 'Application/PDF'
-                }
-                pdf_response = requests.request("GET", url, headers=headers, data={})
-
-                if(pdf_response.status_code != 200):
-                    print(pdf_response, "Error retrieving PDF for", job)
-                    return self(success=False, message=json.loads(pdf_response.text))
-                else:
-                    print("Writing Invoice to File")
-                    with open(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", "wb") as f:
-                        f.write(pdf_response.content)
-
-                    shutil.copyfile(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf")
-                    paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf"
+            for files in os.listdir(accounts_folder):
+                if "INV" in files:
                     found['invoice'] = True
+                    paths['invoice'] = os.path.join(accounts_folder, files)
 
-                    print("Invoice Saved")
+        else:
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"invoice": False, "purchaseOrder": False}
+            paths = {"invoice": "", "purchaseOrder": ""}
 
-            if not all(found.values()):
-                error_str = " "
-                for key, val in found.items():
-                    if not val:
-                        error_str += key.capitalize() + ", "
+            for files in os.listdir(accounts_folder):
+                if "INV" in files:
+                    found['invoice'] = True
+                    paths['invoice'] = os.path.join(accounts_folder, files)
 
-                return self(success=False, message="Not all required invoice files can be found - " + error_str[:-2])
-
-            print("Invoice: ", invoice_number)
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service?$filter=Number eq '{invoice_number}'"
+            for files in os.listdir(estimate_folder):
+                if job.po in files:
+                    if files.endswith(".pdf"):
+                        found["purchaseOrder"] = True
+                        paths["purchaseOrder"] = os.path.join(estimate_folder, files)
             
+            if not found['purchaseOrder']:
+                return self(success=False, message="Error. Purchase Order can not be found")
+
+        # GET Invoice from MYOB
+        inv = Invoice.objects.get(job=job)
+        invoice_number = inv.number
+        invoice_uid = inv.myob_uid
+        
+        if not invoice_number or not invoice_uid:
+            return self(success=False, message=json.dumps("Invoice not found"))
+        
+        sale_type = "Order"
+        if inv.date_issued != None:
+            sale_type = "Invoice"
+
+        if not found['invoice']:
+            print("Getting PDF")
+            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
+        
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
                 'x-myobapi-version': 'v2',
                 'Accept-Encoding': 'gzip,deflate',
+                'Accept': 'Application/PDF'
             }
-            response = requests.request("GET", url, headers=headers, data={})
-            
-            ## Save Invoice as PDF
-            if not response.status_code == 200:
-                print("Error:", job)
-                return self(success=False, message=json.loads(response.text))
+            pdf_response = requests.request("GET", url, headers=headers, data={})
+
+            if(pdf_response.status_code != 200):
+                print(pdf_response, "Error retrieving PDF for", job)
+                return self(success=False, message=json.loads(pdf_response.text))
             else:
-                res = json.loads(response.text)
-                res = res['Items']
-                invoice = res[0]
-                
-                # Create Full Invoice using function from invoice_generator.py
-                result = generate_invoice(job, paths, invoice, accounts_folder)
+                print("Writing Invoice to File")
+                with open(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", "wb") as f:
+                    f.write(pdf_response.content)
 
-                print("Invoice Generation Finished")
-                
-                return self(success=result['success'], message=result['message'])
+                shutil.copyfile(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf")
+                paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf"
+                found['invoice'] = True
+
+                print("Invoice Saved")
+
+        if not all(found.values()):
+            error_str = " "
+            for key, val in found.items():
+                if not val:
+                    error_str += key.capitalize() + ", "
+
+            return self(success=False, message="Not all required invoice files can be found - " + error_str[:-2])
+
+        print("Invoice: ", invoice_number)
+        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service?$filter=Number eq '{invoice_number}'"
+        
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.request("GET", url, headers=headers, data={})
+        
+        ## Save Invoice as PDF
+        if not response.status_code == 200:
+            print("Error:", job)
+            return self(success=False, message=json.loads(response.text))
         else:
-            return self(success=False, message="MYOB Connection Error")
+            res = json.loads(response.text)
+            res = res['Items']
+            invoice = res[0]
+            
+            # Create Full Invoice using function from invoice_generator.py
+            result = generate_invoice(job, paths, invoice, accounts_folder)
 
-class myobGetTimesheets(graphene.Mutation):
+            print("Invoice Generation Finished")
+            
+            return self(success=result['success'], message=result['message'])
+
+class GetTimesheets(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        timesheet = graphene.String()
+        filter = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, timesheet):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, filter=''):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        endpoint = "Payroll/Timesheet"
+        response = myob_get(user, endpoint, filter)
 
-            timesheet_filter = "" if timesheet == "" else "?$filter=" + timesheet
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Payroll/Timesheet{timesheet_filter}"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.get(link, headers=headers)
+        return self(success=True, message=response.text)
 
-            return self(success=True, message=response.text)
+class UIDType(graphene.InputObjectType):
+    UID = graphene.String()
+
+class TimesheetEntryType(graphene.InputObjectType):
+    Date = graphene.String()
+    Hours = graphene.Float()
+
+class TimesheetLineType(graphene.InputObjectType):
+    PayrollCategory = graphene.Field(UIDType)
+    Notes = graphene.String()
+    Job = graphene.Field(UIDType)
+    Entries = graphene.List(TimesheetEntryType)
+
+class TimesheetDataType(graphene.InputObjectType):
+    Employee = graphene.Field(UIDType)
+    StartDate = graphene.String()
+    EndDate = graphene.String()
+    Lines = graphene.List(TimesheetLineType)
+
+class CreateTimesheet(graphene.Mutation):
+    class Arguments:
+        timesheet_data = TimesheetDataType()
+
+    success = graphene.Boolean()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, timesheet_data):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
+
+        endpoint = f"Payroll/Timesheet/{timesheet_data['Employee']['UID']}"
+        timesheet = myob_put(user, endpoint, json.dumps(timesheet_data))
+        if timesheet is None:
+            return self(success=False)
+
+        return self(success=True)    
+
+class GetMyobEmployees(graphene.Mutation):
+    class Arguments:
+        filter = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    employees = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, filter=''):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
         
+        endpoint = "Contact/Employee"
+        employees = myob_get(user, endpoint, filter, all=True)
+
+        return self(success=True, message="Successfully retrieved employees", employees=employees)
+
+
+class GetPayrollCategories(graphene.Mutation):
+    success = graphene.Boolean()
+    message = graphene.String()
+    payroll_categories = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
+        
+        endpoint = "Payroll/PayrollCategory"
+        payroll_categories = myob_get(user, endpoint)
+
+        return self(success=True, message="Successfully retrieved payroll categories", payroll_categories=payroll_categories)
+
+class GetPayrollDetails(graphene.Mutation):
+    success = graphene.Boolean()
+    message = graphene.String()
+    payroll_details = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
+
+        endpoint = "Contact/EmployeePayrollDetails"
+        payroll_details = myob_get(user, endpoint)
+
+        return self(success=True, message="Successfully retrieved payroll details", payroll_details=payroll_details)
+
+
 class myobCustomQuery(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -2876,20 +2908,20 @@ class myobCustomQuery(graphene.Mutation):
         env = environ.Env()
         environ.Env.read_env()
 
-        if is_valid_myob_user(uid, info.context.user):
-            checkTokenAuth(uid, info.context.user)
-            user = MyobUser.objects.get(id=uid)
+        user = check_user_token_auth(uid, info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
 
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{query}"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.get(link, headers=headers)
+        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{query}"
+        headers = {                
+            'Authorization': f'Bearer {user.access_token}',
+            'x-myobapi-key': env('CLIENT_ID'),
+            'x-myobapi-version': 'v2',
+            'Accept-Encoding': 'gzip,deflate',
+        }
+        response = requests.get(link, headers=headers)
 
-            return self(success=True, message=response.text)
+        return self(success=True, message=response.text)
 
 class Query(graphene.ObjectType):
     myob_users = graphene.List(MyobUserType)
@@ -2900,7 +2932,10 @@ class Query(graphene.ObjectType):
 
 
 class Mutation(graphene.ObjectType):
-    myob_get_timesheets = myobGetTimesheets.Field()
+    get_timesheets = GetTimesheets.Field()
+    create_timesheet = CreateTimesheet.Field()
+    get_payroll_categories = GetPayrollCategories.Field()
+
     myob_custom_query = myobCustomQuery.Field()
 
     myob_initial_connection = myobInitialConnection.Field()
@@ -2909,20 +2944,21 @@ class Mutation(graphene.ObjectType):
     delete_myob_user = DeleteMyobUser.Field()
     myob_refresh_token = myobRefreshToken.Field()
 
-    myob_get_clients = myobGetClients.Field()
-    myob_create_client = myobCreateClient.Field()
+    get_customers = GetCustomers.Field()
+    create_customer = CreateCustomer.Field()
+    update_customer = UpdateCustomer.Field()
 
     myob_get_contractors = myobGetContractors.Field()
     myob_create_contractor = myobCreateContractor.Field()
     myob_update_contractor = myobUpdateContractor.Field()
 
+    get_myob_jobs = GetMyobJobs.Field()
     myob_get_invoices = myobGetInvoices.Field()
     myob_get_orders = myobGetOrders.Field()
     myob_get_bills = myobGetBills.Field()
-    myob_get_jobs = myobGetJobs.Field()
-    myob_get_accounts = myobGetAccounts.Field()
+    get_accounts = GetAccounts.Field()
     myob_get_tax_codes = myobGetTaxCodes.Field()
-    myob_get_general_journal = myobGetGeneralJournal.Field()
+    get_general_journal = GetGeneralJournal.Field()
 
     myob_sync_jobs = myobSyncJobs.Field()
     myob_sync_invoices = myobSyncInvoices.Field()
@@ -2936,16 +2972,17 @@ class Mutation(graphene.ObjectType):
     myob_import_contractors_from_bills = myobImportContractorsFromBills.Field()
     myob_import_bgis_invoices = myobImportBGISInvoices.Field()
 
-    myob_create_job = myobCreateJob.Field()
+    create_myob_job = CreateMyobJob.Field()
     myob_create_invoice = myobCreateInvoice.Field()
-    myob_create_bill = myobCreateBill.Field()
+    myob_create_bill = CreateMyobBill.Field()
     myob_update_bill = myobUpdateBill.Field()
     myob_process_payment = myobProcessPayment.Field()
 
     generate_invoice = generateInvoice.Field()
     repair_sync = myobRepairJobSync.Field()
     convert_sale = convertSaleOrdertoInvoice.Field()
-    myob_custom_function = myobCustomFunction.Field()
+
+    # myob_custom_function = myobCustomFunction.Field()
 
 
 # 4-1000 Construction Income - 8fa9fc62-8cb0-4cad-9f08-686ffa76c98b

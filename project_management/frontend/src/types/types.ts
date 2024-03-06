@@ -227,7 +227,8 @@ export interface EmployeeType {
 export interface ClientType {
     id: string,
     name: string,
-    displayName: string
+    displayName: string,
+    abn: string
 }
 
 export interface ContactType {

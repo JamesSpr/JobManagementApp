@@ -99,11 +99,10 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobCreateBill($uid:String!, $jobId:String!, $newBill: BillInputType!, $attachment:String!, $attachmentName:String!) {
-                    create: myobCreateBill(uid:$uid, jobId:$jobId, newBill:$newBill, attachment:$attachment, attachmentName:$attachmentName) {
+                query: `mutation createBill($jobId:String!, $newBill: BillInput!, $attachment:String!, $attachmentName:String!) {
+                    create: createBill(jobId:$jobId, newBill:$newBill, attachment:$attachment, attachmentName:$attachmentName) {
                         success
                         message
-                        error
                         bill {
                             id
                             myobUid
@@ -123,7 +122,6 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
                     jobId: id,
                     newBill: bill,
                     attachment: attachment.data,
@@ -133,7 +131,6 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
         }).then((response) => {
             const res = response?.data?.data?.create;
 
-            setWaiting(false);
             if(res.success) {
                 setJob(prev => ({...prev, billSet: [...prev.billSet, res.bill]}))
                 setSnack({active: true, variant: 'success', message:"Successfully Created Bill"})
@@ -143,9 +140,10 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
                 setSnack({active: true, variant:'error', message: res.message})
             }
         }).catch((err) => {
-            setWaiting(false);
             console.log("error:", err);
             setSnack({active: true, variant:'error', message: "Submission Error. Contact Developer"})
+        }).finally(() => {
+            setWaiting(false);
         })
     }
 

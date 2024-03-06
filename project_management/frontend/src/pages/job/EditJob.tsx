@@ -91,7 +91,7 @@ const JobPage = () => {
             }),
             }).then((response) => {
                 console.log(response);
-                const job_data = response?.data?.data?.jobs[0];
+                const job_data = response?.data?.data?.jobs;
                 const location_data = response?.data?.data?.locations;
                 const clients = response?.data?.data?.clients;
                 const clientContacts = response?.data?.data?.clientContacts;
@@ -121,15 +121,17 @@ const JobPage = () => {
                 users ? setEmployees(users) : [];
                 jobStages ? setJobStages(jobStages) : [];
 
+                
                 if(!job_data) {  
                     navigate('/missing', { replace: true, state: {missing: "job"} });
+                    return
                 }
 
-                setJob(job_data);
+                setJob(job_data[0]);
                 
                 // setInvoice(job_data?.invoiceSet[0] ?? null);
                 jobStages.map((values: JobStageType) => {
-                    if(job_data.stage === values['name']){
+                    if(job_data[0].stage === values['name']){
                         setStage(values['description'])
                     }
                 })
@@ -361,8 +363,8 @@ const JobPage = () => {
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobCreateJob($uid:String!, $jobId:String!) {
-                    create: myobCreateJob(uid:$uid, jobId:$jobId) {
+                query: `mutation createJobInMyob($jobId:String!) {
+                    create: createJobInMyob(jobId:$jobId) {
                         success
                         message
                         uid

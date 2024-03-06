@@ -4,11 +4,9 @@ import io
 from PIL import Image
 import graphene
 from graphene_django import DjangoObjectType
-from graphql_auth import mutations, relay
+from graphql_auth import mutations
 from graphql_auth.schema import UserQuery, MeQuery
 from accounts.models import CustomUser, Company
-from graphene_django.filter import DjangoFilterConnectionField
-from django.core.validators import EMPTY_VALUES
 from graphql_jwt.decorators import login_required
 
 class CompanyType(DjangoObjectType):
