@@ -113,6 +113,7 @@ const JobAllocator: React.FC<JobAllocatorProps> = ({open, onClose, users, job, t
             if(res.success) {
                 setSnack({active: true, variant:'success', message:res.message})
                 setUploadedFiles([]);
+                setUploadedFileNames([]);
                 onClose();
             }
             else {
