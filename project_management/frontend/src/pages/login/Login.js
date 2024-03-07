@@ -41,56 +41,52 @@ function LoginPage() {
 
     const handleLogin = async () => {
         setWaiting(true);
-        try {
-            await axios({
-                method: 'post',
-                data: JSON.stringify({
-                    query: `mutation Login($email: String!, $password: String!){
-                        tokenAuth: tokenAuth(email: $email, password: $password) {
-                            success,
-                            errors,
-                            unarchiving,
-                            token,
+        await axios({
+            method: 'post',
+            data: JSON.stringify({
+                query: `mutation Login($email: String!, $password: String!){
+                    tokenAuth: tokenAuth(email: $email, password: $password) {
+                        success,
+                        errors,
+                        unarchiving,
+                        token,
+                        refreshToken,
+                        user {
+                            pk, 
+                            username,
+                            role,
                             refreshToken,
-                            user {
-                                pk, 
-                                username,
-                                role,
-                                refreshToken,
-                                defaultPaginationAmount,
-                                myobUser {
-                                    id
-                                }
+                            defaultPaginationAmount,
+                            myobUser {
+                                id
                             }
                         }
-                    }`,
-                    variables: {
-                        email: username.toLowerCase(),
-                        password: password
                     }
-                }),
-                withCredentials: true
-            }).then((response) => {
-                console.log(response);
-                const TA = response?.data?.data?.tokenAuth;
-                if(!TA?.success) {
-                    setPassword('');
-                    setWaiting(false);
-                    
-                    if(TA?.errors.nonFieldErrors) {
-                        setErrorMessage(TA.errors.nonFieldErrors[0]?.message);
-                    } else {
-                        setErrorMessage('No Server Response, Please try again.');
-                    }
-                    // errorRef.current.focus();
+                }`,
+                variables: {
+                    email: username.toLowerCase(),
+                    password: password
+                }
+            }),
+            withCredentials: true
+        }).then((response) => {
+            const TA = response?.data?.data?.tokenAuth;
+            if(!TA?.success) {
+                setPassword('');
+                
+                if(TA?.errors.nonFieldErrors) {
+                    setErrorMessage(TA.errors.nonFieldErrors[0]?.message);
                 } else {
-                    // Reset login form fields
-                    setUsername('');
-                    setPassword('');
-                    successfulLogin(TA);
-                }   
-            });
-        } catch (err) {
+                    setErrorMessage('No Server Response, Please try again.');
+                }
+                // errorRef.current.focus();
+            } else {
+                // Reset login form fields
+                setUsername('');
+                setPassword('');
+                successfulLogin(TA);
+            }   
+        }).catch((err) => {
             if(!err.response) {
                 console.log(err);
                 setErrorMessage('No Server Response');
@@ -100,8 +96,9 @@ function LoginPage() {
             else {
                 setErrorMessage('Login Failed');
             }
+        }).finally(() => {
             setWaiting(false);
-        }
+        })
     }
 
     const successfulLogin = async (TA) => {
@@ -112,7 +109,7 @@ function LoginPage() {
 
     const initialiseJWTRT = async (TA) => {
         // Initalise http only JWT refresh token cookie
-        await axios({
+        return await axios({
             method: 'post',
             data: JSON.stringify({
                 query: `
@@ -132,8 +129,8 @@ function LoginPage() {
             }),
             withCredentials: true,
         }).then((response) => {
-            const RT = response?.data?.data?.refreshToken?.refreshToken;      
-            return RT
+            const RT = response?.data?.data?.refreshToken;                 
+            return RT.refreshToken
         });    
     }
 
