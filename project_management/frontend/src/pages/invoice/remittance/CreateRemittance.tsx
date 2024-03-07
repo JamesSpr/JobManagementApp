@@ -113,11 +113,10 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                     method: 'post',
                     data: JSON.stringify({
                         query: `
-                        mutation myobProcessPayment($uid: String!, $invoices: [InvoiceUpdateInput]!, $client: String!, $paymentDate: Date!) {
-                            process_payment: myobProcessPayment(uid: $uid, invoices: $invoices, client: $client, paymentDate: $paymentDate) {
+                        mutation processRemittance($invoices: [InvoiceUpdateInput]!, $client: String!, $paymentDate: Date!) {
+                            remittance: processRemittance(invoices: $invoices, client: $client, paymentDate: $paymentDate) {
                                 success
                                 message
-                                error
                                 invoices {
                                     id
                                     myobUid
@@ -145,7 +144,6 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                             }
                         }`,
                         variables: {
-                            uid: auth?.myob?.id,
                             invoices: data,
                             client: client,
                             paymentDate: remittanceDate,
@@ -153,16 +151,14 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                 }),
                 }).then((response) => {
                     console.log(response)
-                    const res = response?.data?.data?.process_payment; 
+                    const res = response?.data?.data?.remittance; 
                     
                     setData([]);
                     setClient('');
                     setRemittanceDate('');
                     setUploaded(false);
-                    setWaiting(prev => ({...prev, 'submit': false}));
 
                     if(res.success) {
-                        console.log("UpdateInvoices Response", res.invoices)
                         setSnack({'active': true, variant:'success', message: res.message})
                         setRemittanceAdvice(prev => ([...prev, res.remittanceAdvice]))
                         onClose(true, res.invoices);
@@ -176,6 +172,8 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                 }).catch((err) => {
                     console.log("error:", err);
                     setSnack({'active': true, variant:'error', message: 'Error Connecting to Server. Please try again or contact admin.'})
+                }).finally(() => {
+                    setWaiting(prev => ({...prev, 'submit': false}));
                 });
             }
             else {

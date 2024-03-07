@@ -3,7 +3,8 @@ from genericpath import exists
 import shutil
 from accounts.models import CustomUser
 from api.models import Client, Contractor, ContractorContact, Estimate, Job, Invoice, Bill, RemittanceAdvice
-from api.schema import InvoiceUpdateInput, ClientType, InvoiceType, JobInput, JobType, RemittanceType
+from api.schema import  JobType
+from myob.object_types import CustomerPaymentObject
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
@@ -23,6 +24,9 @@ import inspect
 
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
 MAIN_FOLDER_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
+
+class UIDType(graphene.InputObjectType):
+    UID = graphene.String()
 
 def is_valid_myob_user(uid, user):
     if MyobUser.objects.filter(id=uid).exists():
@@ -417,7 +421,7 @@ class GetCustomers(graphene.Mutation):
         endpoint = "Contact/Customer"
         response = myob_get(user, endpoint, filter)
 
-        return self(success=True, customers=json.dumps(response))
+        return self(success=True, customers=json.dumps(response['Items']))
 
 class CreateCustomer(graphene.Mutation):
     class Arguments:
@@ -843,6 +847,25 @@ class myobUpdateContractor(graphene.Mutation):
 
             return self(success=True, message="Contractor Successfully Updated")
 
+class GetInvoice(graphene.Mutation):
+    class Arguments:
+        filter = graphene.String()
+
+    success = graphene.Boolean()
+    invoice = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, filter):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
+    
+        endpoint = ""
+        invoice = myob_get(user, endpoint, filter)
+
+        return self(success=True, invoice=invoice['Items'])
+
 class myobGetInvoices(graphene.Mutation):
     class Arguments:
         uid = graphene.String()
@@ -971,7 +994,7 @@ class GetMyobJobs(graphene.Mutation):
         endpoint = "GeneralLedger/Job"
         response = myob_get(user, endpoint, filter, all=True)
 
-        return self(success=True, message="Successfully retrieved jobs", jobs=json.dumps(response))
+        return self(success=True, message="Successfully retrieved jobs", jobs=json.dumps(response['Items']))
 
 class myobGetBills(graphene.Mutation):
     class Arguments:
@@ -1021,7 +1044,7 @@ class GetAccounts(graphene.Mutation):
         endpoint = "GeneralLedger/Account"
         response = myob_get(user, endpoint, filter, all=True)
 
-        return self(success=True, message=json.dumps(response))
+        return self(success=True, message=json.dumps(response['Items']))
 
 class myobGetTaxCodes(graphene.Mutation):
     class Arguments:
@@ -1073,7 +1096,7 @@ class GetGeneralJournal(graphene.Mutation):
         endpoint = "GeneralLedger/JournalTransaction"
         general_journal = myob_get(user, endpoint, filter, all=True)
 
-        return self(success=True, general_journal=json.dumps(general_journal))
+        return self(success=True, general_journal=json.dumps(general_journal['Items']))
 
 
 class myobRepairJobSync(graphene.Mutation):
@@ -1235,11 +1258,11 @@ class CreateMyobJob(graphene.Mutation):
 
         endpoint = "GeneralLedger/Job/"
         payload = json.dumps({
-            "Number": job.identifier,
-            "Name": job.name,
-            "Description": job.description,
+            "Number": job['identifier'],
+            "Name": job['name'],
+            "Description": job['description'],
             "IsHeader": False,
-            "LinkedCustomer": {"UID": job.customer_uid},
+            "LinkedCustomer": {"UID": job['customer_uid']},
         })
         post_response = myob_post(user, endpoint, payload)
 
@@ -2285,148 +2308,66 @@ class myobUpdateBill(graphene.Mutation):
         b.save()
 
         return self(success=True, message="Successfully Updated Bill", job=currentJob)
-        
-class myobProcessPayment(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-        client = graphene.String()
-        payment_date = graphene.Date()
-        invoices = graphene.List(InvoiceUpdateInput)
+
+class InvoiceType(graphene.InputObjectType):
+    UID = graphene.String()
+    Type = graphene.String()
+    AmountApplied = graphene.Float()
+    AmountAppliedForeign = graphene.Boolean()
+
+class CustomerPaymentType(graphene.InputObjectType):
+    Date = graphene.String()
+    DepositTo = graphene.String()
+    Account = UIDType()
+    Customer = UIDType()
+    Invoices = graphene.List(InvoiceType)
+    Memo = graphene.String()
+
+class GetCustomerPayment(graphene.Mutation):
+    class Argument:
+        filter = graphene.String()
 
     success = graphene.Boolean()
-    message= graphene.String()
-    error = graphene.String()
-    remittance_advice = graphene.Field(RemittanceType)
-    invoices = graphene.List(InvoiceType)
-    
+    message = graphene.String()
+    customer_payment = graphene.Field(CustomerPaymentObject)
+
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, client, invoices, payment_date):
-        env = environ.Env()
-        environ.Env.read_env()
-
-        user = check_user_token_auth(uid, info.context.user)
+    def mutate(self, root, info, filter):
+        user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
-
-        client = Client.objects.get(id=client)
-
-        total_amount = 0
-        for inv in invoices:
-            total_amount += inv.amount
-
-        # Check remittance advice already exists in System
-        if RemittanceAdvice.objects.filter(client = client, date=payment_date, amount=total_amount).exists():
-            return self(success=False, message="Remittance Advice Already Exists")
         
+        endpoint = "Sale/CustomerPayment"
+        response = myob_get(user, endpoint, filter)
+        if response is None:            
+            return self(success=False, message="Get Request Failed")
 
-        # Check remittance advice already exists in MYOB
+        return self(success=True, customer_payment=response['Items'])
 
+class CreateCustomerPayment(graphene.Mutation):
+    class Argument:
+        customer_payment = CustomerPaymentType()
 
-        print("Creating Remittance Advice")
+    success = graphene.Boolean()
+    message = graphene.String()
+    uid = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, customer_payment):
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
         
-        remittance_advice = RemittanceAdvice()
-        remittance_advice.client = client
-        remittance_advice.date = payment_date
-        remittance_advice.amount = total_amount
-
-        # Create payment from the list of invoices provided
-        paid_invoices = []
-        external_invoices = []
-        for invoice in invoices:
-            if Invoice.objects.filter(number=invoice.number).exists():
-                inv = Invoice.objects.get(number=invoice.number)
-                if not inv.remittance is None:
-                    return self(success=False, message="Remittance Advice Already Exists.")
-                
-                paid_invoices.append({
-                    "UID": inv.myob_uid,
-                    "Type": "Invoice",
-                    "AmountApplied": round(float(inv.amount) * 1.1, 2),
-                    "AmountAppliedForeign": None
-                })
-
-            else:
-                external_invoices.append(invoice.number)
-
-        if len(external_invoices) > 0:
-            # Get the details of the invoices that are not saved in the system
-            for inv_num in external_invoices:
-                # Fetch the invoice from MYOB to include in the paid invoices
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$filter=Number eq '{inv_num}'"
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                }
-                response = requests.request("GET", url, headers=headers, data={})
-                
-                ## Save Invoice as PDF
-                if not response.status_code == 200:
-                    print(response.text)
-                    return self(success=False, message='Error Finding External Invoice')
-
-                res = json.loads(response.text)
-                ext_inv = res['Items'][0]
-
-                paid_invoices.append({
-                    "UID": ext_inv['UID'],
-                    "Type": "Invoice",
-                    "AmountApplied": float(ext_inv['TotalAmount']),
-                    "AmountAppliedForeign": None
-                })
-
-        if len(paid_invoices) < 1:
-            return self(success=False, message="No Invoices Found")
+        endpoint = "Sale/CustomerPayment"
+        response = myob_post(user, endpoint, customer_payment)
+        if response is None:            
+            return self(success=False, message="Post Request Failed")
         
-        # POST Payment to MYOB
-        # ANZ Online-Saver UID: "7c6557f4-d684-41f2-9e0b-2f53c06828d3"
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/CustomerPayment/"
-        payload = json.dumps({
-            "Date": payment_date, 
-            "DepositTo": "Account",
-            "Account": {"UID": "7c6557f4-d684-41f2-9e0b-2f53c06828d3"},
-            "Customer": {"UID": client.myob_uid},
-            "Invoices": paid_invoices,
-            "PaymentMethod": "EFT",
-            "Memo": f"Payment: Transfer from {client.name}"
-        }, default=str)
-        headers = {
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-            'Content-Type': 'application/json',
-        }
-        response = requests.request("POST", url, headers=headers, data=payload)
+        payment_uid = get_response_uid(response)
 
-
-        print("Remittance Advice Uploaded")
-
-        if(not response.status_code == 201):
-            print(response.text)
-            return self(success=False, message="Issue creating payment in MYOB", error=json.loads(response.text))
-
-        remittance_advice.myob_uid = response.headers['Location'][-36:]
-        remittance_advice.save()
-
-        # Update invoices after the payment is processed in myob
-        print("Updaing Invoices")
-        updatedInvoices = []
-        for inv in invoices:
-            invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
-            if invoice:
-                if not invoice.date_issued: invoice.date_issued = inv.date_issued
-                invoice.date_paid = payment_date
-                invoice.remittance = remittance_advice
-                invoice.save()
-                invoice.job.save()
-                updatedInvoices.append(invoice)
-        
-        print("Invoices Updated")
-
-        return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
+        return self(success=True, message="Successfully processed customer payment", uid=payment_uid)
 
 class InvoiceInput(graphene.InputObjectType):
     number = graphene.String()
@@ -2797,11 +2738,8 @@ class GetTimesheets(graphene.Mutation):
         endpoint = "Payroll/Timesheet"
         response = myob_get(user, endpoint, filter)
 
-        return self(success=True, message=response.text)
-
-class UIDType(graphene.InputObjectType):
-    UID = graphene.String()
-
+        return self(success=True, message=response['Items'])
+    
 class TimesheetEntryType(graphene.InputObjectType):
     Date = graphene.String()
     Hours = graphene.Float()
@@ -2856,7 +2794,7 @@ class GetMyobEmployees(graphene.Mutation):
         endpoint = "Contact/Employee"
         employees = myob_get(user, endpoint, filter, all=True)
 
-        return self(success=True, message="Successfully retrieved employees", employees=employees)
+        return self(success=True, message="Successfully retrieved employees", employees=employees['Items'])
 
 
 class GetPayrollCategories(graphene.Mutation):
@@ -2874,7 +2812,7 @@ class GetPayrollCategories(graphene.Mutation):
         endpoint = "Payroll/PayrollCategory"
         payroll_categories = myob_get(user, endpoint)
 
-        return self(success=True, message="Successfully retrieved payroll categories", payroll_categories=payroll_categories)
+        return self(success=True, message="Successfully retrieved payroll categories", payroll_categories=payroll_categories['Items'])
 
 class GetPayrollDetails(graphene.Mutation):
     success = graphene.Boolean()
@@ -2891,7 +2829,7 @@ class GetPayrollDetails(graphene.Mutation):
         endpoint = "Contact/EmployeePayrollDetails"
         payroll_details = myob_get(user, endpoint)
 
-        return self(success=True, message="Successfully retrieved payroll details", payroll_details=payroll_details)
+        return self(success=True, message="Successfully retrieved payroll details", payroll_details=payroll_details['Items'])
 
 
 class myobCustomQuery(graphene.Mutation):
@@ -2976,8 +2914,7 @@ class Mutation(graphene.ObjectType):
     myob_create_invoice = myobCreateInvoice.Field()
     myob_create_bill = CreateMyobBill.Field()
     myob_update_bill = myobUpdateBill.Field()
-    myob_process_payment = myobProcessPayment.Field()
-
+    
     generate_invoice = generateInvoice.Field()
     repair_sync = myobRepairJobSync.Field()
     convert_sale = convertSaleOrdertoInvoice.Field()

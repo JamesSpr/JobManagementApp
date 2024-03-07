@@ -1716,6 +1716,144 @@ class DeleteInsurance(graphene.Mutation):
             
         return self(success=False)
 
+
+class ProcessRemittanceAdvice(graphene.Mutation):
+    class Arguments:
+        client = graphene.String()
+        payment_date = graphene.Date()
+        invoices = graphene.List(InvoiceUpdateInput)
+
+    success = graphene.Boolean()
+    message = graphene.String()    
+    remittance_advice = graphene.Field(RemittanceType)
+    invoices = graphene.List(InvoiceType)
+
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, client, payment_date, invoices):
+        from myob.schema import CreateCustomerPayment, GetInvoice, GetCustomerPayment
+        client = Client.objects.get(id=client)
+
+        # Calculate the total remittance amount
+        total_amount = 0
+        for inv in invoices:
+            total_amount += inv.amount
+
+        # Check remittance advice already exists in System
+        if RemittanceAdvice.objects.filter(client = client, date=payment_date, amount=total_amount).exists():
+            return self(success=False, message="Remittance Advice Already Exists")
+        
+        # Check remittance advice already exists in MYOB
+        check_filter = f"Customer/UID eq guid'{client.myob_uid}' and AmountReceived eq {total_amount}M and Date eq datetime'{payment_date}T00:00:00'"
+        check = GetCustomerPayment.mutate(root, info, check_filter)
+
+        print(check.success)
+        if not check.success:
+            return self(success=False, message="Cannot check MYOB for existing remittance advice. Contact Developer")
+
+        customer_payment = check.customer_payment
+        if len(customer_payment) > 0:        # Create remittance advice
+            remittance_advice = RemittanceAdvice()
+            remittance_advice.client = client
+            remittance_advice.date = payment_date
+            remittance_advice.amount = total_amount
+            remittance_advice.myob_uid = customer_payment[0]['UID']
+            remittance_advice.save()
+
+            # Update invoices
+            print("Updaing Invoices")
+            updatedInvoices = []
+            for inv in invoices:
+                invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
+                if invoice:
+                    if not invoice.date_issued: invoice.date_issued = inv.date_issued
+                    invoice.date_paid = payment_date
+                    invoice.remittance = remittance_advice
+                    invoice.save()
+                    invoice.job.save()
+                    updatedInvoices.append(invoice)
+            
+            print("Invoices Updated")
+
+            return self(success=True, message="Remittance Advice Already Exists in MYOB. Information has been saved", invoices=updatedInvoices, remittance_advice=remittance_advice)
+
+        # Create payment from the list of invoices provided
+        paid_invoices = []
+        external_invoices = []
+        for invoice in invoices:
+            if Invoice.objects.filter(number=invoice.number).exists():
+                inv = Invoice.objects.get(number=invoice.number)
+                if not inv.remittance is None:
+                    return self(success=False, message="Remittance Advice Already Exists.")
+                
+                paid_invoices.append({
+                    "UID": inv.myob_uid,
+                    "Type": "Invoice",
+                    "AmountApplied": round(float(inv.amount) * 1.1, 2),
+                    "AmountAppliedForeign": None
+                })
+
+            else:
+                external_invoices.append(invoice.number)
+
+        if len(external_invoices) > 0:
+            # Get the details of the invoices that are not saved in the system
+            for inv_num in external_invoices:
+                # Fetch the invoice from MYOB to include in the paid invoices
+                invoice_filter = f"Number eq '{inv_num}'"
+                get_invoice = GetInvoice.mutate(root, info, invoice_filter)
+                ext_inv = get_invoice.invoice[0]
+
+                paid_invoices.append({
+                    "UID": ext_inv['UID'],
+                    "Type": "Invoice",
+                    "AmountApplied": float(ext_inv['TotalAmount']),
+                    "AmountAppliedForeign": None
+                })
+
+        if len(paid_invoices) < 1:
+            return self(success=False, message="No Invoices Found")
+
+        # Create MYOB Customer Payment Payload Object
+        customer_payment = {
+            "Date": payment_date, 
+            "DepositTo": "Account",
+            "Account": {"UID": "7c6557f4-d684-41f2-9e0b-2f53c06828d3"},
+            "Customer": {"UID": client.myob_uid},
+            "Invoices": paid_invoices,
+            "PaymentMethod": "EFT",
+            "Memo": f"Payment: Transfer from {client.name}"
+        }
+
+        payment = CreateCustomerPayment.mutate(root, info, customer_payment)
+
+        # Create remittance advice
+        remittance_advice = RemittanceAdvice()
+        remittance_advice.client = client
+        remittance_advice.date = payment_date
+        remittance_advice.amount = total_amount
+        remittance_advice.myob_uid = payment.uid
+        remittance_advice.save()
+
+        # Update invoices
+        print("Updaing Invoices")
+        updatedInvoices = []
+        for inv in invoices:
+            invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
+            if invoice:
+                if not invoice.date_issued: invoice.date_issued = inv.date_issued
+                invoice.date_paid = payment_date
+                invoice.remittance = remittance_advice
+                invoice.save()
+                invoice.job.save()
+                updatedInvoices.append(invoice)
+        
+        print("Invoices Updated")
+
+        return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
+
+
 class Query(graphene.ObjectType):
     job_page = relay.ConnectionField(JobConnection)
     archived_jobs = relay.ConnectionField(JobConnection)
@@ -1992,3 +2130,5 @@ class Mutation(graphene.ObjectType):
     create_insurance = CreateInsurance.Field()
     update_insurance = UpdateInsurance.Field()
     delete_insurance = DeleteInsurance.Field()
+
+    process_remittance = ProcessRemittanceAdvice.Field()

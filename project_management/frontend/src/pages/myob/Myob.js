@@ -418,6 +418,7 @@ const MyobActivate = () => {
                     jobs: getMyobJobs(filter:$filter) {
                         success
                         message
+                        jobs
                     }
                 }`,
                 variables: {
@@ -427,7 +428,7 @@ const MyobActivate = () => {
         }).then((response) => {
             const res = response.data?.data?.jobs;
             if(res.success) {
-                console.log("Jobs:", JSON.parse(res.message))
+                console.log("Jobs:", JSON.parse(res.jobs))
             }
             else {
                 console.log("Error:", JSON.parse(res.message) ?? "");

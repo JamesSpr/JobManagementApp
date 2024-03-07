@@ -66,7 +66,7 @@ class GetMyobActiveEmployees(graphene.Mutation):
         if not get_employees.success:
             return self(success=False, message=get_employees.message)
         employees = get_employees.employees
-        employees = employees['Items']
+        employees = employees
 
         not_included = ["David Phillips", "Leo Sprague", "Colin Baggott", "Robert Stapleton", "Brett Macpherson"]
         active_employees = []
@@ -341,7 +341,7 @@ class GetMyobPayrollDetails(graphene.Mutation):
         if not get_payroll_details.success:
             return self(success=False, message=get_payroll_details.message)
         payroll_details = get_payroll_details.payroll_details
-        payroll_details = payroll_details['Items']
+        payroll_details = payroll_details
 
         # Update the pay basis for employees to ensure correct pay
         for employee in payroll_details:

@@ -99,8 +99,8 @@ class SyncTransactions(graphene.Mutation):
         general_journal = GetGeneralJournal.mutate(root, info, filter)
 
         # Update Transactions
-        if(general_journal['Items']):
-            UpdateTransactions.mutate(root, info, general_journal['Items'])
+        if(general_journal):
+            UpdateTransactions.mutate(root, info, general_journal)
 
         sync = Sync()
         sync.sync_type = "TRA"
@@ -120,7 +120,7 @@ class SyncAccounts(graphene.Mutation):
     def mutate(self, root, info, uid):
         accounts = GetAccounts.mutate(root, info)
         print(accounts)
-        UpdateAccounts.mutate(root, info, accounts['Items'])
+        UpdateAccounts.mutate(root, info, accounts)
 
         sync = Sync()
         sync.sync_type = "ACC"
