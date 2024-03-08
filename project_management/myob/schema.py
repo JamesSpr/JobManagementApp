@@ -2361,7 +2361,7 @@ class CreateCustomerPayment(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
         
         endpoint = "Sale/CustomerPayment"
-        response = myob_post(user, endpoint, customer_payment)
+        response = myob_post(user, endpoint, json.dumps(customer_payment, default=str))
         if response is None:            
             return self(success=False, message="Post Request Failed")
         

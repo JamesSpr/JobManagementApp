@@ -193,11 +193,15 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
         let errorFound = false
         data.map((invoice) => {
             let inv = invoices.find(inv => inv.number === invoice.number)
+
+            // Ensure the amount is a number for api call later
+            invoice.amount = typeof invoice?.amount === "number" ? invoice?.amount : parseFloat(invoice?.amount ?? '0')
+
             if(!inv) {
                 externalInvoices.push(invoice);
             }
             else {
-                let invoiceAmount = typeof invoice?.amount === "number" ? (invoice?.amount ?? 0).toFixed(2) : parseFloat(invoice?.amount ?? '0').toFixed(2)
+                let invoiceAmount = (invoice?.amount ?? 0).toFixed(2);
                 let invAmount = typeof invoice?.amount === "number" ? ((inv.amount ?? 0) * 1.1).toFixed(2) : parseFloat(((inv.amount ?? 0) * 1.1).toString()).toFixed(2);
 
                 if(invoiceAmount !== invAmount) {
@@ -251,7 +255,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                 else {
                     setSnack({'active': true, variant:'error', message: "All invoices cannot be found in MYOB. Please check."})
                 }
-            }
+            }                
             else {
                 console.log(JSON.parse(res.error))
                 setSnack({'active': true, variant:'error', message: res.message})
@@ -266,10 +270,13 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
     }
 
     const handleAdd = () => {
-        setData(prev => [...prev, blankInvoice])
+        setInvalidInvoices(true);
+        const {dateCreated, datePaid, dateIssued, ...invoice} = blankInvoice
+        setData(prev => [...prev, invoice]) 
     }
 
     const handleDelete = (row: Row<InvoiceType>) => {
+        setInvalidInvoices(true);
         setData(prev => {
             let newData: InvoiceType[] = [];
             prev.map((val, idx) => {
@@ -316,6 +323,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
 
     const tableMeta = {
         updateData: (rowIndex: any, columnId: any, value: any) => {
+            setInvalidInvoices(true);
             setData((old: any) => 
                 old.map((row: any, index: any) => {
                 if (index === rowIndex) {
@@ -373,7 +381,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                                 type="select"
                                 label="Client"
                                 value={client}
-                                onChange={e => setClient(e.target.value)}
+                                onChange={e => {setClient(e.target.value); setInvalidInvoices(true);}}
                             >
                                 <option key="blank" value=""></option>
                                 {clients.map((client) => (
@@ -387,7 +395,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                                 label="Date" 
                                 name="date" 
                                 value={remittanceDate} 
-                                onChange={e => setRemittanceDate(e.target.value)} 
+                                onChange={e => {setRemittanceDate(e.target.value); setInvalidInvoices(true);}} 
                                 max="9999-12-31"
                                 />
                         </Grid>

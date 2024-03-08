@@ -52,6 +52,15 @@ class Client(models.Model):
     def __str__(self):
         return self.name
 
+class InvoiceSetting(models.Model):
+    id = models.AutoField(primary_key=True, unique=True)
+    client = models.ForeignKey(Client, on_delete=CASCADE)
+    name = models.CharField(max_length=64)
+    file_location = models.CharField(max_length=64)
+    rule = models.CharField(max_length=128)
+    active = models.BooleanField(default=True)
+    default = models.BooleanField(default=False)    
+
 class Region(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     client = models.ForeignKey(Client, on_delete=PROTECT)

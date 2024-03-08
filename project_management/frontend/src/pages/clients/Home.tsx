@@ -31,6 +31,10 @@ const Home = ({client, details, setDetails, setUpdateRequired, setSnack }: {
                 <InputField type="text" label="Display Name" name="displayName" value={details?.displayName ?? ""} onChange={handleInputChange}/>
                 <InputField type="text" label="ABN" name="abn" value={details.abn} onChange={handleInputChange}/>
             </Grid>
+            <Grid item xs={12}>
+                Invoicing Options
+            </Grid>
+            {}
         </Grid>
     </>    
     )

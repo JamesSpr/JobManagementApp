@@ -44,6 +44,7 @@ export const blankInvoice: InvoiceType = {
     dateCreated: '',
     dateIssued: '',
     datePaid: '',
+    amount: 0
 }
 
 export const blankJob: JobType = {

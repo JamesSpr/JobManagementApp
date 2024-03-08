@@ -63,6 +63,13 @@ const Client = () => {
                             name
                             displayName
                             abn
+                            invoiceSettingSet {
+                                name
+                                fileLocation
+                                rule
+                                active
+                                default
+                            }
                         }
                         clientContacts(client: $client) {
                             id

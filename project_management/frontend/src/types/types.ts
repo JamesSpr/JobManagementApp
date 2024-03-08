@@ -109,10 +109,10 @@ export interface RemittanceType {
 
 export interface InvoiceType {
     number: string
-    dateCreated: string
-    dateIssued: string
+    dateCreated?: string
+    dateIssued?: string
     amount?: number
-    datePaid: string
+    datePaid?: string
     job?: JobType
 }
 

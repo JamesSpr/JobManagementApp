@@ -11,7 +11,7 @@ from graphql_jwt.decorators import login_required
 from django.db.models import Q
 from django.db import connection
 
-from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Expense, Job, Location, Contractor, ContractorContact, Client, ClientContact, Region, Invoice, Bill
+from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Expense, Job, Location, Contractor, ContractorContact, InvoiceSetting, Client, ClientContact, Region, Invoice, Bill
 from .services.create_completion_documents import CreateCompletionDocuments
 from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
 from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
@@ -869,6 +869,20 @@ class ClientType(DjangoObjectType):
         model = Client
         fields = '__all__'
 
+def create_default_client_invoice_settings(client):
+    defaultInvoiceSettings = [
+        {'name': "Invoice", "file_location": "Accounts", 'rule': "N/A", "active": True, "default": True},
+        {'name': "Insurances", "file_location": "Insurances", 'rule': "N/A", "active": True, "default": True},
+        {'name': "Statutory Declaration", "file_location": "System", 'rule': "N/A", "active": True, "default": True}
+    ]
+    for setting in defaultInvoiceSettings:
+        invoiceSetting = InvoiceSetting()
+        invoiceSetting.name = setting['name']
+        invoiceSetting.file_location = setting['file_location']
+        invoiceSetting.rule = setting['rule']
+        invoiceSetting.active = setting['active']
+        invoiceSetting.default = setting['default']
+        invoiceSetting.save()
 
 class CreateClient(graphene.Mutation):
     class Arguments:
@@ -893,6 +907,8 @@ class CreateClient(graphene.Mutation):
             client.name = details.name
             client.abn = details.abn
             client.save()
+
+            create_default_client_invoice_settings(client)
 
             return self(success=True, message=response.message, client=client)
         
@@ -1748,12 +1764,12 @@ class ProcessRemittanceAdvice(graphene.Mutation):
         check_filter = f"Customer/UID eq guid'{client.myob_uid}' and AmountReceived eq {total_amount}M and Date eq datetime'{payment_date}T00:00:00'"
         check = GetCustomerPayment.mutate(root, info, check_filter)
 
-        print(check.success)
         if not check.success:
             return self(success=False, message="Cannot check MYOB for existing remittance advice. Contact Developer")
 
         customer_payment = check.customer_payment
-        if len(customer_payment) > 0:        # Create remittance advice
+        if len(customer_payment) > 0:        
+            # Create remittance advice with duplicates information
             remittance_advice = RemittanceAdvice()
             remittance_advice.client = client
             remittance_advice.date = payment_date
