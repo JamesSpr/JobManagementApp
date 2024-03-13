@@ -12,11 +12,11 @@ from django.db.models import Q
 from django.db import connection
 
 from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Expense, Job, Location, Contractor, ContractorContact, InvoiceSetting, Client, ClientContact, Region, Invoice, Bill
-from .services.create_completion_documents import CreateCompletionDocuments
-from .services.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
-from .services.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
-from .services.create_quote import CreateQuote
-from .services.file_processing import PDFToImage
+from .scripts.create_completion_documents import CreateCompletionDocuments
+from .scripts.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote, ExchangeEmail
+from .scripts.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
+from .scripts.create_quote import CreateQuote
+from .scripts.file_processing import PDFToImage
 from accounts.models import CustomUser
 from myob.models import MyobUser
 
@@ -556,39 +556,39 @@ class UpdateJob(graphene.Mutation):
 
         job.client = None if input['client'] == None else Client.objects.get(id=input['client'].id)
         job.date_issued = None if input['date_issued'] == None else input['date_issued'].replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.po = input['po']
-        job.sr = input['sr']
-        job.other_id = input['other_id']
+        job.po = input['po'].strip()
+        job.sr = input['sr'].strip()
+        job.other_id = input['other_id'].strip()
         job.location = None if input['location'] == None else Location.objects.get(id=input['location'].id)
-        job.building = input['building']
+        job.building = input['building'].strip()
         job.detailed_location = input['detailed_location']
         job.requester = None if input['requester'] == None or input['requester'].id == None else ClientContact.objects.get(id=input['requester'].id)
-        job.priority = input['priority']
-        job.special_instructions = input['special_instructions']
-        job.poc_name = input['poc_name']
-        job.poc_phone = input['poc_phone']
-        job.poc_email = input['poc_email']
-        job.alt_poc_name = input['alt_poc_name']
-        job.alt_poc_phone = input['alt_poc_phone']
-        job.alt_poc_email = input['alt_poc_email']
-        job.title = input['title']
-        job.description = input['description']
+        job.priority = input['priority'].strip()
+        job.special_instructions = input['special_instructions'].strip()
+        job.poc_name = input['poc_name'].strip()
+        job.poc_phone = input['poc_phone'].strip()
+        job.poc_email = input['poc_email'].strip()
+        job.alt_poc_name = input['alt_poc_name'].strip()
+        job.alt_poc_phone = input['alt_poc_phone'].strip()
+        job.alt_poc_email = input['alt_poc_email'].strip()
+        job.title = input['title'].strip()
+        job.description = input['description'].strip()
         job.inspection_by = None if input['inspection_by'] == None or input['inspection_by'].id == None else CustomUser.objects.get(id=input['inspection_by'].id)
         job.inspection_date = None if input['inspection_date'] == None else input['inspection_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.inspection_notes = input['inspection_notes']
-        job.scope = input['scope']
+        job.inspection_notes = input['inspection_notes'].strip()
+        job.scope = input['scope'].strip()
         job.site_manager = None if input['site_manager'] == None or input['site_manager'].id == None else CustomUser.objects.get(id=input['site_manager'].id)
         job.commencement_date = None if input['commencement_date'] == None else input['commencement_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
         job.completion_date = None if input['completion_date'] == None else input['completion_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
         job.total_hours = 0.0 if input['total_hours'] == "" else str(input['total_hours'])
-        job.work_notes = input['work_notes']
+        job.work_notes = input['work_notes'].strip()
         job.overdue_date = None if input['overdue_date'] == None else input['overdue_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
         job.close_out_date = None if input['close_out_date'] == None else input['close_out_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
-        job.work_type = input['work_type']
-        job.opportunity_type = input['opportunity_type']
+        job.work_type = input['work_type'].strip()
+        job.opportunity_type = input['opportunity_type'].strip()
         job.cancelled = input['cancelled']
-        job.cancel_reason = input['cancel_reason']
-        job.bsafe_link = input['bsafe_link']
+        job.cancel_reason = input['cancel_reason'].strip()
+        job.bsafe_link = input['bsafe_link'].strip()
         job.save()
 
         # Change Calendar Event
@@ -639,7 +639,7 @@ class UpdateJob(graphene.Mutation):
 
             # Update the estimate data
             estimate.job_id = job
-            estimate.name = est.name
+            estimate.name = est.name.strip()
             estimate.description = est.description
             estimate.price = est.price
             estimate.quote_by = CustomUser.objects.get(id=est.quote_by.id)
@@ -653,7 +653,7 @@ class UpdateJob(graphene.Mutation):
                 for header in est.estimateheaderSet:
                     estimate_header = EstimateHeader.objects.get(id=header.id)
                     estimate_header.estimate_id = estimate
-                    estimate_header.description = header.description
+                    estimate_header.description = header.description.strip()
                     estimate_header.markup = header.markup
                     estimate_header.gross = header.gross
                     estimate_header.save()
@@ -664,7 +664,7 @@ class UpdateJob(graphene.Mutation):
                     for item in header.estimateitemSet:
                         estimate_item = EstimateItem.objects.get(id=item.id)
                         estimate_item.header_id = estimate_header
-                        estimate_item.description = item.description
+                        estimate_item.description = item.description.strip()
                         estimate_item.quantity = item.quantity
                         estimate_item.item_type = item.itemType
                         estimate_item.rate = item.rate
