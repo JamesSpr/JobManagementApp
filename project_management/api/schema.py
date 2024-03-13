@@ -368,25 +368,25 @@ class CreateJob(graphene.Mutation):
             job = Job()
             job.client = Client.objects.get(id=input['client'].id)
             if input['date_issued']: job.date_issued = input['date_issued'].replace(tzinfo=timezone.get_fixed_timezone(0))
-            job.po = input['po']
-            job.sr = input['sr']
-            job.other_id = input['other_id']
+            job.po = input['po'].strip()
+            job.sr = input['sr'].strip()
+            job.other_id = input['other_id'].strip()
             job.location = Location.objects.get(id=input['location'].id)
-            job.building = input['building']
-            job.detailed_location = input['detailed_location']
+            job.building = input['building'].strip()
+            job.detailed_location = input['detailed_location'].strip()
             job.requester = ClientContact.objects.get(id=input['requester'].id)
-            job.priority = input['priority']
-            job.special_instructions = input['special_instructions']
-            job.poc_name = input['poc_name']
-            job.poc_phone = input['poc_phone']
-            job.poc_email = input['poc_email']
-            job.alt_poc_name = input['alt_poc_name']
-            job.alt_poc_phone = input['alt_poc_phone']
-            job.alt_poc_email = input['alt_poc_email']
-            job.title = input['title']
-            job.description = input['description']
+            job.priority = input['priority'].strip()
+            job.special_instructions = input['special_instructions'].strip()
+            job.poc_name = input['poc_name'].strip()
+            job.poc_phone = input['poc_phone'].strip()
+            job.poc_email = input['poc_email'].strip()
+            job.alt_poc_name = input['alt_poc_name'].strip()
+            job.alt_poc_phone = input['alt_poc_phone'].strip()
+            job.alt_poc_email = input['alt_poc_email'].strip()
+            job.title = input['title'].strip()
+            job.description = input['description'].strip()
             if input['overdue_date']: job.overdue_date = input['overdue_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
-            job.bsafe_link = input['bsafe_link']
+            job.bsafe_link = input['bsafe_link'].strip()
             job.total_hours = "0.00"
             job.save()
 
