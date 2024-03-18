@@ -4,7 +4,8 @@ import shutil
 from accounts.models import CustomUser
 from api.models import Client, Contractor, ContractorContact, Estimate, Job, Invoice, Bill, RemittanceAdvice
 from api.schema import  JobType
-from myob.object_types import CustomerPaymentObject
+from myob.object_types import CustomerPaymentObject, SupplierObject
+from myob.input_object_types import SupplierInputObject
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
@@ -91,7 +92,7 @@ def get_myob_user(user):
     return None
 
 # Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
-def check_user_token_auth_new(usr):
+def check_user_token_auth_new(usr) -> MyobUser:
     env = environ.Env()
     environ.Env.read_env()
 
@@ -134,7 +135,7 @@ def check_user_token_auth_new(usr):
         return user
 
 
-def myob_get(user, url, filter='', all=False):
+def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False) -> dict:
     """ Basic Get request to myob with option for filter
 
     ``user`` is the myob user object
@@ -189,7 +190,7 @@ def myob_get(user, url, filter='', all=False):
 
     return data
 
-def myob_post(user, url, payload):
+def myob_post(user: MyobUser, url: str, payload) -> requests.Response:
     """ Basic Post request to myob with a payload
 
         ``user`` is the myob user object
@@ -217,7 +218,7 @@ def myob_post(user, url, payload):
     
     return response
 
-def myob_put(user, url, payload):
+def myob_put(user: MyobUser, url: str, payload) -> requests.Response:
     """ Basic Put request to myob with a payload
 
         ``user`` is the myob user object
@@ -524,38 +525,27 @@ class UpdateCustomer(graphene.Mutation):
         return self(success=True, message="Customer Successfully Updated")
         
 
-class myobGetContractors(graphene.Mutation):
+class GetSuppliers(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        contractor = graphene.String()
+        filter = graphene.String()
 
     success = graphene.Boolean()
-    message = graphene.String()
+    supplier = graphene.Field(SupplierObject)
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, contractor):
-        env = environ.Env()
-        environ.Env.read_env()
-
+    def mutate(self, root, info, filter):
         user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
-            
-        contractor_filter = "" if contractor == "" else "?$filter=" + contractor
-        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier{contractor_filter}"
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        response = requests.get(link, headers=headers)
 
-        return self(success=True, message=response.text)
+        endpoint = "Contact/Supplier"
+        response = myob_get(user, endpoint, filter)
+
+        return self(success=True, supplier=response['Items'])
 
 
-class myobContractorContactInput(graphene.InputObjectType):
+class myobSupplierContactInput(graphene.InputObjectType):
     id = graphene.String()
     location = graphene.Int()
     contact_name = graphene.String()
@@ -571,7 +561,7 @@ class myobContractorContactInput(graphene.InputObjectType):
     email = graphene.String()
     website = graphene.String()
 
-class myobContractorInput(graphene.InputObjectType):
+class myobSupplierInput(graphene.InputObjectType):
     id = graphene.String()
     myob_uid = graphene.String()
     name = graphene.String()
@@ -579,123 +569,26 @@ class myobContractorInput(graphene.InputObjectType):
     bsb = graphene.String()
     bank_account_name = graphene.String()
     bank_account_number = graphene.String()
-    contacts = graphene.List(myobContractorContactInput)
+    contacts = graphene.List(myobSupplierContactInput)
 
-class myobCreateContractor(graphene.Mutation):
+class CreateSupplier(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        contractor = myobContractorInput()
+        supplier = myobSupplierInput()
 
     success = graphene.Boolean()
     message = graphene.String()
+    myob_uid = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, contractor):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, supplier):
 
-        if Contractor.objects.filter(abn=contractor.abn).exists():
-            return self(success=False, message="Contractor Already Exists. Check ABN")
-
-        user = check_user_token_auth(uid, info.context.user)
+        user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
-        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/?$filter=BuyingDetails/ABN eq '{contractor.abn.strip()}'"
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        check_existing = requests.get(link, headers=headers)
-
-        existing = json.loads(check_existing.text)
-        existing = existing['Items']
-
-
-        if len(existing) > 0:
-            existing = existing[0]
-            print(existing)
-
-            # Create the contractor with the existing MYOB account
-            new_contractor = Contractor()
-            new_contractor.myob_uid = existing['UID']
-            new_contractor.name = existing['CompanyName']
-            new_contractor.abn = existing['BuyingDetails']['ABN']
-            new_contractor.bsb = existing['PaymentDetails']['BSBNumber']
-            new_contractor.bank_account_name = existing['PaymentDetails']['BankAccountName']
-            new_contractor.bank_account_number = existing['PaymentDetails']['BankAccountNumber']
-            new_contractor.save()
-
-            for i, contact in enumerate(existing['Addresses']):
-                new_contractor_contact = ContractorContact()
-                new_contractor_contact.company = new_contractor
-                new_contractor_contact.location = i
-                new_contractor_contact.contact_name = contact['ContactName']
-                new_contractor_contact.address = contact['Street']
-                new_contractor_contact.locality = contact['City']
-                new_contractor_contact.state = contact['State']
-                new_contractor_contact.postcode = contact['PostCode']
-                new_contractor_contact.country = contact['Country']
-                new_contractor_contact.phone1 = contact['Phone1']
-                new_contractor_contact.phone2 = contact['Phone2']
-                new_contractor_contact.phone3 = contact['Phone3']
-                new_contractor_contact.fax = contact['Fax']
-                new_contractor_contact.email = contact['Email']
-                new_contractor_contact.website = contact['Website']
-                new_contractor_contact.save()
-
-            # Update Contractor Details in MYOB if required
-            put_payload = {'RowVersion': existing['RowVersion']}
-                
-            if not existing['CompanyName']:
-                put_payload.update({'CompanyName': contractor['name']})
-
-            if not existing['BuyingDetails']['ABN']:
-                put_payload.update({'BuyingDetails': {'ABN': contractor.abn.strip()}})
-
-            if not existing['PaymentDetails']['BSBNumber']:
-                put_payload.update({'PaymentDetails': {'BSBNumber': contractor['bsb']}})
-
-            if not existing['PaymentDetails']['BankAccountName']:
-                put_payload.update({'PaymentDetails': {'BankAccountName': contractor['bank_account_name']}})
-
-            if not existing['PaymentDetails']['BankAccountNumber']:
-                put_payload.update({'PaymentDetails': {'BankAccountNumber': contractor['bank_account_number'].strip()}})
-
-            if len(existing['Addresses']) == 0:
-                contact_addresses = []
-                for i, contact in enumerate(contractor.contacts):
-                    contact_addresses.append({
-                        'Location': i,
-                        'ContactName': contact.contact_name.strip(),
-                        'Street': contact.address.strip(),
-                        'City': contact.locality.strip(),
-                        'State': contact.state.strip(),
-                        'Postcode': contact.postcode.strip(),
-                        'Country': contact.country.strip(),
-                        'Phone1': contact.phone1.strip(),
-                        'Phone2': contact.phone2.strip(),
-                        'Phone3': contact.phone3.strip(),
-                        'Fax': contact.fax.strip(),
-                        'Email': contact.email.strip(),
-                        'Website': contact.website.strip(),
-                    })
-
-            if len(put_payload) > 1:
-                put_link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{existing['UID']}"
-                response = requests.put(put_link, headers=headers, data=put_payload)
-
-                if not response.status_code == 200:
-                    print(response.text)
-                    print("MYOB Update Unsuccessful")
-
-            return self(success=True, message="Contractor Existed in MYOB")
-
         contact_addresses = []
-        for i, contact in enumerate(contractor.contacts):
+        for i, contact in enumerate(supplier.contacts):
             contact_addresses.append({
                 'Location': i,
                 'ContactName': contact.contact_name.strip(),
@@ -712,18 +605,13 @@ class myobCreateContractor(graphene.Mutation):
                 'Website': contact.website.strip(),
             })
 
-        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/"
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
+
+        endpoint = "Contact/Supplier"
         payload = json.dumps({
-            'CompanyName': contractor['name'],
+            'CompanyName': supplier['name'],
             'Addresses': contact_addresses,
             'BuyingDetails': {
-                'ABN': contractor.abn.strip(),
+                'ABN': supplier.abn.strip(),
                 'IsReportable': True,
                 'TaxCode': {
                     'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
@@ -733,119 +621,76 @@ class myobCreateContractor(graphene.Mutation):
                 },
             },
             'PaymentDetails': {
-                'BSBNumber': contractor['bsb'].strip(),
-                'BankAccountName': contractor['bank_account_name'].strip(),
-                'BankAccountNumber': contractor['bank_account_number'].strip(),
+                'BSBNumber': supplier['bsb'].strip(),
+                'BankAccountName': supplier['bank_account_name'].strip(),
+                'BankAccountNumber': supplier['bank_account_number'].strip(),
             },
         })
-        response = requests.post(link, headers=headers, data=payload)
+        response = myob_post(user, endpoint, payload)
 
         if not response.status_code == 201:
             return self(success=False, message=response.text)
 
         myob_uid = response.headers['Location'][-36:]
 
-        new_contractor = Contractor()
-        new_contractor.myob_uid = myob_uid
-        new_contractor.name = contractor.name.strip()
-        new_contractor.abn = contractor.abn.strip()
-        new_contractor.bsb = contractor.bsb.strip()
-        new_contractor.bank_account_name = contractor.bank_account_name.strip()
-        new_contractor.bank_account_number = contractor.bank_account_number.strip()
-        new_contractor.save()
-
-        for i, contact in enumerate(contractor.contacts):
-            new_contractor_contact = ContractorContact()
-            new_contractor_contact.company = new_contractor
-            new_contractor_contact.location = i
-            new_contractor_contact.contact_name = contact.contact_name.strip()
-            new_contractor_contact.address = contact.address.strip()
-            new_contractor_contact.locality = contact.locality.strip()
-            new_contractor_contact.state = contact.state.strip()
-            new_contractor_contact.postcode = contact.postcode.strip()
-            new_contractor_contact.country = contact.country.strip()
-            new_contractor_contact.phone1 = contact.phone1.strip()
-            new_contractor_contact.phone2 = contact.phone2.strip()
-            new_contractor_contact.phone3 = contact.phone3.strip()
-            new_contractor_contact.fax = contact.fax.strip()
-            new_contractor_contact.email = contact.email.strip()
-            new_contractor_contact.website = contact.website.strip()
-            new_contractor_contact.save()
-
-        return self(success=True, message=response.text)
+        return self(success=True, message=response.text, myob_uid=myob_uid)
         
-class myobUpdateContractor(graphene.Mutation):
+class UpdateSupplier(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        contractors = graphene.List(myobContractorInput)
+        supplier = myobSupplierInput()
+        existing_supplier = SupplierInputObject()
 
     success = graphene.Boolean()
     message = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, contractors):
-        env = environ.Env()
-        environ.Env.read_env()
-
-        user = check_user_token_auth(uid, info.context.user)
+    def mutate(self, root, info, supplier, existing_supplier=None):
+        user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
+        
+        endpoint = "Contact/Supplier"
+        if existing_supplier is None:
+            filter = f"UID eq guid'{supplier.myob_uid}'"
+            response = myob_get(user, endpoint, filter)
+            existing_supplier = response['Items'][0]
 
+        # If ABN has been updated we need to check the new ABN is not going to be the same as another client
+        if supplier.abn != existing_supplier['BuyingDetails']['ABN']:
+            filter_abn_check = f"BuyingDetails/ABN eq '{supplier.abn}'"
+            get_res_abn_check = myob_get(user, endpoint, filter_abn_check)
 
-        for contractor in contractors:
-            print("Updating Contractor:", contractor)
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{contractor['myob_uid']}'"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.get(link, headers=headers)
+            if len(get_res_abn_check['Items']) >= 1:
+                return self(success=False, message="The ABN entered already exists for another supplier, you may already have this supplier in MYOB.")
 
-            if not response.status_code == 200:
-                return self(success=False, message=response.text)
-                
-            res = json.loads(response.text)
-            res = res['Items'][0]
-            print(res['RowVersion'])
-
-            link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier/{contractor['myob_uid']}"
-            payload = json.dumps({
-                'UID': contractor['myob_uid'],
-                'CompanyName': contractor['name'],
-                'BuyingDetails': {
-                    'ABN': contractor['abn'],
-                    'IsReportable': True,
-                    'TaxCode': {
-                        'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
-                    },
-                    'FreightTaxCode': {
-                        'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
-                    },
+        endpoint = f"Contact/Supplier/{supplier.myob_uid}"
+        payload = json.dumps({
+            'UID': supplier.myob_uid,
+            'CompanyName': supplier.name.strip(),
+            'BuyingDetails': {
+                'ABN': supplier.abn.strip(),
+                'IsReportable': True,
+                'TaxCode': {
+                    'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
                 },
-                'PaymentDetails': {
-                    'BSBNumber': contractor['bsb'],
-                    'BankAccountName': contractor['bank_account_name'],
-                    'BankAccountNumber': contractor['bank_account_number'].strip(),
+                'FreightTaxCode': {
+                    'UID': 'd35a2eca-6c7d-4855-9a6a-0a73d3259fc4',
                 },
-                'RowVersion': res['RowVersion']
-            })
-            response = requests.put(link, headers=headers, data=payload)
+            },
+            'PaymentDetails': {
+                'BSBNumber': supplier.bsb.strip(),
+                'BankAccountName': supplier.bank_account_name.strip(),
+                'BankAccountNumber': supplier.bank_account_number.strip(),
+            },
+            'RowVersion': existing_supplier['RowVersion']
+        })
+        response = myob_put(user, endpoint, payload)
 
-            if not response.status_code == 200:
-                return self(success=False, message=response.text)
-            
-            cont = Contractor.objects.get(id = contractor['id'])
-            cont.name = contractor['name']
-            cont.abn = contractor['abn']
-            cont.bsb = contractor['bsb']
-            cont.bank_account_name = contractor['bank_account_name']
-            cont.bank_account_number = contractor['bank_account_number']
-            cont.save()
+        if not response.status_code == 200:
+            return self(success=False, message=response.text)
 
-            return self(success=True, message="Contractor Successfully Updated")
+        return self(success=True, message="Supplier Successfully Updated")
 
 class GetInvoice(graphene.Mutation):
     class Arguments:
@@ -2100,7 +1945,7 @@ class myobCreateInvoice(graphene.Mutation):
 class BillInputType(graphene.InputObjectType):
     id = graphene.String()
     myobUid = graphene.String()
-    supplier = myobContractorInput()
+    supplier = myobSupplierInput()
     job = JobInputType()
     contractor = graphene.String()
     invoiceNumber = graphene.String()
@@ -2186,8 +2031,8 @@ class CreateMyobBill(graphene.Mutation):
 
         response = myob_post(user, post_endpoint, payload)
 
-        if not response.status_code == 201:
-            return self(success=False, message="Issue creating bill in MYOB", error=json.loads(response.text))
+        if response is None:
+            return self(success=False, message="Issue creating bill in MYOB. Please contact developer for additional details.")
 
         # Get the bill uid
         bill_uid = get_response_uid(response)
@@ -2886,9 +2731,9 @@ class Mutation(graphene.ObjectType):
     create_customer = CreateCustomer.Field()
     update_customer = UpdateCustomer.Field()
 
-    myob_get_contractors = myobGetContractors.Field()
-    myob_create_contractor = myobCreateContractor.Field()
-    myob_update_contractor = myobUpdateContractor.Field()
+    myob_get_supplier = GetSuppliers.Field()
+    myob_create_supplier = CreateSupplier.Field()
+    myob_update_supplier = UpdateSupplier.Field()
 
     get_myob_jobs = GetMyobJobs.Field()
     myob_get_invoices = myobGetInvoices.Field()

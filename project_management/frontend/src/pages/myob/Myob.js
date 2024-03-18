@@ -442,15 +442,14 @@ const MyobActivate = () => {
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobGetContractors($uid:String!, $contractor:String!) {
-                    myob_get_contractors: myobGetContractors(uid:$uid, contractor:$contractor) {
+                query: `mutation myobGetSupplier($filter:String!) {
+                    myob_get_contractors: myobGetSupplier(filter:$filter) {
                         success
                         message
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
-                    contractor: queries.contractor,
+                    filter: queries.contractor,
                 }
             })
         }).then((response) => {

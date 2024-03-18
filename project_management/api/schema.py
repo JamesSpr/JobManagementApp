@@ -1194,6 +1194,22 @@ class DeleteContact(graphene.Mutation):
         client_contact.delete()
         return self(success=True)
 
+class ContractorContactInput(graphene.InputObjectType):
+    id = graphene.String()
+    location = graphene.Int()
+    contact_name = graphene.String()
+    address = graphene.String()
+    locality = graphene.String()
+    state = graphene.String()
+    postcode = graphene.String()
+    country = graphene.String()
+    phone1 = graphene.String()
+    phone2 = graphene.String()
+    phone3 = graphene.String()
+    fax = graphene.String()
+    email = graphene.String()
+    website = graphene.String()
+
 class ContractorInput(graphene.InputObjectType):
     id = graphene.String(required=False)
     myob_uid = graphene.String()
@@ -1202,13 +1218,15 @@ class ContractorInput(graphene.InputObjectType):
     bsb = graphene.String()
     bank_account_name = graphene.String()
     bank_account_number = graphene.String()
+    contacts = graphene.List(ContractorContactInput)
 
 class CreateContractor(graphene.Mutation):
     class Arguments:
         contractor = ContractorInput()
          
-    contractor = graphene.Field(ContractorType)
     success = graphene.Boolean()
+    message = graphene.String()
+    contractor = graphene.Field(ContractorType)
 
     @classmethod
     @login_required
@@ -1216,38 +1234,207 @@ class CreateContractor(graphene.Mutation):
         if Contractor.objects.filter(abn=contractor.abn).exists():
             return self(success=False, message="Contractor Already Exists. Check ABN")
         
-        print(contractor)
+        from myob.schema import GetSuppliers, CreateSupplier, UpdateSupplier
+        contractor_check = f"BuyingDetails/ABN eq '{contractor.abn.strip()}'"
+        existing_contractor = GetSuppliers.mutate(root, info, contractor_check)
+        print(existing_contractor)
 
-        new_contractor = Contractor()
-        new_contractor.myob_uid = contractor.myob_uid
-        new_contractor.name = contractor.name.strip()
-        new_contractor.abn = contractor.abn.strip()
-        new_contractor.bsb = contractor.bsb.strip()
-        new_contractor.bank_account_name = contractor.bank_account_name.strip()
-        new_contractor.bank_account_number = contractor.bank_account_number.strip()
-        new_contractor.save()
+        if len(existing_contractor.supplier) > 0:
+            existing = existing_contractor.supplier[0]
+            
+            new_contractor = Contractor()
+            new_contractor.myob_uid = existing['UID']
+                
+            if not existing['CompanyName']:
+                new_contractor.myob_uid = contractor['name']
+            else:
+                new_contractor.name = existing['CompanyName']
 
-        return self(success=True, contractor=new_contractor)
+            if not existing['BuyingDetails']['ABN']:
+                new_contractor.abn = contractor.abn.strip()
+            else:
+                new_contractor.abn = existing['BuyingDetails']['ABN']
+
+            if not existing['PaymentDetails']['BSBNumber']:
+                new_contractor.bsb = contractor['bsb']
+            else:   
+                new_contractor.bsb = existing['PaymentDetails']['BSBNumber']
+
+            if not existing['PaymentDetails']['BankAccountName']:
+                new_contractor.bank_account_name = contractor['bank_account_name']
+            else:
+                new_contractor.bank_account_name = existing['PaymentDetails']['BankAccountName']
+
+            if not existing['PaymentDetails']['BankAccountNumber']:
+                new_contractor.bank_account_number = contractor['bank_account_number'].strip()
+            else:
+                new_contractor.bank_account_number = existing['PaymentDetails']['BankAccountNumber']
+
+            update = UpdateSupplier.mutate(root, info, new_contractor, existing)
+
+            if update.success:
+                new_contractor.save()
+
+                if len(existing['Addresses']) == 0:
+                    contact_addresses = []
+                    for i, contact in enumerate(contractor.contacts):
+                        # Create new contractor contact
+                        new_contractor_contact = ContractorContact()
+                        new_contractor_contact.company = new_contractor
+                        new_contractor_contact.location = i
+                        new_contractor_contact.contact_name = contact.contact_name.strip()
+                        new_contractor_contact.address = contact.address.strip()
+                        new_contractor_contact.locality = contact.locality.strip()
+                        new_contractor_contact.state = contact.state.strip()
+                        new_contractor_contact.postcode = contact.postcode.strip()
+                        new_contractor_contact.country = contact.country.strip()
+                        new_contractor_contact.phone1 = contact.phone1.strip()
+                        new_contractor_contact.phone2 = contact.phone2.strip()
+                        new_contractor_contact.phone3 = contact.phone3.strip()
+                        new_contractor_contact.fax = contact.fax.strip()
+                        new_contractor_contact.email = contact.email.strip()
+                        new_contractor_contact.website = contact.website.strip()
+                        new_contractor_contact.save()
+
+                        # Create list to post to myob
+                        contact_addresses.append({
+                            'Location': i,
+                            'ContactName': contact.contact_name.strip(),
+                            'Street': contact.address.strip(),
+                            'City': contact.locality.strip(),
+                            'State': contact.state.strip(),
+                            'Postcode': contact.postcode.strip(),
+                            'Country': contact.country.strip(),
+                            'Phone1': contact.phone1.strip(),
+                            'Phone2': contact.phone2.strip(),
+                            'Phone3': contact.phone3.strip(),
+                            'Fax': contact.fax.strip(),
+                            'Email': contact.email.strip(),
+                            'Website': contact.website.strip(),
+                        })
+                else:
+                    # Grab from myob
+                    for i, contact in enumerate(existing['Addresses']):
+                        new_contractor_contact = ContractorContact()
+                        new_contractor_contact.company = new_contractor
+                        new_contractor_contact.location = i
+                        new_contractor_contact.contact_name = contact['ContactName']
+                        new_contractor_contact.address = contact['Street']
+                        new_contractor_contact.locality = contact['City']
+                        new_contractor_contact.state = contact['State']
+                        new_contractor_contact.postcode = contact['PostCode']
+                        new_contractor_contact.country = contact['Country']
+                        new_contractor_contact.phone1 = contact['Phone1']
+                        new_contractor_contact.phone2 = contact['Phone2']
+                        new_contractor_contact.phone3 = contact['Phone3']
+                        new_contractor_contact.fax = contact['Fax']
+                        new_contractor_contact.email = contact['Email']
+                        new_contractor_contact.website = contact['Website']
+                        new_contractor_contact.save()
+
+                return self(success=True, message="Contractor Existed in MYOB. Successfully Created & Updated in MYOB")
+                
+            return self(success=False, message="Failed to Create/Update Myob Contractor")
+                # if not response.status_code == 200:
+                #     print(response.text)
+                #     print("MYOB Update Unsuccessful")
+
+        create = CreateSupplier.mutate(root, info, contractor)
+        if create.success:
+            new_contractor = Contractor()
+            new_contractor.myob_uid = create.myob_uid
+            new_contractor.name = contractor.name.strip()
+            new_contractor.abn = contractor.abn.strip()
+            new_contractor.bsb = contractor.bsb.strip()
+            new_contractor.bank_account_name = contractor.bank_account_name.strip()
+            new_contractor.bank_account_number = contractor.bank_account_number.strip()
+            new_contractor.save()
+
+            for i, contact in enumerate(contractor.contacts):
+                new_contractor_contact = ContractorContact()
+                new_contractor_contact.company = new_contractor
+                new_contractor_contact.location = i
+                new_contractor_contact.contact_name = contact.contact_name.strip()
+                new_contractor_contact.address = contact.address.strip()
+                new_contractor_contact.locality = contact.locality.strip()
+                new_contractor_contact.state = contact.state.strip()
+                new_contractor_contact.postcode = contact.postcode.strip()
+                new_contractor_contact.country = contact.country.strip()
+                new_contractor_contact.phone1 = contact.phone1.strip()
+                new_contractor_contact.phone2 = contact.phone2.strip()
+                new_contractor_contact.phone3 = contact.phone3.strip()
+                new_contractor_contact.fax = contact.fax.strip()
+                new_contractor_contact.email = contact.email.strip()
+                new_contractor_contact.website = contact.website.strip()
+                new_contractor_contact.save()
+
+            return self(success=True, contractor=new_contractor)
+        
+        return self(success=False, message=create.message)
     
 class UpdateContractor(graphene.Mutation):
     class Arguments:
         contractor = ContractorInput()
         
     success = graphene.Boolean()
+    message = graphene.String()
 
     @classmethod
     @login_required
     def mutate(self, root, info, contractor):
-        cont = Contractor.objects.filter(id=contractor.id)[0]
-        if contractor.myob_uid: cont.myob_uid = contractor.myob_uid
-        if contractor.name: cont.name = contractor.name.strip()
-        if contractor.abn: cont.abn = contractor.abn.strip()
-        if contractor.bsb: cont.bsb = contractor.bsb.strip()
-        if contractor.bank_account_name: cont.bank_account_name = contractor.bank_account_name.strip()
-        if contractor.bank_account_number: cont.bank_account_number = contractor.bank_account_number.strip()
-        cont.save()
+        from myob.schema import UpdateSupplier
 
-        return self(success=True)
+        cont = Contractor.objects.get(id = contractor['id'])
+        cont.name = contractor['name']
+        cont.abn = contractor['abn']
+        cont.bsb = contractor['bsb']
+        cont.bank_account_name = contractor['bank_account_name']
+        cont.bank_account_number = contractor['bank_account_number']
+
+        update = UpdateSupplier.mutate(root, info, contractor)
+
+        if update.success:
+            cont.save()
+
+            return self(success=True, message="Contractor Successfully Updated")
+
+        return self(success=False, message=update.message)
+
+class UpdateContractors(graphene.Mutation):
+    class Arguments:
+        contractors = graphene.List(ContractorInput)
+        
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, contractors):
+        from myob.schema import UpdateSupplier
+        
+        errors = []
+        for contractor in contractors:
+            cont = Contractor.objects.get(id = contractor['id'])
+            cont.name = contractor['name']
+            cont.abn = contractor['abn']
+            cont.bsb = contractor['bsb']
+            cont.bank_account_name = contractor['bank_account_name']
+            cont.bank_account_number = contractor['bank_account_number']
+
+            update = UpdateSupplier.mutate(root, info, contractor)
+
+            if update.success:
+                cont.save()
+            else:
+                errors.append(contractor)
+
+
+        if len(errors) == 0:
+            return self(success=True, message="Contractor Successfully Updated")
+
+        print(errors)
+        return self(success=False, message="Error updating some contractors. Please Contact Developer for additional details.")
+
 
 class DeleteContractor(graphene.Mutation):
     class Arguments:
@@ -2112,6 +2299,7 @@ class Mutation(graphene.ObjectType):
 
     create_contractor = CreateContractor.Field()
     update_contractor = UpdateContractor.Field()
+    update_contractors = UpdateContractors.Field()
     delete_contractor = DeleteContractor.Field()
 
     create_invoice = CreateInvoice.Field()

@@ -83,7 +83,7 @@ const TimesheetSubmission = ({open, setOpen, timesheets, setTimesheets, setSnack
                 normalHours += numHours;
             })
 
-            const pay = payroll['Wage']['HourlyRate']
+            const pay = payroll?.['Wage']?.['HourlyRate'] ?? 0
             timesheetPay += paidHours * pay
             // console.log(timesheet.employee.name, ":", paidHours, '*' , pay, '=', paidHours*pay)
         })

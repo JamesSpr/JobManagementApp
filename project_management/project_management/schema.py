@@ -1,6 +1,6 @@
 import graphene
 import api.schema as api
-import api.services.outlook as outlook
+import api.scripts.outlook as outlook
 import accounts.schema as accounts
 import myob.schema as myob
 import analytics.schema as analytics

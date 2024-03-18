@@ -13,7 +13,7 @@ import sys
 sys.path.append("...")
 from accounts.models import CustomUser
 
-EMAIL_STYLE="""<body style="font-size:11pt; font-family:'Calibri'; color: rgb(0,0,0)">"""
+EMAIL_STYLE = """<body style="font-size:11pt; font-family:'Aptos (Body)'; color: rgb(0,0,0)">"""
 JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
 
 from exchangelib import Credentials, Account, DELEGATE, Configuration, Message, HTMLBody, FileAttachment, CalendarItem
@@ -34,7 +34,7 @@ class ExchangeEmail():
             item = self.email_account.calendar.get(subject=subject)
             item.start = start
             item.end = end
-            item.body = HTMLBody(body)
+            item.body = HTMLBody(f"{EMAIL_STYLE}{body}</body>")
             item.required_attendees = attendees
         else:
             item = CalendarItem(
@@ -43,7 +43,7 @@ class ExchangeEmail():
                 start = start,
                 end = end,
                 subject = subject,
-                body = HTMLBody(body),
+                body = HTMLBody(f"{EMAIL_STYLE}{body}</body>"),
                 required_attendees=attendees
             )
 
@@ -51,47 +51,40 @@ class ExchangeEmail():
 
     def update_calendar_event(self, old, job, old_date, new_date):
         for calendar_item in self.email_account.calendar.filter(subject=old):
-            job_string = f"<b>Job</b>: {str(job)}<br>"
-            location = f"<b>Location</b>: {job.location.name}, {job.location.address}, {job.location.locality} {job.location.state} {job.location.postcode}<br>"
-            description = f"<b>Description</b>: {job.description}<br>".replace('\n', '<br>') if job.description else ""
-            priority = f"<b>Priority</b>: {job.priority} <br>" if job.priority else ""
-            received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} <br>" if job.date_issued else ""
-            overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y @ %H:%M')} <br>" if job.overdue_date else ""
-            special_instructions = f"<b>Special Instructions</b>: {job.special_instructions}<br>" if job.special_instructions else ""
-            detailed_locaton = f"<b>Detailed Location</b>: {job.detailed_location}<br>" if job.detailed_location else ""
-            requester = f"<b>Requestor</b>: {job.requester.first_name} {job.requester.last_name} - {job.requester.phone}<br>" if job.requester.first_name else ""
-            poc = f"<b>POC</b>: {job.poc_name} - {job.poc_phone}<br>" if job.poc_name or job.poc_phone else ""
-            alt_poc = f"<b>ALT POC</b>: {job.alt_poc_name} - {job.alt_poc_phone}<br>" if job.alt_poc_name or job.alt_poc_phone else ""
-            bsafe_link = f"<br><a href='{job.bsafe_link}'>BSAFE Link</a><br>" if job.bsafe_link else ""
-            event_body = f"""{EMAIL_STYLE}
-                                {job_string}
-                                {location}
-                                {priority}
-                                {received_date}
-                                {overdue_date}
-                                {detailed_locaton}
-                                {description}
-                                {special_instructions}
-                                <br>
-                                {requester}
-                                {poc}
-                                {alt_poc}
-                                <br>
-                                <b>Time Inspected</b>: 
-                                <br>
-                                <b>Time Started</b>: 
-                                <br>
-                                <b>Time Completed</b>: 
-                                <br>
-                                {bsafe_link}
-                                <br>
-                                </body>"""
+            job_string = f"<b>Job</b>: {str(job)}"
+            location = f"<b>Location</b>: {job.location.name}, {job.location.address}, {job.location.locality} {job.location.state} {job.location.postcode}"
+            description = f"<b>Description</b>: {job.description}".replace('\n', '<br>') if job.description else ""
+            priority = f"<b>Priority</b>: {job.priority} " if job.priority else ""
+            received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} " if job.date_issued else ""
+            overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y @ %H:%M')} " if job.overdue_date else ""
+            special_instructions = f"<b>Special Instructions</b>: {job.special_instructions}" if job.special_instructions else ""
+            detailed_locaton = f"<b>Detailed Location</b>: {job.detailed_location}" if job.detailed_location else ""
+            requester = f"<b>Requestor</b>: {job.requester.first_name} {job.requester.last_name} - {job.requester.phone}" if job.requester.first_name else ""
+            poc = f"<b>POC</b>: {job.poc_name} - {job.poc_phone}" if job.poc_name or job.poc_phone else ""
+            alt_poc = f"<b>ALT POC</b>: {job.alt_poc_name} - {job.alt_poc_phone}" if job.alt_poc_name or job.alt_poc_phone else ""
+            bsafe_link = f"<br><a href='{job.bsafe_link}'>BSAFE Link</a>" if job.bsafe_link else ""
+            
+            event_body = f"""<p style="margin: 6px 0px">{job_string}</p>
+                            <p style="margin: 6px 0px">{location}</p>
+                            <p style="margin: 6px 0px">{priority}</p>
+                            <p style="margin: 6px 0px">{received_date}</p>
+                            <p style="margin: 6px 0px">{overdue_date}</p>
+                            <p style="margin: 6px 0px">{detailed_locaton}</p>
+                            <p style="margin: 6px 0px">{description}</p>
+                            <p style="margin: 6px 0px">{special_instructions}</p>
+                            <p style="margin: 6px 0px"></p>
+                            <p style="margin: 6px 0px">{requester}</p>
+                            <p style="margin: 6px 0px">{poc}</p>
+                            <p style="margin: 6px 0px">{alt_poc}</p>
+                            <p style="margin: 6px 0px"></p>
+                            <p style="margin: 6px 0px">{bsafe_link}</p>
+                        """
 
             if calendar_item.start == old_date:
                 calendar_item.start = new_date
                 calendar_item.end = new_date
                 calendar_item.subject = str(job)
-                calendar_item.body = HTMLBody(event_body)
+                calendar_item.body = HTMLBody(f"{EMAIL_STYLE}{event_body}</body>")
                 calendar_item.save(send_meeting_invitations=SEND_TO_NONE)
 
     def send_email(self, to, cc, subject, body, attachments, settings):
@@ -104,21 +97,21 @@ class ExchangeEmail():
             cc_recipients=cc,
             subject=subject,
             importance="High" if settings and settings.urgent else "Normal",
-            body=HTMLBody(body + html_signature),
+            body=HTMLBody(f"{EMAIL_STYLE}{body}{html_signature}</body>"),
         )
 
         for attachment in attachments:
             m.attach(attachment)
 
         signature_images = [
-            'image001.png@01DA08B5.C3628F10',
-            'image002.png@01DA08B5.C3628F10',
-            'image003.png@01DA08B5.C3628F10',
-            'image004.png@01DA08B5.C3628F10',
-            'image005.png@01DA08B5.C3628F10'
+            'image001.png',
+            'image002.png',
+            'image003.png',
+            'image004.png',
+            'image005.png'
         ]
         for img in signature_images:
-            with open(f"{os.path.dirname(os.path.realpath(__file__))}\email_resources\{img.split('@')[0]}", "rb") as f:
+            with open(f"{os.path.dirname(os.path.realpath(__file__))}\email_resources\{img}", "rb") as f:
                 img_attachment = FileAttachment(name=img, content=f.read(), is_inline=True, content_id=img)
             m.attach(img_attachment)
 
@@ -171,18 +164,18 @@ class AllocateJobEmail(graphene.Mutation):
                 if not job:
                     return cls(success=False, message="Could not find Job. ID = " + str(job_id))
 
-                job_string = f"<b>Job</b>: {str(job)}<br>"
-                location = f"<b>Location</b>: {job.location.name}, {job.location.address}, {job.location.locality} {job.location.state} {job.location.postcode}<br>"
-                description = f"<b>Description</b>: {job.description}<br>".replace('\n', '<br>') if job.description else ""
-                priority = f"<b>Priority</b>: {job.priority} <br>" if job.priority else ""
-                received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} <br>" if job.date_issued else ""
-                overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y @ %H:%M')} <br>" if job.overdue_date else ""
-                special_instructions = f"<b>Special Instructions</b>: {job.special_instructions}<br>" if job.special_instructions else ""
-                detailed_locaton = f"<b>Detailed Location</b>: {job.detailed_location}<br>" if job.detailed_location else ""
-                requester = f"<b>Requestor</b>: {job.requester.first_name} {job.requester.last_name} - {job.requester.phone}<br>" if job.requester.first_name else ""
-                poc = f"<b>POC</b>: {job.poc_name} - {job.poc_phone}<br>" if job.poc_name or job.poc_phone else ""
-                alt_poc = f"<b>ALT POC</b>: {job.alt_poc_name} - {job.alt_poc_phone}<br>" if job.alt_poc_name or job.alt_poc_phone else ""
-                bsafe_link = f"<br><a href='{job.bsafe_link}'>BSAFE Link</a><br>" if job.bsafe_link else ""
+                job_string = f"<b>Job</b>: {str(job)}"
+                location = f"<b>Location</b>: {job.location.name}, {job.location.address}, {job.location.locality} {job.location.state} {job.location.postcode}"
+                description = f"<b>Description</b>: {job.description}".replace('\n', '<br>') if job.description else ""
+                priority = f"<b>Priority</b>: {job.priority} " if job.priority else ""
+                received_date = f"<b>Received On</b>: {job.date_issued.strftime('%d/%m/%y @ %H:%M')} " if job.date_issued else ""
+                overdue_date = f"<b>Overdue Date</b>: {job.overdue_date.strftime('%d/%m/%y @ %H:%M')} " if job.overdue_date else ""
+                special_instructions = f"<b>Special Instructions</b>: {job.special_instructions}" if job.special_instructions else ""
+                detailed_locaton = f"<b>Detailed Location</b>: {job.detailed_location}" if job.detailed_location else ""
+                requester = f"<b>Requestor</b>: {job.requester.first_name} {job.requester.last_name} - {job.requester.phone}" if job.requester.first_name else ""
+                poc = f"<b>POC</b>: {job.poc_name} - {job.poc_phone}" if job.poc_name or job.poc_phone else ""
+                alt_poc = f"<b>ALT POC</b>: {job.alt_poc_name} - {job.alt_poc_phone}" if job.alt_poc_name or job.alt_poc_phone else ""
+                bsafe_link = f"<br><a href='{job.bsafe_link}'>BSAFE Link</a>" if job.bsafe_link else ""
                 
                 # mail = outlook.CreateItem(0)
                 mail_attachments = []
@@ -213,58 +206,42 @@ class AllocateJobEmail(graphene.Mutation):
 
                 mailTo = recipient
                 mailSubject = f"NEW{priority_title}: {str(job)}"
-                mailBody = f"""{EMAIL_STYLE}
-                                Hi {addressee},<br><br>
-                                We have received this new work request. Could you please inspect and provide details/quote<br><br>
-
-                                {job_string}
-                                {location}
-                                {priority}
-                                {received_date}
-                                {overdue_date}
-                                {detailed_locaton}
-                                {description}
-                                {special_instructions}
-                                <br>
-                                {requester}
-                                {poc}
-                                {alt_poc}
-                                <br>
-                                <b>Time Inspected</b>: 
-                                <br>
-                                <b>Time Started</b>: 
-                                <br>
-                                <b>Time Completed</b>: 
-                                <br>
-                                {bsafe_link}
-                                <br>
-                                </body>
+                mailBody = f"""<p>Hi {addressee},</p>
+                                </p>
+                                <p>We have received this new work request. Could you please inspect and provide details/quote</p>
+                                </p>
+                                <p style="margin: 6px 0px">{job_string}</p>
+                                <p style="margin: 6px 0px">{location}</p>
+                                <p style="margin: 6px 0px">{priority}</p>
+                                <p style="margin: 6px 0px">{received_date}</p>
+                                <p style="margin: 6px 0px">{overdue_date}</p>
+                                <p style="margin: 6px 0px">{detailed_locaton}</p>
+                                <p style="margin: 6px 0px">{description}</p>
+                                <p style="margin: 6px 0px">{special_instructions}</p>
+                                </p>
+                                <p style="margin: 6px 0px">{requester}</p>
+                                <p style="margin: 6px 0px">{poc}</p>
+                                <p style="margin: 6px 0px">{alt_poc}</p>
+                                </p>
+                                <p style="margin: 6px 0px">{bsafe_link}</p>
                                 """
                 
                 eventSubject = f"{str(job)}"
-                eventBody = f"""{EMAIL_STYLE}
-                                {job_string}
-                                {location}
-                                {priority}
-                                {received_date}
-                                {overdue_date}
-                                {detailed_locaton}
-                                {description}
-                                {special_instructions}
-                                <br>
-                                {requester}
-                                {poc}
-                                {alt_poc}
-                                <br>
-                                <b>Time Inspected</b>: 
-                                <br>
-                                <b>Time Started</b>: 
-                                <br>
-                                <b>Time Completed</b>: 
-                                <br>
-                                {bsafe_link}
-                                <br>
-                                </body>"""
+                eventBody = f"""<p style="margin: 6px 0px">{job_string}</p>
+                                <p style="margin: 6px 0px">{location}</p>
+                                <p style="margin: 6px 0px">{priority}</p>
+                                <p style="margin: 6px 0px">{received_date}</p>
+                                <p style="margin: 6px 0px">{overdue_date}</p>
+                                <p style="margin: 6px 0px">{detailed_locaton}</p>
+                                <p style="margin: 6px 0px">{description}</p>
+                                <p style="margin: 6px 0px">{special_instructions}</p>
+                                </p>
+                                <p style="margin: 6px 0px">{requester}</p>
+                                <p style="margin: 6px 0px">{poc}</p>
+                                <p style="margin: 6px 0px">{alt_poc}</p>
+                                </p>
+                                <p style="margin: 6px 0px">{bsafe_link}</p>
+                                """
                 
 
                 # mail.Send()        
@@ -314,30 +291,27 @@ class CloseOutEmail(graphene.Mutation):
         if not job.scope:
             return cls(success=False, message="Please Ensure Job Scope of Works Is Not Empty")
 
-        scope = "<br>" + job.scope.replace('\n', '<br>') if '\n' in job.scope else job.scope
+        # scope = job.scope.replace('\n', '<br>') if '\n' in job.scope else job.scope
 
         finishTime = 7 + job.total_hours
         if finishTime >= 15:
             finishTime = "15:00"
         else:
-            finishTime = str( math.ceil(finishTime) ).zfill(2) + ":00"
+            finishTime = str(math.ceil(finishTime) ).zfill(2) + ":00"
 
         mailTo = [job.location.region.email]
         mailCC = ["Colin@aurify.com.au", "James@aurify.com.au", "Safiya@aurify.com.au"]
         mailSubject = "Close out: " + str(job)
-        mailHTMLBody = f"""{EMAIL_STYLE}
-        Hi {job.location.region.short_name} EMOS,<br><br>
-        
-        All works have been completed for {job.po}. Details Below:<br>
-        <b>Initial Inspection Date</b>: {job.inspection_date.strftime('%d/%m/%y')}<br>
-        <b>Works Start Date</b>: {job.commencement_date.strftime('%d/%m/%y')}<br>
-        <b>Start Time:</b> 07:00<br>
-        <b>Works Completion Date</b>: {job.completion_date.strftime('%d/%m/%y')}<br> 
-        <b>Finish Time</b>: {finishTime}<br>
-        <b>Total Hours</b>: {job.total_hours}<br>
-        <b>Scope of Works</b>: {scope}<br>
-        <br>
-        </body>"""
+        mailHTMLBody = f"""<p>Hi {job.location.region.short_name} EMOS,</p>
+        </p>
+        <p style="margin: 6px 0px">All works have been completed for {job.po}. Details Below:</p>
+        <p style="margin: 6px 0px"><b>Initial Inspection Date</b>: {job.inspection_date.strftime('%d/%m/%y')}</p>
+        <p style="margin: 6px 0px"><b>Works Start Date</b>: {job.commencement_date.strftime('%d/%m/%y')}</p>
+        <p style="margin: 6px 0px"><b>Start Time:</b> 07:00</p>
+        <p style="margin: 6px 0px"><b>Works Completion Date</b>: {job.completion_date.strftime('%d/%m/%y')}</p> 
+        <p style="margin: 6px 0px"><b>Finish Time</b>: {finishTime}</p>
+        <p style="margin: 6px 0px"><b>Total Hours</b>: {job.total_hours}</p>
+        <p style="margin: 6px 0px"><b>Scope of Works</b>: {scope}</p>"""
 
         email.send_email(to=mailTo, cc=mailCC, subject=mailSubject, body=mailHTMLBody, attachments=[], settings=None)
 
@@ -376,7 +350,7 @@ class EmailQuote(graphene.Mutation):
 
 
 
-html_signature = """<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml" xmlns="http://www.w3.org/TR/REC-html40"><head><meta name=ProgId content=Word.Document><meta name=Generator content="Microsoft Word 15"><meta name=Originator content="Microsoft Word 15"><link rel=File-List href="cid:filelist.xml@01DA08B5.C3628F10"><link rel=Edit-Time-Data href="cid:editdata.mso"><!--[if !mso]><style>v\:* {behavior:url(#default#VML);}
+html_signature = """<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml" xmlns="http://www.w3.org/TR/REC-html40"><head><meta name=ProgId content=Word.Document><meta name=Generator content="Microsoft Word 15"><meta name=Originator content="Microsoft Word 15"><link rel=File-List href="cid:filelist.xml"><link rel=Edit-Time-Data href="cid:editdata.mso"><!--[if !mso]><style>v\:* {behavior:url(#default#VML);}
 o\:* {behavior:url(#default#VML);}
 w\:* {behavior:url(#default#VML);}
 .shape {behavior:url(#default#VML);}
@@ -913,12 +887,12 @@ table.MsoNormalTable
         mso-ligatures:standardcontextual;
         mso-ansi-language:EN-GB;
         mso-fareast-language:EN-US;}
-</style><![endif]--></head><body lang=EN-AU link="#0563C1" vlink="#954F72" style='tab-interval:36.0pt;word-wrap:break-word'><div class=WordSection1><p class=MsoNormal><span lang=EN-GB></span></p><p class=MsoNormal><span lang=EN-GB></span></p><p class=MsoNormal><a name="_MailAutoSig"><span lang=EN-GB style='mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>Regards,<span style='mso-font-kerning:0pt;mso-ligatures:none'><o:p></o:p></span></span></a></p><p class=MsoNormal><span 
+</style><![endif]--></head><body lang=EN-AU link="#0563C1" vlink="#954F72" style='tab-interval:36.0pt;word-wrap:break-word'><p></p><div class=WordSection1><p class=MsoNormal><span lang=EN-GB></span></p><p class=MsoNormal><span lang=EN-GB></span></p><p class=MsoNormal><a name="_MailAutoSig"><span lang=EN-GB style='mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>Regards,<span style='mso-font-kerning:0pt;mso-ligatures:none'><o:p></o:p></span></span></a></p><p class=MsoNormal><span 
 style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p>&nbsp;</o:p></span></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>Administration<o:p></o:p></span></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-fareast-language:EN-AU;mso-no-proof:yes'>Maintenance Division<o:p></o:p></span></b></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:12.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p>&nbsp;</o:p></span></b></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>P </span></b></span><span style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>(02) 9737 8808&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><o:p></o:p></b></span></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>E</span></b></span><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'> </span></b></span><span style='mso-bookmark:_MailAutoSig'></span><a href="mailto:maintenance@aurify.com.au"><span style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;mso-bidi-font-family:Calibri;color:black;mso-themecolor:text1;mso-fareast-language:EN-AU;mso-no-proof:yes'>maintenance@aurify.com.au</span></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'> //</span></b></span><span style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'> </span></span><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>W</span></b></span><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times 
 New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'> </span></b></span><span style='mso-bookmark:_MailAutoSig'></span><a href="http://www.aurify.com.au/"><span style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;mso-bidi-font-family:Calibri;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>www.aurify.com.au</span></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p></o:p></span></b></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>A</span></b></span><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'> </span></b></span><span style='mso-bookmark:_MailAutoSig'></span><a href="https://g.page/aurifyconstructions?share"><span style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;mso-bidi-font-family:Calibri;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>Unit 12/6 Chaplin Drive, Lane Cove West, NSW 2066</span></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><span lang=EN-GB style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'> <o:p></o:p></span></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><b><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p>&nbsp;</o:p></span></b></span></p><table class=MsoNormalTable border=0 cellspacing=0 cellpadding=0 style='border-collapse:collapse;mso-yfti-tbllook:1184;mso-padding-alt:0cm 0cm 0cm 0cm'><tr style='mso-yfti-irow:0;mso-yfti-firstrow:yes;mso-yfti-lastrow:yes'><td width=312 valign=top style='width:233.75pt;padding:0cm 5.4pt 0cm 5.4pt'><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'></span><a href="http://www.aurify.com.au/"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:12.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
-<img border=0 width=277 height=84 id="Picture_x0020_49" src="cid:image001.png@01DA08B5.C3628F10"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:12.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p></o:p></span></b></span></p></td><span style='mso-bookmark:_MailAutoSig'></span><td width=104 style='width:77.7pt;padding:0cm 5.4pt 0cm 5.4pt'><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'></span><a href="https://www.facebook.com/AurifyAu/"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
-<img border=0 width=30 height=30 id="Picture_x0020_48" src="cid:image002.png@01DA08B5.C3628F10"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp; </span></b></span><a href="https://www.instagram.com/aurify__/"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
-<img border=0 width=30 height=30 id="Picture_x0020_47" src="cid:image003.png@01DA08B5.C3628F10"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p></o:p></span></b></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'></span><a href="https://www.linkedin.com/company/aurifyau"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
-<img border=0 width=30 height=30 id="Picture_x0020_46" src="cid:image004.png@01DA08B5.C3628F10"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp;&nbsp;</span></b></span><a href="https://twitter.com/Aurify__"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
-<img border=0 width=30 height=30 id="Picture_x0020_45" src="cid:image005.png@01DA08B5.C3628F10"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp;</span></b></span><span style='mso-bookmark:_MailAutoSig'><span style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p></o:p></span></span></p></td><span style='mso-bookmark:_MailAutoSig'></span></tr></table><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><i><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#4D4D4F;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p>&nbsp;</o:p></span></i></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><i><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>The information transmitted by this email is intended only for the person or entity to which it is addressed. This email may contain proprietary, business-confidential, and/or privileged material. <o:p></o:p></span></i></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><i><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times 
+<img data-imagetype="AttachmentByCid" border=0 width=277 height=84 src="cid:image001.png"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:12.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp;</span></b></span></p></td><span style='mso-bookmark:_MailAutoSig'></span><td width=104 style='width:77.7pt;padding:0cm 5.4pt 0cm 5.4pt'><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'></span><a href="https://www.facebook.com/AurifyAu/"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
+<img data-imagetype="AttachmentByCid" border=0 width=30 height=30  src="cid:image002.png"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp;</span></b></span><a href="https://www.instagram.com/aurify__/"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
+<img data-imagetype="AttachmentByCid" border=0 width=30 height=30  src="cid:image003.png"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp;</span></b></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'></span><a href="https://www.linkedin.com/company/aurifyau"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
+<img data-imagetype="AttachmentByCid" border=0 width=30 height=30  src="cid:image004.png"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp;</span></b></span><a href="https://twitter.com/Aurify__"><span style='mso-bookmark:_MailAutoSig'><b style='mso-bidi-font-weight:normal'><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:blue;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes;text-decoration:none;text-underline:none'>
+<img data-imagetype="AttachmentByCid" border=0 width=30 height=30  src="cid:image005.png"></span></b></span><span style='mso-bookmark:_MailAutoSig'></span></a><span style='mso-bookmark:_MailAutoSig'><b><span style='font-size:20.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#38D430;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'>&nbsp;</span></b></span><span style='mso-bookmark:_MailAutoSig'><span style='font-size:10.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-ansi-language:EN-AU;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p></o:p></span></span></p></td><span style='mso-bookmark:_MailAutoSig'></span></tr></table><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><i><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:#4D4D4F;mso-fareast-language:EN-AU;mso-no-proof:yes'><o:p>&nbsp;</o:p></span></i></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><i><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>The information transmitted by this email is intended only for the person or entity to which it is addressed. This email may contain proprietary, business-confidential, and/or privileged material. <o:p></o:p></span></i></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><i><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times 
 New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>If you are not the intended recipient of this message, be aware that any use, review, retransmission, distribution, reproduction, or any action taken in reliance upon this message is strictly prohibited. <o:p></o:p></span></i></span></p><p class=MsoNormal><span style='mso-bookmark:_MailAutoSig'><i><span lang=EN-GB style='font-size:9.0pt;mso-fareast-font-family:"Times New Roman";mso-fareast-theme-font:minor-fareast;color:black;mso-fareast-language:EN-AU;mso-no-proof:yes'>If you received this in error, please contact the sender and delete the material from all computers.<o:p></o:p></span></i></span></p><span style='mso-bookmark:_MailAutoSig'></span><p class=MsoNormal><span lang=EN-GB><o:p>&nbsp;</o:p></span></p></div></body></html>"""

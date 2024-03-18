@@ -5,7 +5,6 @@ import { usePrompt } from '../../hooks/promptBlocker';
 import SaveIcon from '@mui/icons-material/Save';
 import PersonIcon from '@mui/icons-material/Person';
 import AddIcon from '@mui/icons-material/Add';
-import useAuth from '../auth/useAuth';
 import { Footer,ProgressIconButton, SnackBar, Table, Tooltip } from '../../components/Components';
 import { blankContractor } from '../../types/blanks';
 import { ContractorType, SnackType } from '../../types/types';
@@ -18,7 +17,6 @@ type ChangedRowType = {
 
 const Contractors = () => {
 
-    const { auth } = useAuth();
     const axiosPrivate = useAxiosPrivate();
     const [loading, setLoading] = useState(true);
     const [updateRequired, setUpdateRequired] = useState(false);
@@ -53,19 +51,28 @@ const Contractors = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `
-                mutation myobCreateContractor($contractor: myobContractorInput!, $uid: String!) { 
-                    myob_create: myobCreateContractor(contractor: $contractor, uid: $uid) {
+                mutation createContractor($contractor: ContractorInput!) { 
+                    create: createContractor(contractor: $contractor) {
                         success
                         message
+                        contractor {
+                            id
+                            myobUid
+                            name
+                            abn
+                            bsb
+                            bankAccountName
+                            bankAccountNumber
+                        }
                     }
                 }`,
                 variables: { 
-                    uid: auth?.myob?.id,
                     contractor: newContractor,
                 },
             }),
         }).then((response) => {
-            const res = response?.data?.data?.myob_create;
+            const res = response?.data?.data?.create;
+            console.log(res);
 
             if(res.success){    
                 setSnack({active: true, variant: 'success', message: "Successfully Created Contractor"})
@@ -100,14 +107,14 @@ const Contractors = () => {
                             id
                             myobUid
                             name
-                        abn
-                        bsb
-                        bankAccountName
-                        bankAccountNumber
-                    }
-                }`,
-                variables: {}
-            }),
+                            abn
+                            bsb
+                            bankAccountName
+                            bankAccountNumber
+                        }
+                    }`,
+                    variables: {}
+                }),
             }).then((response) => {
                 const res = response?.data?.data?.contractors;            
                 setData(res);
@@ -252,14 +259,13 @@ const Contractors = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `
-                mutation myobUpdateContractor($contractors: [myobContractorInput]!, $uid: String!) { 
-                    update: myobUpdateContractor(contractors: $contractors, uid: $uid) {
+                mutation updateContractors($contractors: [ContractorInput]!) { 
+                    update: updateContractors(contractors: $contractors) {
                         success
                         message
                     }
                 }`,
                 variables: { 
-                    uid: auth?.myob?.id,
                     contractors: changedContractors,
                 },
             }),

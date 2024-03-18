@@ -298,12 +298,12 @@ class ContractorContact(models.Model):
     state = models.CharField(max_length=3, choices=STATE_CHOICES, default='NSW')
     postcode = models.CharField(max_length=4)
     country = models.CharField(max_length=50, default="Australia")
-    phone1 = models.CharField(max_length=12)
-    phone2 = models.CharField(max_length=12)
-    phone3 = models.CharField(max_length=12)
-    fax = models.CharField(max_length=12)
-    email = models.EmailField(max_length=80)
-    website = models.EmailField(max_length=80)
+    phone1 = models.CharField(max_length=12, null=True)
+    phone2 = models.CharField(max_length=12, null=True)
+    phone3 = models.CharField(max_length=12, null=True)
+    fax = models.CharField(max_length=12, null=True)
+    email = models.EmailField(max_length=80, null=True)
+    website = models.EmailField(max_length=80, null=True)
     active = models.BooleanField(default=True)
 
     def __str__(self):
