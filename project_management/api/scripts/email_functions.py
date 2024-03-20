@@ -97,7 +97,7 @@ class ExchangeEmail():
             cc_recipients=cc,
             subject=subject,
             importance="High" if settings and settings.urgent else "Normal",
-            body=HTMLBody(f"{EMAIL_STYLE}{body}{html_signature}</body>"),
+            body=HTMLBody(f"{EMAIL_STYLE}{body}</p>{html_signature}</body>"),
         )
 
         for attachment in attachments:
@@ -311,7 +311,7 @@ class CloseOutEmail(graphene.Mutation):
         <p style="margin: 6px 0px"><b>Works Completion Date</b>: {job.completion_date.strftime('%d/%m/%y')}</p> 
         <p style="margin: 6px 0px"><b>Finish Time</b>: {finishTime}</p>
         <p style="margin: 6px 0px"><b>Total Hours</b>: {job.total_hours}</p>
-        <p style="margin: 6px 0px"><b>Scope of Works</b>: {scope}</p>"""
+        <p style="margin: 6px 0px"><b>Scope of Works</b>: {job.scope}</p>"""
 
         email.send_email(to=mailTo, cc=mailCC, subject=mailSubject, body=mailHTMLBody, attachments=[], settings=None)
 
