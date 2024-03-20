@@ -2,7 +2,7 @@
 project_management/project_management/settings.py
 */templates/**
 project_management/api/templates/**
-project_management/api/services/email_resources/**
+*/email_resources/**
 */frontend/**/axios.js
 */frontend/**/axios.tsx
 */generated_quotes/**
