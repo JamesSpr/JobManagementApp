@@ -1,5 +1,3 @@
-import environ
-import requests
 import json
 from datetime import datetime
 
@@ -190,46 +188,46 @@ class ImportTimesheets(graphene.Mutation):
 
                 work_day.save()
 
-        # Add basic timesheets in for certain employees
-        directors = ['Leo Sprague', 'Robert Stapleton', 'Colin Baggott', "Brett Macpherson"]
-        for director in directors:
+        # # Add basic timesheets in for certain employees
+        # directors = ['Leo Sprague', 'Robert Stapleton', 'Colin Baggott', "Brett Macpherson"]
+        # for director in directors:
             
-            employee = Employee.objects.get(name=director)
-            if not Employee.objects.filter(name=director).exists():
-                continue
+        #     employee = Employee.objects.get(name=director)
+        #     if not Employee.objects.filter(name=director).exists():
+        #         continue
 
-            if not Timesheet.objects.filter(start_date=start_date, end_date=end_date, employee=employee).exists():
-                timesheet = Timesheet()
-                timesheet.employee = employee
-                timesheet.start_date = start_date
-                timesheet.end_date = end_date
-                timesheet.save()
-            else:
-                continue
-                # timesheet = Timesheet.objects.get(start_date=start_date, end_date=end_date, employee=Employee.objects.get(name=director))
+        #     if not Timesheet.objects.filter(start_date=start_date, end_date=end_date, employee=employee).exists():
+        #         timesheet = Timesheet()
+        #         timesheet.employee = employee
+        #         timesheet.start_date = start_date
+        #         timesheet.end_date = end_date
+        #         timesheet.save()
+        #     else:
+        #         continue
+        #         # timesheet = Timesheet.objects.get(start_date=start_date, end_date=end_date, employee=Employee.objects.get(name=director))
 
-            for day in summary[0]['work_days']:
-                work_date = parse_date_to_string(day['date'])
-                work_day = WorkDay()
+        #     for day in summary[0]['work_days']:
+        #         work_date = parse_date_to_string(day['date'])
+        #         work_day = WorkDay()
 
-                if WorkDay.objects.filter(timesheet=timesheet, date=work_date).exists():
-                    work_day = WorkDay.objects.get(timesheet=timesheet, date=work_date)
+        #         if WorkDay.objects.filter(timesheet=timesheet, date=work_date).exists():
+        #             work_day = WorkDay.objects.get(timesheet=timesheet, date=work_date)
 
-                work_day.timesheet = timesheet
-                work_day.date = work_date
+        #         work_day.timesheet = timesheet
+        #         work_day.date = work_date
 
-                day_of_work = datetime.strptime(work_date, "%Y-%m-%d").weekday()
-                if day_of_work < 5:
-                    work_day.hours = 8
-                    work_day.work_type = "Normal"
-                else:
-                    work_day.hours = 0
-                    work_day.work_type = ""
+        #         day_of_work = datetime.strptime(work_date, "%Y-%m-%d").weekday()
+        #         if day_of_work < 5:
+        #             work_day.hours = 8
+        #             work_day.work_type = "Normal"
+        #         else:
+        #             work_day.hours = 0
+        #             work_day.work_type = ""
 
-                work_day.job = None
-                work_day.notes = ""
-                work_day.allow_overtime = employee.pay_basis == "Hourly"
-                work_day.save()
+        #         work_day.job = None
+        #         work_day.notes = ""
+        #         work_day.allow_overtime = employee.pay_basis == "Hourly"
+        #         work_day.save()
 
         return self(success=True)
 
@@ -629,7 +627,7 @@ class Query(graphene.ObjectType):
     def resolve_sync_settings(root, info, **kwargs):
         return SyncSettings.objects.all().order_by('id')
     
-    active_employees = graphene.List(EmployeeType)
+
 
 class QuickMutate(graphene.Mutation):
     success = graphene.Boolean()
