@@ -668,6 +668,7 @@ const EstimateTable = ({job, setJob, accessorId, setUpdateRequired, setSnack} : 
 
             if(res?.success) {
                 setJob(prev => ({...prev, estimateSet: prev.estimateSet.map((estimate, index) => {
+                    
                     if(index === accessorId) {
                         const newEstimate = produce(prev.estimateSet[accessorId], draft => {
                             const idx = draft.estimateheaderSet.findIndex(header => header.id === headerId)
