@@ -706,7 +706,7 @@ class GetInvoice(graphene.Mutation):
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
     
-        endpoint = ""
+        endpoint = "Sale/Invoice/Service"
         invoice = myob_get(user, endpoint, filter)
 
         return self(success=True, invoice=invoice['Items'])

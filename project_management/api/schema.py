@@ -2032,29 +2032,31 @@ class ProcessRemittanceAdvice(graphene.Mutation):
         payment = CreateCustomerPayment.mutate(root, info, customer_payment)
 
         # Create remittance advice
-        remittance_advice = RemittanceAdvice()
-        remittance_advice.client = client
-        remittance_advice.date = payment_date
-        remittance_advice.amount = total_amount
-        remittance_advice.myob_uid = payment.uid
-        remittance_advice.save()
+        if payment.success:
+            remittance_advice = RemittanceAdvice()
+            remittance_advice.client = client
+            remittance_advice.date = payment_date
+            remittance_advice.amount = total_amount
+            remittance_advice.myob_uid = payment.uid
+            remittance_advice.save()
 
-        # Update invoices
-        print("Updaing Invoices")
-        updatedInvoices = []
-        for inv in invoices:
-            invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
-            if invoice:
-                if not invoice.date_issued: invoice.date_issued = inv.date_issued
-                invoice.date_paid = payment_date
-                invoice.remittance = remittance_advice
-                invoice.save()
-                invoice.job.save()
-                updatedInvoices.append(invoice)
+            # Update invoices
+            print("Updaing Invoices")
+            updatedInvoices = []
+            for inv in invoices:
+                invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
+                if invoice:
+                    if not invoice.date_issued: invoice.date_issued = inv.date_issued
+                    invoice.date_paid = payment_date
+                    invoice.remittance = remittance_advice
+                    invoice.save()
+                    invoice.job.save()
+                    updatedInvoices.append(invoice)
         
-        print("Invoices Updated")
+            print("Invoices Updated")
 
-        return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
+            return self(success=True, message="Invoices Updated and Remittance Advice Processed.", invoices=updatedInvoices, remittance_advice=remittance_advice)
+        return self(success=False, message="Error Processing Remittance Advice.")
 
 
 class Query(graphene.ObjectType):

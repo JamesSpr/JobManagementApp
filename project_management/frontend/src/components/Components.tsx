@@ -13,7 +13,7 @@ declare module '@tanstack/react-table' {
       getRegions?: () => RegionType[]
       getStageDescription?: (value: string) => string
       checkMaintenanceInvoice?: (row: Row<TData>) => number
-      getMaintenanceTotal?: () => string
+      getTotals?: () => string[]
     }
 }
 

@@ -301,14 +301,14 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             header: () => 'Invoice',
             cell: EditableCell,
             size: 120,
-            footer: 'Total: ',
+            footer: 'Maintenance /\nTotal: ',
         },
         {                
             accessorKey: 'amount',
             header: () => 'Amount',
             cell: props => EditableCell({...props, type: 'number'}),
             size: 120,
-            footer: ({table}) => table?.options?.meta?.getMaintenanceTotal && table?.options?.meta?.getMaintenanceTotal(),
+            footer: ({table}) => table?.options?.meta?.getTotals && `${table?.options?.meta?.getTotals()[0]} /\n${table?.options?.meta?.getTotals()[1]}` ,
         },
         {                
             id: 'included',
@@ -345,20 +345,28 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             }
             return 0;
         },
-        getMaintenanceTotal: () => {
+
+        getTotals: () => {
             let sum = 0.0
+            let maintenanceSum = 0.0
             data?.map(d => {
                 if(invoices.find(inv => inv.number === d.number)) {
                     if(typeof(d.amount) == 'string') {
-                        sum += parseFloat(d.amount ?? 0);
+                        maintenanceSum += parseFloat(d.amount ?? 0);
                     }
                     else {
-                        sum += d.amount ?? 0;
+                        maintenanceSum += d.amount ?? 0;
                     }
-                }   
+                } 
+                if(typeof(d.amount) == 'string') {
+                    sum += parseFloat(d.amount ?? 0);
+                }
+                else {
+                    sum += d.amount ?? 0;
+                }
             })
             
-            return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(sum);
+            return [new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(maintenanceSum), new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(sum)];
         },
     }
 
