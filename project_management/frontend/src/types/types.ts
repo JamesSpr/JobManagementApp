@@ -285,7 +285,7 @@ export interface IAuth {
     
 export type AuthContextType = {
     auth?: IAuth;
-    setAuth: (auth: IAuth) => void;
+    setAuth: React.Dispatch<React.SetStateAction<IAuth>>;
 }
 
 export interface AppType {

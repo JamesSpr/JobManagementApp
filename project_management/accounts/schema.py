@@ -82,22 +82,6 @@ class CustomUserType(DjangoObjectType):
         model = CustomUser
         fields = '__all__'
 
-class UserRefreshTokenMutation(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-        refreshToken = graphene.String(required=True)
-
-    user = graphene.Field(CustomUserType)
-
-    @classmethod
-    @login_required
-    def mutate (cls, root, info, refreshToken, id):
-        user = CustomUser.objects.get(pk=id)
-        user.refresh_token = refreshToken
-        user.save()
-        
-        return UserRefreshTokenMutation(user=user)
-
 class UpdateUser(graphene.Mutation):
     class Arguments:
         id = graphene.ID()
@@ -151,6 +135,66 @@ class DeleteUser(graphene.Mutation):
             return self(ok=True)
         return self(ok=False)
 
+class PersistLogin(graphene.Mutation):
+    class Arguments:
+        pass
+
+    user = graphene.Field(CustomUserType)
+    access_token = graphene.String()
+
+    @classmethod
+    def mutate(self, root, info):
+        cookies = info.context.META.get('HTTP_COOKIE')
+        user = info.context.user
+        print(user)
+
+        refresh_token_matches = re.search("(?<=JWT-refresh-token=)(.*)(?=;)?", cookies)
+        
+        if refresh_token_matches:
+            refresh_token = refresh_token_matches.group()
+            if not CustomUser.objects.filter(refresh_token=refresh_token).exists():
+                print("No user with token", refresh_token)
+                return self(user=None)
+            
+            user = CustomUser.objects.get(refresh_token=refresh_token)
+
+        # Refresh token then revoke the old
+        refresh = mutations.RefreshToken.mutate(root, info, refresh_token=user.refresh_token)
+        if refresh.refresh_token == None:
+            print("Bad Refresh")
+            return self(user=user)
+        
+        mutations.RevokeToken.mutate(root, info, refresh_token=user.refresh_token)       
+
+        # Save the new token
+        print("New RT:", user.email, refresh.refresh_token)
+        user.refresh_token = refresh.refresh_token
+        user.save()
+
+        # Update the token cookie
+        info.context.jwt_refrest_token = refresh.refresh_token
+
+        return self(user=user, access_token=refresh.token)
+
+
+class UpdateUserRefreshToken(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        refreshToken = graphene.String(required=True)
+
+    user = graphene.Field(CustomUserType)
+
+    @classmethod
+    @login_required
+    def mutate (self, root, info, refreshToken, id):
+        print("Updating User Refresh Token")
+        print(info.context.user, refreshToken)
+
+        user = CustomUser.objects.get(pk=id)
+        user.refresh_token = refreshToken
+        user.save()
+        
+        return self(user=user)
 
 class AuthMutation(graphene.ObjectType):    
     register = mutations.Register.Field()
@@ -199,8 +243,10 @@ class Query(UserQuery, MeQuery, graphene.ObjectType):
         
 
 class Mutation(AuthMutation, graphene.ObjectType):
-    update_user_refresh_token = UserRefreshTokenMutation.Field()
+    update_user_refresh_token = UpdateUserRefreshToken.Field()
     update_user = UpdateUser.Field()
     delete_user = DeleteUser.Field()
     create_company = CreateCompany.Field()
     update_company = UpdateCompany.Field()
+
+    persist_login = PersistLogin.Field()
