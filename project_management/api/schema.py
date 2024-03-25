@@ -459,7 +459,7 @@ class CreateJobInMyob(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, job_id):
-
+        print("ID:", job_id)
         if not Job.objects.filter(id = job_id).exists():
             return self(success=False, message="Job Not Found.")
 
@@ -497,7 +497,7 @@ class CreateJobInMyob(graphene.Mutation):
         job.myob_uid = post_response.uid
         job.save()
 
-        return self(success=True, message="")
+        return self(success=True, uid=post_response.uid)
 
 class UpdateJob(graphene.Mutation):
     class Arguments:
@@ -1510,9 +1510,12 @@ class CreateBill(graphene.Mutation):
 
         # Ensure Job is in MYOB
         if not job.myob_uid:
-            res = CreateJobInMyob.mutate(root, info, job)
+            res = CreateJobInMyob.mutate(root, info, job.id)
             if not res.success:
-                return self(success=False, message="Please sync job with MYOB before creating invoice!")               
+                return self(success=False, message="Please sync job with MYOB before creating invoice!")
+
+            job.myob_uid = res.uid
+            job.save()        
 
         folder_name = str(job)
         job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)

@@ -1731,7 +1731,27 @@ class myobCreateInvoice(graphene.Mutation):
             return self(success=False, message="Estimate price is $0. Please check job.")
 
         if not job.myob_uid:
-            return self(success=False, message="Please sync job with MYOB before creating invoice.")
+            job_identifier = ""
+            if job.po:
+                job_identifier = job.po
+            elif job.other_id:
+                job_identifier = job.other_id
+
+            if job_identifier == "":
+                return self(success=False, message="Job Identifier Error. Please Sync with MYOB")
+
+            job_data = {
+                "identifier": job_identifier,
+                "name": (job.location.name + " " + job.title)[0:30],
+                "description": str(job),
+                "customer_uid": job.client.myob_uid,
+            }
+            res = CreateMyobJob.mutate(root, info, job_data)
+            if not res.success:
+                return self(success=False, message="Please sync job with MYOB before creating invoice!")
+
+            job.myob_uid = res.uid
+            job.save()        
 
         if not job.completion_date:
             return self(success=False, message="Job completion date not recorded.")
@@ -2522,10 +2542,10 @@ class generateInvoice(graphene.Mutation):
                 return self(success=False, message=json.loads(pdf_response.text))
             else:
                 print("Writing Invoice to File")
-                with open(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", "wb") as f:
+                with open(f"./myob/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", "wb") as f:
                     f.write(pdf_response.content)
 
-                shutil.copyfile(f"./myob/invoices/INV{invoice_number} - {job.po}.pdf", f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf")
+                shutil.copyfile(f"./myob/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", f"{accounts_folder}/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf")
                 paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf"
                 found['invoice'] = True
 

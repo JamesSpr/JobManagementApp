@@ -12,9 +12,6 @@ sys.path.append("...")
 from api.models import Insurance
 
 
-def get_insurances():
-    return Insurance.objects.filter(active=True).order_by('expiry_date')
-
 def generate_invoice(job, paths, invoice, accounts_folder):
     if paths['invoice'] == "":
         return {'success': False, 'message': "Bad Invoice Path"}
@@ -31,7 +28,7 @@ def generate_invoice(job, paths, invoice, accounts_folder):
             return {'success': False, 'message': "Bad Purchase Order Path"}
     
 
-    insurances = get_insurances()
+    insurances = Insurance.objects.filter(active=True).order_by('expiry_date')
     workers_insurance = {}
     for i in insurances:
         if i.description == "Workers Insurance":
@@ -52,20 +49,21 @@ def generate_invoice(job, paths, invoice, accounts_folder):
     addData = {
         "contact number/identifier/name": str(job),
         "principal contractor": job.client.name,
-        "date 1a": start_date.day,
-        "date 1b": start_date.month,
+        "ABN 2": job.client.abn,
+        "date 1a": f"{start_date.day:02}",
+        "date 1b": f"{start_date.month:02}",
         "date 1c": str(start_date.year)[-2:],
-        "date 2a": finish_date.day,
-        "date 2b": finish_date.month,
+        "date 2a": f"{finish_date.day:02}",
+        "date 2b": f"{finish_date.month:02}",
         "date 2c": str(finish_date.year)[-2:],
-        "date 3a": invoice_date.day,
-        "date 3b": invoice_date.month,
+        "date 3a": f"{invoice_date.day:02}",
+        "date 3b": f"{invoice_date.month:02}",
         "date 3c": str(invoice_date.year)[-2:],
-        "date 4a": workers_insurance.issue_date.day,
-        "date 4b": workers_insurance.issue_date.month,
+        "date 4a": f"{workers_insurance.issue_date.day:02}",
+        "date 4b": f"{workers_insurance.issue_date.month:02}",
         "date 4c": str(workers_insurance.issue_date.year)[-2:],
-        "date 5a": invoice_date.day,
-        "date 5b": invoice_date.month,
+        "date 5a": f"{invoice_date.day:02}",
+        "date 5b": f"{invoice_date.month:02}",
         "date 5c": str(invoice_date.year)[-2:]
     }
 
@@ -96,7 +94,11 @@ def generate_invoice(job, paths, invoice, accounts_folder):
 
     invoice_pdf = PdfFileReader(paths['invoice'])
     writer = PdfFileWriter()
-    set_need_appearances_writer(writer)
+    writer = set_need_appearances_writer(writer)
+    if "/AcroForm" in writer._root_object:
+        writer._root_object["/AcroForm"].update(
+            {NameObject("/NeedAppearances"): BooleanObject(True)}
+        )
 
     data = stat_dec_pdf.getPage(0)
     dictionary = stat_dec_pdf.getFields()
@@ -144,7 +146,7 @@ def generate_invoice(job, paths, invoice, accounts_folder):
         writer.appendPagesFromReader(stat_dec_pdf)
         writer.updatePageFormFieldValues(data, addData)
 
-        invoiceFile = os.path.join(accounts_folder, "Supporting Documents for " + job.po + ".pdf")
+        invoiceFile = os.path.join(accounts_folder, "Supporting Documents for " + str(job).split(' - ')[0] + ".pdf")
         with open(invoiceFile, "wb") as edited:
             writer.write(edited)
             edited.close()
@@ -171,7 +173,7 @@ def generate_invoice(job, paths, invoice, accounts_folder):
         writer.appendPagesFromReader(stat_dec_pdf)
         writer.updatePageFormFieldValues(data, addData)
 
-    invoiceFile = os.path.join(accounts_folder, "Invoice for " + job.po + ".pdf")
+    invoiceFile = os.path.join(accounts_folder, "Invoice for " + str(job).split(' - ')[0] + ".pdf")
     with open(invoiceFile, "wb") as edited:
         writer.write(edited)
         edited.close()
