@@ -268,7 +268,7 @@ export interface IAuth {
         id: string;
         username: string;
         refreshToken: string;
-        defaultPaginationAmount: Number;
+        defaultPaginationAmount: number;
         role: string;
         company?: {
             id: string;
@@ -280,12 +280,12 @@ export interface IAuth {
         id: string;
     },
     accessToken: string;
-    sidebar: Boolean;
+    sidebar?: boolean;
 }
     
 export type AuthContextType = {
     auth?: IAuth;
-    setAuth: React.Dispatch<React.SetStateAction<IAuth>>;
+    setAuth: React.Dispatch<React.SetStateAction<IAuth | undefined>>;
 }
 
 export interface AppType {
@@ -295,7 +295,7 @@ export interface AppType {
 
 export type AppContextType = {
     app?: AppType;
-    setApp: (app: any) => void;
+    setApp: React.Dispatch<React.SetStateAction<AppType | undefined>>;
 }
 
 export interface InputFieldType {

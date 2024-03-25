@@ -7,8 +7,8 @@ const useRefreshToken = () => {
     let navigate = useNavigate();
     const { setAuth } = useAuth();
 
-    const refresh = async () => {
-        await axios({
+    const refresh = async (): Promise<string> => {
+        return await axios({
             method: 'post',
             data: JSON.stringify({
                 query: `mutation {
@@ -36,9 +36,7 @@ const useRefreshToken = () => {
             }),
             withCredentials: true,
         }).then((response) => {
-            console.log("Refresh", response);
             const res = response?.data?.data?.persist;
-            console.log("user", res);
             if(res.user && res.accessToken) {
                 // Update user auth state
                 const {myobUser, ...user} = res.user
@@ -47,14 +45,14 @@ const useRefreshToken = () => {
             }
             else {
                 navigate('/login', {state: {from: location}, replace: true});
-                // console.log("No RefreshToken")
-                return;
+                return "";
             }
         }).catch((err) => {
             console.log(err);
+            return "";
         })
-
     }
+
     return refresh;
 }
  

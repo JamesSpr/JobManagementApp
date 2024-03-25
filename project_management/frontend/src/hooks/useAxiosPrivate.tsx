@@ -3,11 +3,6 @@ import { useEffect } from "react";
 import useRefreshToken from "../pages/auth/useRefreshToken";
 import useAuth from "../pages/auth/useAuth";
 
-import type { InternalAxiosRequestConfig } from 'axios'
-
-interface AxiosRequestConfigWithSent<T = unknown> extends InternalAxiosRequestConfig<T> {
-    sent: boolean
-  }
 
 const useAxiosPrivate = () => {
     const refresh = useRefreshToken();
@@ -27,9 +22,9 @@ const useAxiosPrivate = () => {
         // Response interceptors
         const responseIntercept = axiosPrivate.interceptors.response.use(
             async (response) => {
-                const prevRequest = response?.config as AxiosRequestConfigWithSent; 
-                if(response?.data?.errors && !prevRequest?.sent) {
-                    prevRequest.sent = true;
+                const prevRequest = response?.config; 
+                if(response?.data?.errors && !prevRequest?.headers?.sent) {
+                    prevRequest.headers.sent = true;
                     const newAccessToken = await refresh();
                     prevRequest.headers['Authorization'] = `JWT ${newAccessToken}`;
                     return axiosPrivate(prevRequest); // Retry with new access token
