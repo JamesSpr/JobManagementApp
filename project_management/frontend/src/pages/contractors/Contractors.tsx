@@ -338,8 +338,13 @@ const inputMask = (name: any, val: any) => {
             }
             
             let bsbReg = new RegExp(pattern)
-            if(val.length === 4 && val.slice(3,4) !== "-" && !bsbReg.test(val)) {
-                val = val.slice(0, 3) + "-" + val.slice(3,4)
+            if(bsbReg.test(val)) {
+                break; 
+            }
+
+            val = val.replaceAll('-', '');
+            if(val.length >= 4) {
+                val = val.slice(0, 3) + "-" + val.slice(3, val.length > 6 ? 6 : val.length)
             }
 
             break;
@@ -359,14 +364,22 @@ const inputMask = (name: any, val: any) => {
             }
             
             let abnReg = new RegExp(pattern)
-            if(val.length === 3 && val.slice(2,3) !== " " && !abnReg.test(val)) {
-                val = val.slice(0,2) + " " + val.slice(2,3)
+            if(abnReg.test(val)) {
+                break; 
             }
-            if(val.length === 7 && val.slice(6,7) !== " " && !abnReg.test(val)) {
-                val = val.slice(0,6) + " " + val.slice(6,7)
+
+            val = val.replaceAll(' ', '');
+            if(val.length >= 9) {
+                console.log(val.slice(0,2), val.slice(2,5), val.slice(5,8), val.slice(8, val.length > 11 ? 11 : val.length))
+                val = val.slice(0,2) + " " + val.slice(2,5) + " " + val.slice(5,8) + " " + val.slice(8, val.length > 11 ? 11 : val.length)
+                break;
             }
-            if(val.length === 11 && val.slice(10,11) !== " " && !abnReg.test(val)) {
-                val = val.slice(0,10) + " " + val.slice(10,11)
+            if(val.length >= 6) {
+                val = val.slice(0,2) + " " + val.slice(2,5) + " " + val.slice(5, val.length)
+                break;
+            }
+            if(val.length >= 3) {
+                val = val.slice(0,2) + " " + val.slice(2, val.length)
             }
             
             break;
