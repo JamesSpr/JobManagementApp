@@ -41,60 +41,69 @@ def get_employee_timesheets_from_email(env, email_account: ExchangeEmail, employ
 
     email_account.account.inbox.refresh()   
     for email in email_account.account.inbox.all():
-        if type(email) is not Message:
-            continue
+        try:
+            if type(email) is not Message:
+                continue
 
-        # print(email)
+            print(email.sender.name)
 
-        # Get timesheet attachment from emial
-        timesheet_attachment: FileAttachment = None
-        for attachment in email.attachments:
-            if isinstance(attachment, FileAttachment):
-                if attachment.name[-4:-2] == "xl":
-                    timesheet_attachment = attachment
-    
-        if timesheet_attachment is None:
-            # Send email notifying no attachment was sent
-            print("Timesheet Error")
-            # email_account.reply(email, subject="No Timesheet Attached", body="The email you have sent does not have a timesheet attached. Please resend the timesheet to this email account.")
-            # email.move(pay_period_folder)
-            continue
-
-        # Check timesheet is Valid
-        workbook = load_workbook(BytesIO(timesheet_attachment.content), data_only=True)
-        sheet = workbook.active
-        name = sheet["E4"].value
-
-        if name == "" or name is None:
-            print("Timesheet Error")
-            # email_account.reply(email, subject="Timesheet Missing Informatio", body="The attached timesheet does not have a name listed. Please correct your timesheet and send back to this email account.") 
-            # email.move(pay_period_folder)
-            continue
-
-        valid_dates = True
-        for i in range(20,6,-1):
-            cell_date: datetime = sheet[f"E{i}"].value
-            if not cell_date.date() == next_period + timedelta(days=i-20):
-                valid_dates = False
-            
-        if not valid_dates:
-            print("Timesheet Error")
-            # email_account.reply(email, subject="Timesheet has Incorrect Dates", body="The attached timesheet does not have the correct dates. Please correct your timesheet and send back to this email account.")
-            # email.move(pay_period_folder)
-            continue
-
-        workbook.close()
-
-        timesheet_path = os.path.join(save_folder, f"{name}.{timesheet_attachment.name.split('.')[-1]}")
-
-        with open(timesheet_path, "wb") as f:
-            f.write(timesheet_attachment.content)
-
-        # Add to the timesheets array
-        timesheets.append({'employee': email.sender.name, 'email': email.sender.email_address ,'path': timesheet_path})
+            # Get timesheet attachment from emial
+            timesheet_attachment: FileAttachment = None
+            for attachment in email.attachments:
+                if isinstance(attachment, FileAttachment):
+                    if attachment.name[-4:-2] == "xl":
+                        timesheet_attachment = attachment
         
-        # Move the email 
-        email.move(pay_period_folder)
+            if timesheet_attachment is None:
+                # Send email notifying no attachment was sent
+                print(" Timesheet Error - Attachment")
+                # email_account.reply(email, subject="No Timesheet Attached", body="The email you have sent does not have a timesheet attached. Please resend the timesheet to this email account.")
+                # email.move(pay_period_folder)
+                continue
+
+            # Check timesheet is Valid
+            workbook = load_workbook(BytesIO(timesheet_attachment.content), data_only=True)
+            sheet = workbook['Aurify Time Sheet']
+            name = sheet["E4"].value
+
+            if name == "" or name is None:
+                print(" Timesheet Error - Name")
+                # email_account.reply(email, subject="Timesheet Missing Information", body="The attached timesheet does not have a name listed. Please correct your timesheet and send back to this email account.") 
+                # email.move(pay_period_folder)
+                continue
+
+            valid_dates = True
+            for i in range(20,6,-1):
+                cell_date: datetime = datetime.strptime(str(sheet[f"E{i}"].value), "%d/%m/%Y").date()
+                if not cell_date == next_period + timedelta(days=i-20):
+                    valid_dates = False
+                
+            if not valid_dates:
+                print(" Timesheet Error - Dates")
+                # email_account.reply(email, subject="Timesheet has Incorrect Dates", body="The attached timesheet does not have the correct dates. Please correct your timesheet and send back to this email account.")
+                # email.move(pay_period_folder)
+                continue
+
+            workbook.close()
+
+            timesheet_path = os.path.join(save_folder, f"{name}.{timesheet_attachment.name.split('.')[-1]}")
+
+            with open(timesheet_path, "wb") as f:
+                f.write(timesheet_attachment.content)
+
+            # Add to the timesheets array
+            timesheets.append({'employee': email.sender.name, 'email': email.sender.email_address ,'path': timesheet_path})
+            
+            # Move the email 
+            email.move(pay_period_folder)
+
+            print(" Successfully Processed")
+        
+        except Exception as e:
+            print(e)
+            body = f"""There has been an error processing {email.sender.name}'s timesheet. Please investigate"""
+            email_account.send_email(to=['James@aurify.com.au'], cc=None, bcc=None, subject="Timesheet Error", body=body, attachments=[])
+            continue
 
 
     return timesheets
@@ -165,7 +174,7 @@ def get_timesheet_data(timesheet: dict):
         return None
 
     workbook = load_workbook(filename=timesheet['path'], data_only=True)
-    sheet = workbook.active
+    sheet = workbook['Aurify Time Sheet']
     name = sheet["E4"].value
 
     work_type_converter = {
@@ -173,17 +182,28 @@ def get_timesheet_data(timesheet: dict):
         "Annual Leave": "AL",
         "Public Holiday": "PH",
         "Leave Without Pay": "LWP",
-        "Normal Pay": "Normal"
+        "Normal Pay": "Normal",
+        None: ""
     }
 
     work_days = []
     for i in range(7,21):
         day = {}
-        day.update({'date': sheet[f"E{i}"].value.strftime("%Y-%m-%d")})
-        day.update({'hours': sheet[f"J{i}"].value})
+        cell_date: datetime = datetime.strptime(str(sheet[f"E{i}"].value), "%d/%m/%Y")
+        day.update({'date': cell_date.strftime("%Y-%m-%d")})
         day.update({'job': "" if sheet[f"K{i}"].value is None else sheet[f"K{i}"].value})
-        day.update({'work_type': "" if sheet[f"L{i}"].value is None else work_type_converter[sheet[f"L{i}"].value]})
         day.update({'notes': "" if sheet[f"M{i}"].value is None else sheet[f"M{i}"].value})
+        day.update({'work_type': "" if sheet[f"L{i}"].value is None else work_type_converter[sheet[f"L{i}"].value]})
+
+        if work_type_converter[sheet[f"L{i}"].value] == "SICK" or work_type_converter[sheet[f"L{i}"].value] == "AL":
+            day.update({'hours': sheet[f"J{i}"].value})
+        elif work_type_converter[sheet[f"L{i}"].value] == "PH":
+            if sheet[f"J{i}"].value == None or sheet[f"J{i}"].value == 0:
+                day.update({'hours': 8})
+            else:
+                day.update({'hours': sheet[f"J{i}"].value})
+        else:
+            day.update({'hours': sheet[f"J{i}"].value})
 
         work_days.append(day)
 
@@ -247,11 +267,12 @@ def run():
     email.connect()
 
     date = datetime.now()
-    today = date.strftime("%A")
-    if today == "Monday":
+    today = date.date()
+    pay_period = get_pay_period()
+
+    ## If within the first week days of a new pay period, we will be processing the previous pay period
+    if (pay_period - today).days > 7:
         pay_period = get_pay_period() - timedelta(days=14)
-    else:
-        pay_period = get_pay_period()
 
     employees = get_myob_employees()
     timesheets = get_employee_timesheets_from_email(env, email, employees, pay_period)

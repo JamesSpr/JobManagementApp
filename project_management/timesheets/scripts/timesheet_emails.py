@@ -8,6 +8,7 @@ from django.utils import timezone
 from exchangelib import FileAttachment
 from openpyxl import load_workbook
 from openpyxl.worksheet.datavalidation import DataValidation
+from typing import List
 
 from timesheets.scripts.exchange_email import ExchangeEmail
 from timesheets.models import Timesheet, Employee
@@ -28,8 +29,7 @@ def run():
     # Get the active employees from MYOB
     employees = get_active_myob_employees()
     employee_emails = get_emails_from_myob_employees(employees)
-    employee_emails = ['James@aurify.com.au']
-
+    # employee_emails = ['james@aurify.com.au']
 
     with open(os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet.xlsx"), "rb") as f:
         timesheet_template = FileAttachment(name="Aurify Timesheet.xlsx", content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.template", content=f.read())
@@ -61,8 +61,10 @@ def run():
             
         return
 
-    if today == "Monday":
-        pay_period = get_pay_period() - timedelta(days=14)
+    ## If within the first week days of a new pay period, we will be processing the previous pay period
+    pay_period = get_pay_period()
+    if (pay_period - date.date()).days > 7:
+        pay_period = pay_period - timedelta(days=14)
         timesheets = Timesheet.objects.filter(end_date=pay_period)
         employees_who_have_submitted_timesheets = [timesheet.employee for timesheet in timesheets]
         remaining_employees = []
@@ -103,7 +105,7 @@ def run():
             os.mkdir(save_folder)
 
         # Create new timesheet template
-        create_new_timesheet_template(env, employees, pay_period)
+        timesheet_template = create_new_timesheet_template(env, employees, pay_period)
 
         # Send timesheet template to all active employees
         subject = "Aurify Timesheet"
@@ -134,6 +136,7 @@ def get_authenticated_myob_user(myob_env):
         response = requests.post(link, data=payload, headers=headers)
 
         if not response.status_code == 200:
+            print(response.status_code, response.text)
             raise ConnectionError("Bad Connection with MYOB")
 
         res = json.loads(response.text)
@@ -189,7 +192,7 @@ def get_emails_from_myob_employees(employees):
 
     return emails
 
-def create_new_timesheet_template(env, employees, pay_period):
+def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_period: datetime) -> FileAttachment:
     # Modify the timesheet template
     template = os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet Template.xltx")
     workbook = load_workbook(template)
@@ -222,6 +225,14 @@ def create_new_timesheet_template(env, employees, pay_period):
     sheet.add_data_validation(job_dv)
     job_dv.add("K7:K20")
     
+    time_dv = DataValidation(type="list", formula1=f"=Selections!$C$1:$C$2")
+    sheet.add_data_validation(time_dv)
+    time_dv.add("G7:G20")
+    time_dv.add("I7:I20")
+
+    pay_type_dv = DataValidation(type="list", formula1=f"=Selections!$A$1:$A$5")
+    sheet.add_data_validation(pay_type_dv)
+    pay_type_dv.add("L7:L20")
 
     # Update the Dates
     for i in range(20, 6, -1):
@@ -235,3 +246,8 @@ def create_new_timesheet_template(env, employees, pay_period):
     workbook.save(os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet.xlsx"))
 
     workbook.close()
+
+    with open(os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet.xlsx"), "rb") as f:
+        timesheet_template = FileAttachment(name="Aurify Timesheet.xlsx", content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.template", content=f.read())
+
+    return timesheet_template

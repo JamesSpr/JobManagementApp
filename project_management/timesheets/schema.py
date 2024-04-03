@@ -451,10 +451,22 @@ class SubmitTimesheets(graphene.Mutation):
                     workday_timehalf = {}
                     workday_doubletime = {}
 
-                    if worktype == "PH" or datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 6: # Sunday:
+                    if datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 6: # Sunday:
                         # Add 2x Overtime for working on public holiday
                         prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][2]).myob_uid
                         timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
+
+                    elif worktype == "PH" :
+                        # Add 2x Overtime for working on public holiday
+                        prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][1]).myob_uid
+                        timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
+
+                        # Give base 8 hours of pay for public holiday
+                        if workday.hours < 8:
+                            public_holiday_base = workday.copy()
+                            public_holiday_base['hours'] = 8 - workday.hours
+                            prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][0]).myob_uid
+                            timesheet_lines = add_to_timesheets(timesheet_lines, public_holiday_base, prc_uid)
 
                     elif datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 5: # Saturday
                         if workday.hours > 2:
