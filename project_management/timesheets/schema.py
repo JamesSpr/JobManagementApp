@@ -464,9 +464,10 @@ class SubmitTimesheets(graphene.Mutation):
                         # Give base 8 hours of pay for public holiday
                         if workday.hours < 8:
                             public_holiday_base = workday.copy()
-                            public_holiday_base['hours'] = 8 - workday.hours
-                            prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][0]).myob_uid
-                            timesheet_lines = add_to_timesheets(timesheet_lines, public_holiday_base, prc_uid)
+                            if workday.hours < 8: 
+                                public_holiday_base['hours'] = 8 - workday.hours
+                                prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][0]).myob_uid
+                                timesheet_lines = add_to_timesheets(timesheet_lines, public_holiday_base, prc_uid)
 
                     elif datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 5: # Saturday
                         if workday.hours > 2:
