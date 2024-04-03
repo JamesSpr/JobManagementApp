@@ -1,4 +1,5 @@
-from exchangelib import Credentials, Account, DELEGATE, Configuration, Message, HTMLBody, Folder, FileAttachment
+
+from exchangelib import OAUTH2, OAuth2Credentials, Identity, Account, DELEGATE, Configuration, Message, HTMLBody, FileAttachment, Folder
 from exchangelib.items import (
     MeetingRequest,
     MeetingCancellation,
@@ -39,8 +40,13 @@ class ExchangeEmail():
         env = environ.Env()
         environ.Env.read_env()
 
-        credentials = Credentials(username=env('HR_CREDENTIALS'), password=env('HR_PASSWORD'))
-        config = Configuration(server=env("SERVER"), credentials=credentials)
+        credentials = OAuth2Credentials(
+            client_id=env('EMAIL_CLIENT_ID'),
+            client_secret=env('EMAIL_CLIENT_SECRET'),
+            tenant_id=env('EMAIL_TENANT_ID'),
+            identity=Identity(primary_smtp_address=env('HR_EMAIL'))
+        )
+        config = Configuration(server=env('EMAIL_SERVER'), credentials=credentials, auth_type=OAUTH2)
         self.account = Account(
             primary_smtp_address=env('HR_EMAIL'),
             config=config,
@@ -48,7 +54,7 @@ class ExchangeEmail():
             access_type=DELEGATE,
         )
 
-    def send_email(self, to, cc, bcc, subject, body, attachments: List[FileAttachment], importance=Importance.NORMAL):        
+    def send_email(self, to: List[str], cc: List[str], bcc: List[str], subject: str, body: str, attachments: List[FileAttachment], importance: Importance = Importance.NORMAL):        
         """ Send an email from a connected account
 
             Parameters
