@@ -97,7 +97,7 @@ class ExchangeEmail():
             cc_recipients=cc,
             subject=subject,
             importance="High" if settings and settings.urgent else "Normal",
-            body=HTMLBody(f"{EMAIL_STYLE}{body}{html_signature}</body>"),
+            body=HTMLBody(f"{EMAIL_STYLE}{body}</p>{html_signature}</body>"),
         )
 
         for attachment in attachments:
@@ -125,19 +125,18 @@ class ExchangeEmail():
         environ.Env.read_env()
 
         credentials = OAuth2Credentials(
-            client_id=env('CLIENT_ID'),
-            client_secret=env('CLIENT_SECRET'),
-            tenant_id=env('TENANT_ID'),
-            identity=Identity(primary_smtp_address=env('EMAIL'))
+            client_id=env('EMAIL_CLIENT_ID'),
+            client_secret=env('EMAIL_CLIENT_SECRET'),
+            tenant_id=env('EMAIL_TENANT_ID'),
+            identity=Identity(primary_smtp_address=env('MAINTENANCE_EMAIL'))
         )
-        config = Configuration(server=env('SERVER'), credentials=credentials, auth_type=OAUTH2)
+        config = Configuration(server=env('EMAIL_SERVER'), credentials=credentials, auth_type=OAUTH2)
         self.email_account = Account(
-            primary_smtp_address=env('EMAIL'),
+            primary_smtp_address=env('MAINTENANCE_EMAIL'),
             config=config,
             autodiscover=False,
             access_type=DELEGATE,
         )
-
 class EmailSettings(graphene.InputObjectType):
     urgent = graphene.Boolean()
     calendar = graphene.Boolean()
