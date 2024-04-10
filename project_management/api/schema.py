@@ -1549,8 +1549,8 @@ class CreateBill(graphene.Mutation):
         bill.myob_uid = create_bill.uid
 
         if not create_bill.success:
-            print(create_bill)
-            return self(success=True, message="Bill could not be created")
+            print(create_bill.message)
+            return self(success=False, message="Bill could not be created")
                 
         bill.save()
         return self(success=True, message="Bill Successfully Created", bill=bill)
@@ -2044,7 +2044,7 @@ class ProcessRemittanceAdvice(graphene.Mutation):
             remittance_advice.save()
 
             # Update invoices
-            print("Updaing Invoices")
+            print("Updating Invoices")
             updatedInvoices = []
             for inv in invoices:
                 invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False

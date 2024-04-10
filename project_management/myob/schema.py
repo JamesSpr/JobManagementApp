@@ -145,6 +145,7 @@ def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False) -> dic
     returns json object with the response data
 
     """
+    print("MYOB GET", url, filter)
 
     env = environ.Env()
     environ.Env.read_env()
@@ -160,7 +161,6 @@ def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False) -> dic
     if all:
         get_filter += "&$top=1000" if filter else "?$top=1000"
 
-    print(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}{get_filter}/")
     response = requests.get(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}{get_filter}", headers=headers) 
 
     if response.status_code != 200:
@@ -199,6 +199,7 @@ def myob_post(user: MyobUser, url: str, payload) -> requests.Response:
     
         returns the requests data
     """
+    print("MYOB POST", url)
 
     env = environ.Env()
     environ.Env.read_env()
@@ -955,7 +956,7 @@ class myobRepairJobSync(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, job_id):
-        user = check_user_token_auth(info.context.user)
+        user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
@@ -1111,7 +1112,7 @@ class CreateMyobJob(graphene.Mutation):
         })
         post_response = myob_post(user, endpoint, payload)
 
-        if(post_response.status_code != 201):
+        if post_response == None or post_response.status_code != 201:
             print("Error:", job)
             return self(success=False, message=json.dumps(post_response.text))
 
@@ -2228,6 +2229,7 @@ class CreateCustomerPayment(graphene.Mutation):
         endpoint = "Sale/CustomerPayment"
         response = myob_post(user, endpoint, json.dumps(customer_payment, default=str))
         if response is None:            
+            print(customer_payment)
             return self(success=False, message="Post Request Failed")
         
         payment_uid = get_response_uid(response)
@@ -2240,122 +2242,85 @@ class InvoiceInput(graphene.InputObjectType):
         
 class convertSaleOrdertoInvoice(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        invoices = graphene.List(InvoiceInput)
-        date_paid = graphene.Date(required=False)
+        invoice = InvoiceInput()
 
     success = graphene.Boolean()
     message = graphene.String()
-    error = graphene.Field(graphene.String)
-    converted = graphene.List(graphene.String)
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, invoices, date_paid=None):
-        env = environ.Env()
-        environ.Env.read_env()
+    def mutate(self, root, info, invoice):
 
-        user = check_user_token_auth(uid, info.context.user)
+        user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
-        converted = []
-        _invoices = invoices.copy()
-        new_uids = {}
+        if not Invoice.objects.filter(number=invoice.number).exists():
+            return self(success=False, message="Invoice not found in database") 
+        invoice = Invoice.objects.get(number=invoice.number)
 
-        while len(invoices) > 0:
-            query_limit = 35
+        # Check to see if the sale is an order
+        url = "Sale/Order/Service"
+        filter = f"UID eq guid'{invoice.myob_uid}'"
+        response = myob_get(user, url, filter)
+        if response == None:
+            print("Get Error")
+            return self(success=False, message="Error with MYOB Request")
 
-            # Build Query
-            queryFilter = ""
-            for i, inv in enumerate(invoices[:query_limit]):
-                invoice = Invoice.objects.get(number=inv.number)
-                queryFilter += f"UID eq guid'{invoice.myob_uid}'"
-                if not (i + 1 == query_limit or i+1 == len(invoices)):
-                    queryFilter += " or "
+        order = response['Items']
+        if len(order) == 0:
+            return self(success=True, message="Invoice not found")
+        if len(order) > 1:
+            return self(success=False, message="Multiple Invoices Found")
+        order = order[0]
 
-            # Check to see if the sale is an order
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter={queryFilter}"
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
+        # Convert the sale order to invoice
+        if order['Status'] == "ConvertedToInvoice":
+            print("Already Converted:", order['Number'])
+            return self(success=True, message="Already an Invoice")
+            
+        # Remove line RowIDs for the 
+        for line in order['Lines']:
+            line.pop("RowID", None)
+
+        # Add the original creation date to a header line in the invoice as it is overwritten when converted
+        order['Lines'].append({
+            "Type": "Header",
+            "Description": "Order Created on " + datetime.strptime(order['Date'].split('T')[0], "%Y-%m-%d").strftime('%d/%m/%Y'),
+        })
+
+        # Convert Order to Invoice / POST to MYOB
+        post_url = "Sale/Invoice/Service"
+        payload = json.dumps({
+            "Date": datetime.now(), 
+            "Number": order['Number'],
+            "Customer": {"UID": order['Customer']['UID']},
+            "CustomerPurchaseOrderNumber": order['CustomerPurchaseOrderNumber'],
+            "Comment": order['Comment'],
+            "ShipToAddorders": order['ShipToAddress'],
+            "IsTaxInclusive": False,
+            "Lines": order['Lines'],
+            "JournalMemo": order['JournalMemo'],
+            "Order": {
+                "UID": order['UID']
             }
-            response = requests.request("GET", url, headers=headers, data={})
+        }, default=str)
 
-            if not response.status_code == 200:
-                return self(success=False, message="Error with MYOB Request", error=response.text)
+        post_response = myob_post(user, post_url, payload)
+        if not post_response.status_code == 201:
+            return self(success=False, message=post_response.text)
+        
+        invoice_uid = get_response_uid(post_response)
 
-            res = json.loads(response.text)
+        invoice.myob_uid = invoice_uid
+        if not invoice.date_issued: invoice.date_issued = invoice.date_issued
+        invoice.save()
 
-            res = res['Items']
-            if len(res) == 0:
-                return self(success=True, message="Invoices Updated")
+        # save job to update stage
+        job = invoice.job
+        job.save()
 
-            for i, order in enumerate(res):
-                if order['Status'] == "ConvertedToInvoice":
-                    print("Already Converted:", order['Number'])
-                    for idx, inv in enumerate(invoices[:query_limit]):
-                        if inv['number'] == order['Number']:
-                            del invoices[idx]
-                            query_limit -= 1
-                    continue
-
-                for line in order['Lines']:
-                    line.pop("RowID", None)
-
-                order['Lines'].append({
-                    "Type": "Header",
-                    "Description": "Order Created on " + datetime.strptime(order['Date'].split('T')[0], "%Y-%m-%d").strftime('%d/%m/%Y'),
-                })
-
-                # Convert order to Invoice / POST to MYOB
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
-                payload = json.dumps({
-                    "Date": datetime.now(), 
-                    "Number": order['Number'],
-                    "Customer": {"UID": order['Customer']['UID']},
-                    "CustomerPurchaseOrderNumber": order['CustomerPurchaseOrderNumber'],
-                    "Comment": order['Comment'],
-                    "ShipToAddorders": order['ShipToAddress'],
-                    "IsTaxInclusive": False,
-                    "Lines": order['Lines'],
-                    "JournalMemo": order['JournalMemo'],
-                    "Order": {
-                        "UID": order['UID']
-                    }
-                }, default=str)
-                headers = {                
-                    'Authorization': f'Bearer {user.access_token}',
-                    'x-myobapi-key': env('CLIENT_ID'),
-                    'x-myobapi-version': 'v2',
-                    'Accept-Encoding': 'gzip,deflate',
-                    'Content-Type': 'application/json',
-                }
-                response = requests.request("POST", url, headers=headers, data=payload)
-                if not response.status_code == 201:
-                    return self(success=False, message=response.text)
-                
-                invoice_uid = response.headers['Location'][-36:]
-                new_uids.update({order['Number']: invoice_uid})
-                
-                converted.append(order['Number'])
-                del invoices[:query_limit]
-
-        updatedInvoices = []
-        for inv in _invoices:
-            invoice = Invoice.objects.get(number=inv.number) if Invoice.objects.filter(number=inv.number).exists() else False
-            if invoice:
-                if inv.number in new_uids: invoice.myob_uid = new_uids[inv.number]
-                if not invoice.date_issued: invoice.date_issued = inv.date_issued
-                if date_paid: invoice.date_paid = date_paid
-                invoice.save()
-
-                invoice.job.save() ## save job to update stage
-                updatedInvoices.append(invoice)
-
-        return self(success=True, message="Orders have been converted", converted=converted)
+        return self(success=True, message="Successfully Converted Sale Order")
 
 ## Test Function
 # class myobCustomFunction(graphene.Mutation):

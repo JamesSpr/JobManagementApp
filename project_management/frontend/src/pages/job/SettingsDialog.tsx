@@ -1,4 +1,4 @@
-import { BasicDialog, InputField } from "../../components/Components";
+import { BasicDialog, InputField, ProgressButton } from "../../components/Components";
 import { Button, Grid, Typography, Box, Checkbox, CircularProgress } from '@mui/material';
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import useAuth from "../auth/useAuth";
@@ -58,14 +58,13 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation repairSync($uid:String!, $jobId:String!) {
-                    repair_sync: repairSync(uid:$uid, jobId:$jobId) {
+                query: `mutation repairSync($jobId:String!) {
+                    repair_sync: repairSync(jobId:$jobId) {
                         success
                         message
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
                     jobId: job.id,
                 }
             })
@@ -80,6 +79,8 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
             }
         }).finally(() => {
             setWaiting((prev: any) => ({...prev, 'repairMyobSync': false}));
+        }).catch(err => {
+            console.log("Error", err)
         })
 
     }
@@ -114,6 +115,44 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
             }
         }).finally(() => {
             setWaiting((prev: any) => ({...prev, 'generateInvoice': false}));
+        })
+    }
+
+    const handleSubmitInvoice = async () => {
+        setWaiting((prev: any) => ({...prev, 'invoiceSubmit': true}));
+
+        await axiosPrivate({
+            method: 'post',
+            data: JSON.stringify({
+                query: `
+                mutation convertSale($invoice: InvoiceInput!) {
+                    convert: convertSale(invoice: $invoice) {
+                        success
+                        message
+                    }
+                }`,
+                variables: {
+                    invoice: {
+                        "number": job.invoiceSet[0].number,
+                        "dateIssued": new Date().toISOString().slice(0, 10)
+                    }
+                },
+            }),
+        }).then((response) => {
+            const res = response?.data?.data?.convert;
+
+            if(res.success){
+                setSnack({active: true, variant:'success', message:res.message})
+                setJob(prev => ({...prev, invoiceSet: [{...prev.invoiceSet[0], dateIssued: new Date().toISOString().slice(0, 10)}]}))
+            }
+            else {
+                setSnack({active: true, variant:'error', message: "Error: " + res.message})
+                console.log(res)
+            }           
+        }).catch(err => {
+            console.log("Error", err)
+        }).finally(() => {
+            setWaiting((prev: any) => ({...prev, 'invoiceSubmit': false}));
         })
     }
 
@@ -194,9 +233,7 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
                             )}
                         </Box>
                         <Box sx={{position: 'relative', align: "center", display: 'inline-block'}}>                                              
-                            <Button onClick={repairMyobSync}>
-                                Repair MYOB Sync
-                            </Button>
+                            <ProgressButton name="Repair MYOB Sync" onClick={repairMyobSync} waiting={waiting.syncRepair} />
                             {waiting.repairMyobSync && (
                                 <CircularProgress size={24} 
                                     sx={{
@@ -214,12 +251,16 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
                     </Grid>
                     :   <></>
                 }
-                {auth?.user.role === "DEV" ?
+                {auth?.user.role === "DEV" ? <>
                     <Grid item xs={12}>
                         <Button onClick={() => navigator.clipboard.writeText(`[${getJobName()}](${window.location.href})`)}>
                             Obsidian
                         </Button>
+                        <Button onClick={handleSubmitInvoice}>
+                            Convert Sale Order
+                        </Button>
                     </Grid>
+                </>
                     : <></>
 
                 }

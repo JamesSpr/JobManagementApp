@@ -41,7 +41,7 @@ const JobPage = () => {
     const [jobStages, setJobStages] = useState<JobStageType[]>([]);
     const [stage, setStage] = useState<string>('')
 
-    const [waiting, setWaiting] = useState({'save': false, 'invoice': false, 'invoiceSubmit': false, 'closeout': false, 'myobLink': false, 'compDocs': false, 'generateInvoice': false});
+    const [waiting, setWaiting] = useState({'save': false, 'invoice': false, 'invoiceSubmit': false, 'closeout': false, 'myobLink': false, 'compDocs': false, 'generateInvoice': false, 'syncRepair': false});
     const [loading, setLoading] = useState(true);
     const [updateRequired, setUpdateRequired] = useState(false);
     const [titleChange, setTitleChange] = useState(false);
@@ -296,21 +296,20 @@ const JobPage = () => {
             data: JSON.stringify({
                 query: `
                 mutation convertSale($uid:String!, $invoices: [InvoiceInput]!) {
-                    convert_sale: convertSale(uid: $uid, invoices: $invoices) {
+                    convert: convertSale(uid: $uid, invoices: $invoices) {
                         success
                         message
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
-                    invoices: [{
+                    invoice: {
                         "number": job.invoiceSet[0].number,
                         "dateIssued": new Date().toISOString().slice(0, 10)
-                    }],
+                    }
                 },
             }),
         }).then((response) => {
-            const res = response?.data?.data?.convert_sale;
+            const res = response?.data?.data?.convert;
 
             if(res.success){
                 setSnack({active: true, variant:'success', message:"Invoice Converted & Submission Tracked"})
