@@ -8,6 +8,7 @@ from PIL import Image
 from io import BytesIO
 import numpy as np
 from graphql_jwt.decorators import login_required
+from django.conf import settings
 
 INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Aurify\Insurances"
 
@@ -41,10 +42,10 @@ class PDFToImage(graphene.Mutation):
         tf_pdf.close()
 
         img_filename = uuid.uuid4().hex
-        while os.path.exists(f"Media\insurances\{img_filename}.jpg"):
+        while os.path.exists(f"{settings.MEDIA_ROOT}\insurances\{img_filename}.jpg"):
             img_filename = uuid.uuid4().hex
 
-        thumbnail_image_path = f"Media\insurances\{img_filename}.jpg"
+        thumbnail_image_path = f"{settings.MEDIA_ROOT}\insurances\{img_filename}.jpg"
 
         with fitz.open(tf_pdf.name) as doc: # open document
             img_bytes = []

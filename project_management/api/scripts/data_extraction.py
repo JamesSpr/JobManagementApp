@@ -1,24 +1,22 @@
 import graphene
 from graphql_jwt.decorators import login_required
-
 import numpy as np
 import re
 import base64
-
-from datetime import datetime, timedelta
-from ..models import Contractor, Client
-
 from PIL import Image
 import pytesseract
-
+from django.conf import settings
 import tempfile
 import uuid
 import os
 import fitz
 import json
 from io import BytesIO
-from PIL import Image
 import environ
+
+from datetime import datetime, timedelta
+from ..models import Contractor, Client
+
 
 # tesseract_cmd = r"C:\Program Files\Tesseract-OCR"
 env = environ.Env()
@@ -62,7 +60,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         img_uid = pdf_to_image(pdf, 'remittance')
         
         if debug: print(img_uid)
-        advice_text = pytesseract.image_to_string(Image.open(f"Media\\remittance\\{img_uid}.jpg"))
+        advice_text = pytesseract.image_to_string(Image.open(f"{settings.MEDIA_ROOT}\\remittance\\{img_uid}.jpg"))
 
         data = []
         calculated_total = 0.0
@@ -153,7 +151,7 @@ class ExtractBillDetails(graphene.Mutation):
             pdf = base64.b64decode(file, validate=True)
 
             img_uid = pdf_to_image(pdf, 'bills', num_pages)
-            thumbnail_image_path = f"Media/bills/{img_uid}.jpg"
+            thumbnail_image_path = f"{settings.MEDIA_ROOT}/bills/{img_uid}.jpg"
             img = Image.open(thumbnail_image_path)
 
             # Check the image is within the requirements for pytesseract
@@ -167,7 +165,7 @@ class ExtractBillDetails(graphene.Mutation):
             while os.path.exists(img_uid):
                 img_uid = uuid.uuid4().hex
 
-            thumbnail_image_path = f"Media/bills/{img_uid}.jpg"
+            thumbnail_image_path = f"{settings.MEDIA_ROOT}/bills/{img_uid}.jpg"
 
             file = re.sub("data:image(.+);base64,", "", file)
             img = Image.open(BytesIO(base64.b64decode(file)))
@@ -331,10 +329,10 @@ def pdf_to_image(pdf, type, num_pages=0):
     temp_pdf.close()
 
     img_filename = uuid.uuid4().hex
-    while os.path.exists(f"Media\\{type}\\{img_filename}.jpg"):
+    while os.path.exists(f"{settings.MEDIA_ROOT}\\{type}\\{img_filename}.jpg"):
         img_filename = uuid.uuid4().hex
 
-    thumbnail_image_path = f"Media\\{type}\\{img_filename}.jpg"
+    thumbnail_image_path = f"{settings.MEDIA_ROOT}\\{type}\\{img_filename}.jpg"
 
     with fitz.open(temp_pdf.name) as doc: # open document
         img_bytes = []

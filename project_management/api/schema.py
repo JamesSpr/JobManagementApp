@@ -2244,6 +2244,7 @@ class TestFeature(graphene.Mutation):
     @login_required
     def mutate(self, root, info):
         print(info.context.user)
+
         # ## Merge Contractors
         # primary_contrator = Contractor.objects.get(id=34)
         # secondary_contractor = Contractor.objects.get(id=94)
