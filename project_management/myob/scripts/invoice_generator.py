@@ -80,7 +80,6 @@ def generate_invoice(job, paths, invoice, accounts_folder):
 
             need_appearances = NameObject("/NeedAppearances")
             writer._root_object["/AcroForm"][need_appearances] = BooleanObject(True)
-            # del writer._root_object["/AcroForm"]['NeedAppearances']
             return writer
 
         except Exception as e:
@@ -91,14 +90,17 @@ def generate_invoice(job, paths, invoice, accounts_folder):
 
     stat_dec = "myob\scripts\StatDec.pdf"
     stat_dec_pdf = PdfFileReader(stat_dec)
+    if "/AcroForm" in stat_dec_pdf.trailer["/Root"]:
+        stat_dec_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
 
     invoice_pdf = PdfFileReader(paths['invoice'])
+    if "/AcroForm" in invoice_pdf.trailer["/Root"]:
+        invoice_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
+
     writer = PdfFileWriter()
     writer = set_need_appearances_writer(writer)
     if "/AcroForm" in writer._root_object:
-        writer._root_object["/AcroForm"].update(
-            {NameObject("/NeedAppearances"): BooleanObject(True)}
-        )
+        writer._root_object["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
 
     data = stat_dec_pdf.getPage(0)
     dictionary = stat_dec_pdf.getFields()
@@ -107,19 +109,25 @@ def generate_invoice(job, paths, invoice, accounts_folder):
     if job.client.name == "BGIS":
         if (invoice['Subtotal'] > 500.00):
             approval_pdf = PdfFileReader(paths['approval'])
+            if "/AcroForm" in approval_pdf.trailer["/Root"]:
+                approval_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
             breakdown_pdf = PdfFileReader(paths['estimate'])
-            approval = approval_pdf.getPage(0)
-            writer.appendPagesFromReader(invoice_pdf)
-            writer.addPage(approval)
-            writer.appendPagesFromReader(breakdown_pdf)
+            if "/AcroForm" in breakdown_pdf.trailer["/Root"]:
+                breakdown_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
+            writer.addPage(invoice_pdf.getPage(0))
+            writer.addPage(approval_pdf.getPage(0))
+            writer.addPage(breakdown_pdf.getPage(0))
 
             for i in insurances:
                 ins_page = PdfFileReader(i.filename)
+                if "/AcroForm" in ins_page.trailer["/Root"]:
+                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
                 writer.appendPagesFromReader(ins_page)
                 ins_page = ''
 
-            writer.appendPagesFromReader(stat_dec_pdf)
-            writer.updatePageFormFieldValues(data, addData)
+            writer.addPage(stat_dec_pdf.getPage(0))
+            writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
+            writer.addPage(stat_dec_pdf.getPage(1))
             
             # Make Fields Read Only
             for j in range(0, len(data['/Annots'])):
@@ -134,17 +142,23 @@ def generate_invoice(job, paths, invoice, accounts_folder):
             writer.appendPagesFromReader(invoice_pdf)
             for i in insurances:
                 ins_page = PdfFileReader(i.filename)
+                if "/AcroForm" in ins_page.trailer["/Root"]:
+                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
                 writer.appendPagesFromReader(ins_page)
                 ins_page = ''
-            writer.appendPagesFromReader(stat_dec_pdf)
-            writer.updatePageFormFieldValues(data, addData)
+            writer.addPage(stat_dec_pdf.getPage(0))
+            writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
+            writer.addPage(stat_dec_pdf.getPage(1))
     elif  job.client.name == "CBRE Group Inc":
         for i in insurances:
             ins_page = PdfFileReader(i.filename)
+            if "/AcroForm" in ins_page.trailer["/Root"]:
+                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
             writer.appendPagesFromReader(ins_page)
             ins_page = ''
-        writer.appendPagesFromReader(stat_dec_pdf)
-        writer.updatePageFormFieldValues(data, addData)
+        writer.addPage(stat_dec_pdf.getPage(0))
+        writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
+        writer.addPage(stat_dec_pdf.getPage(1))
 
         invoiceFile = os.path.join(accounts_folder, "Supporting Documents for " + str(job).split(' - ')[0] + ".pdf")
         with open(invoiceFile, "wb") as edited:
@@ -162,16 +176,22 @@ def generate_invoice(job, paths, invoice, accounts_folder):
 
         if 'purchaseOrder' in paths:
             purchaseOrder_pdf = PdfFileReader(paths['purchaseOrder'], strict=False)
+            if "/AcroForm" in purchaseOrder_pdf.trailer["/Root"]:
+                    purchaseOrder_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
+            
             po = purchaseOrder_pdf.getPage(0)
             writer.addPage(po)
 
         for i in insurances:
             ins_page = PdfFileReader(i.filename)
+            if "/AcroForm" in ins_page.trailer["/Root"]:
+                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
             writer.appendPagesFromReader(ins_page)
             ins_page = ''
 
-        writer.appendPagesFromReader(stat_dec_pdf)
-        writer.updatePageFormFieldValues(data, addData)
+        writer.addPage(stat_dec_pdf.getPage(0))
+        writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
+        writer.addPage(stat_dec_pdf.getPage(1))
 
     invoiceFile = os.path.join(accounts_folder, "Invoice for " + str(job).split(' - ')[0] + ".pdf")
     with open(invoiceFile, "wb") as edited:
