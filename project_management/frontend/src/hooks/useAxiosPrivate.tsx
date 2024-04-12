@@ -23,7 +23,7 @@ const useAxiosPrivate = () => {
         const responseIntercept = axiosPrivate.interceptors.response.use(
             async (response) => {
                 const prevRequest = response?.config; 
-                if(response?.data?.errors && !prevRequest?.headers?.sent) {
+                if(response?.data?.errors && !prevRequest?.headers.sent) {
                     prevRequest.headers.sent = true;
                     const newAccessToken = await refresh();
                     prevRequest.headers['Authorization'] = `JWT ${newAccessToken}`;

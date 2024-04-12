@@ -6,12 +6,11 @@ project_management/api/templates/**
 */frontend/**/axios.js
 */frontend/**/axios.tsx
 */generated_quotes/**
-*/Media/**
 */tester.py
 */accounts/templates/*
 */myob/scripts/**
 !*/myob/scripts/*.py
-*/myob/invoices/**
+*/config/**
 cert.crt
 cert.csr
 cert.key

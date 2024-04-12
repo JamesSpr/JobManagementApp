@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from genericpath import exists
 import shutil
 from accounts.models import CustomUser
-from api.models import Client, Contractor, ContractorContact, Estimate, Job, Invoice, Bill, RemittanceAdvice
+from api.models import Client, Contractor, Estimate, Job, Invoice, Bill, RemittanceAdvice
 from api.schema import  JobType
 from myob.object_types import CustomerPaymentObject, SupplierObject
 from myob.input_object_types import SupplierInputObject
@@ -12,7 +12,6 @@ from graphql_jwt.decorators import login_required
 import json
 import os
 from subprocess import Popen, PIPE
-import base64
 from pandas import isna
 from myob.scripts.invoice_generator import generate_invoice
 from .models import MyobUser
@@ -21,6 +20,7 @@ import environ
 import requests
 import urllib.parse
 import inspect
+from django.conf import settings
 
 
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
@@ -767,7 +767,7 @@ class myobGetInvoices(graphene.Mutation):
                 }
                 pdf_response = requests.request("GET", url, headers=headers, data={})
 
-                with open(f"./myob/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
+                with open(f"{settings.MEDIA_ROOT}/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
                     f.write(pdf_response.content)
 
             return self(success=True, message=response.text)
@@ -785,7 +785,7 @@ class myobGetInvoices(graphene.Mutation):
         }
         pdf_response = requests.request("GET", url, headers=headers, data={})
 
-        with open(f"./myob/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
+        with open(f"{settings.MEDIA_ROOT}/invoices/INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber'].replace('_C001', '')}.pdf", "wb") as f:
             f.write(pdf_response.content)
 
         return self(success=True, message=response.text)
@@ -1946,10 +1946,10 @@ class myobCreateInvoice(graphene.Mutation):
             return self(success=False, message=json.loads(response.text))
         
         print("Writing Invoice to File")
-        with open(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", "wb") as f:
+        with open(f"{settings.MEDIA_ROOT}/invoices/INV{invoice['Number']} - {job.po}.pdf", "wb") as f:
             f.write(pdf_response.content)
 
-        shutil.copyfile(f"./myob/invoices/INV{invoice['Number']} - {job.po}.pdf", f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf")
+        shutil.copyfile(f"{settings.MEDIA_ROOT}/invoices/INV{invoice['Number']} - {job.po}.pdf", f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf")
         paths['invoice'] = f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf"
 
         print("Invoice Saved")
@@ -2507,10 +2507,10 @@ class generateInvoice(graphene.Mutation):
                 return self(success=False, message=json.loads(pdf_response.text))
             else:
                 print("Writing Invoice to File")
-                with open(f"./myob/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", "wb") as f:
+                with open(f"{settings.MEDIA_ROOT}/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", "wb") as f:
                     f.write(pdf_response.content)
 
-                shutil.copyfile(f"./myob/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", f"{accounts_folder}/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf")
+                shutil.copyfile(f"{settings.MEDIA_ROOT}/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", f"{accounts_folder}/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf")
                 paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf"
                 found['invoice'] = True
 
