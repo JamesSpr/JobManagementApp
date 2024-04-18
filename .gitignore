@@ -8,7 +8,7 @@ project_management/api/templates/**
 */generated_quotes/**
 */tester.py
 */accounts/templates/*
-*/myob/scripts/**
+*/scripts/**
 !*/scripts/*.py
 */config/**
 cert.crt
