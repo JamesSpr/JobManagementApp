@@ -9,7 +9,7 @@ project_management/api/templates/**
 */tester.py
 */accounts/templates/*
 */myob/scripts/**
-!*/myob/scripts/*.py
+!*/scripts/*.py
 */config/**
 cert.crt
 cert.csr
