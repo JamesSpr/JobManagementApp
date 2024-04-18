@@ -27,13 +27,12 @@ def get_employee_timesheets_from_email(env, email_account: ExchangeEmail, employ
     if not pay_period_folder:
         pay_period_folder = Folder(parent=timesheet_folder, name=pay_period_folder_name)
         pay_period_folder.save()
-
     
     # Check Windows Folder Structure
-    if not os.path.exists(os.path.join(env("SAVE_PATH"), str(datetime.now().year))):
-        os.mkdir(os.path.join(env("SAVE_PATH"), str(datetime.now().year)))
+    if not os.path.exists(os.path.join(env("TIMESHEET_SAVE_PATH"), str(datetime.now().year))):
+        os.mkdir(os.path.join(env("TIMESHEET_SAVE_PATH"), str(datetime.now().year)))
     
-    save_folder = os.path.join(env("SAVE_PATH"), str(datetime.now().year), pay_period_folder_name)
+    save_folder = os.path.join(env("TIMESHEET_SAVE_PATH"), str(datetime.now().year), pay_period_folder_name)
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
 
@@ -109,9 +108,10 @@ def get_employee_timesheets_from_email(env, email_account: ExchangeEmail, employ
     return timesheets
     
 def folder_exists(parent: Folder, folder_name: str):
-    for folder in parent.children:
-        if folder.name == folder_name:
-            return folder
+    folder = parent // folder_name
+
+    if folder != None:
+        return folder
         
     return False
 
@@ -196,7 +196,7 @@ def get_timesheet_data(timesheet: dict):
         day.update({'work_type': "" if sheet[f"L{i}"].value is None else work_type_converter[sheet[f"L{i}"].value]})
 
         if work_type_converter[sheet[f"L{i}"].value] == "SICK" or work_type_converter[sheet[f"L{i}"].value] == "AL":
-            day.update({'hours': sheet[f"J{i}"].value})
+            day.update({'hours': 8})
         elif work_type_converter[sheet[f"L{i}"].value] == "PH":
             if sheet[f"J{i}"].value == None or sheet[f"J{i}"].value == 0:
                 day.update({'hours': 8})

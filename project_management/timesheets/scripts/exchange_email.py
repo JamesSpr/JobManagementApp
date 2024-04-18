@@ -91,7 +91,7 @@ class ExchangeEmail():
             'image005.png'
         ]
         for img in signature_images:
-            with open(f"{os.path.dirname(os.path.realpath(__file__))}\email_resources\{img.split('@')[0]}", "rb") as f:
+            with open(f"{os.path.dirname(os.path.realpath(__file__))}/email_resources/{img.split('@')[0]}", "rb") as f:
                 img_attachment = FileAttachment(name=img, content=f.read(), is_inline=True, content_id=img)
             m.attach(img_attachment)
 
@@ -112,7 +112,7 @@ class ExchangeEmail():
             'image005.png'
         ]
         for img in signature_images:
-            with open(f"{os.path.dirname(os.path.realpath(__file__))}\email_resources\{img.split('@')[0]}", "rb") as f:
+            with open(f"{os.path.dirname(os.path.realpath(__file__))}/email_resources/{img.split('@')[0]}", "rb") as f:
                 img_attachment = FileAttachment(name=img, content=f.read(), is_inline=True, content_id=img)
 
             msg.attach(img_attachment)
@@ -123,11 +123,13 @@ class ExchangeEmail():
         if self.account is None:
             raise RuntimeError("Email account not connected")
         
+        print("Getting Email Folders")
         self.account.root.refresh()
 
-        for x in self.account.inbox.children:
-            if x.name == "Timesheets":
-                return x
+        folder = self.account.inbox // "Timesheets"
+        if folder != None:
+            print(folder)
+            return folder
             
         new_folder = Folder(parent=self.account.inbox, name="Timesheets")
         new_folder.save()

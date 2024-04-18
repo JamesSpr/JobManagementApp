@@ -29,9 +29,9 @@ def run():
     # Get the active employees from MYOB
     employees = get_active_myob_employees()
     employee_emails = get_emails_from_myob_employees(employees)
-    # employee_emails = ['james@aurify.com.au']
+    employee_emails = ['james@aurify.com.au']
 
-    with open(os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet.xlsx"), "rb") as f:
+    with open(os.path.join(env("SHAREPOINT_DOCUMENTS_PATH"), "Aurify Timesheet.xlsx"), "rb") as f:
         timesheet_template = FileAttachment(name="Aurify Timesheet.xlsx", content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.template", content=f.read())
 
     # Remind timesheets are due on Friday and Sunday
@@ -89,7 +89,7 @@ def run():
         subject = "Timesheets are ready to be processed."
         body = f"""<p>Hi Leo,</p>
         <p>The timesheets are ready to be processed.</p>
-        <p><a href="https://172.29.205.77:8000/timesheets/{pay_period.strftime("%Y-%m-%d")}">Click here to access the periods timesheets.</a></p>"""
+        <p><a href="https://maintenance.aurify.com.au/timesheets/{pay_period.strftime("%Y-%m-%d")}">Click here to access the periods timesheets.</a></p>"""
         email.send_email(to=["leo@aurify.com.au"], cc=None, bcc=None, subject=subject, attachments=[], body=body, importance=email.Importance.HIGH)
         
         # Turn off task scheduler
@@ -100,7 +100,7 @@ def run():
 
         # Create new timesheet folder
         pay_period_folder_name = f"WE{pay_period.day:02d}-{pay_period.month:02d}"
-        save_folder = os.path.join(env("SAVE_PATH"), str(datetime.now().year), pay_period_folder_name)
+        save_folder = os.path.join(env("TIMESHEET_SAVE_PATH"), str(datetime.now().year), pay_period_folder_name)
         if not os.path.exists(save_folder):
             os.mkdir(save_folder)
 
@@ -194,7 +194,7 @@ def get_emails_from_myob_employees(employees):
 
 def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_period: datetime) -> FileAttachment:
     # Modify the timesheet template
-    template = os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet Template.xltx")
+    template = os.path.join(env("SHAREPOINT_DOCUMENTS_PATH"), "Aurify Timesheet Template.xltx")
     workbook = load_workbook(template)
     
     selection_sheet = workbook['Selections']    
@@ -243,11 +243,11 @@ def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_pe
     workbook.save(template)
 
     workbook.template = False
-    workbook.save(os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet.xlsx"))
+    workbook.save(os.path.join(env("SHAREPOINT_DOCUMENTS_PATH"), "Aurify Timesheet.xlsx"))
 
     workbook.close()
 
-    with open(os.path.join(env("TIMESHEET_TEMPLATE_PATH"), "Aurify Timesheet.xlsx"), "rb") as f:
+    with open(os.path.join(env("SHAREPOINT_DOCUMENTS_PATH"), "Aurify Timesheet.xlsx"), "rb") as f:
         timesheet_template = FileAttachment(name="Aurify Timesheet.xlsx", content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.template", content=f.read())
 
     return timesheet_template

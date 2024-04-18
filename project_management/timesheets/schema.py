@@ -424,8 +424,8 @@ class SubmitTimesheets(graphene.Mutation):
                     continue
 
                 # Default to normal pay if there is no worktype selected
-                if worktype == "":
-                    worktype == "Normal" 
+                if worktype == "" or worktype == None:
+                    worktype = "Normal" 
 
                 # Get the payroll category
                 if not (worktype == "Normal" or worktype == "PH"):
