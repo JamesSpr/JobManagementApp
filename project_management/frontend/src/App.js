@@ -60,11 +60,13 @@ const App = () => {
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >
-                            <Route path="timesheets" element={<Timesheets />} />                            
-                            <Route path="analytics" element={<Dashboard />} />
-                            <Route path="timesheets/:endDate" element={<Timesheets />} />                            
-                            <Route path="analytics" element={<Dashboard />} />
                             <Route path="admin" element={<CompanyAdmin />} />
+                            <Route path="analytics" element={<Dashboard />} />
+                        </Route>
+
+                        <Route element={<RequireAuth allowedRoles={['ADM', 'DEV']} />} >
+                            <Route path="timesheets" element={<Timesheets />} />                            
+                            <Route path="timesheets/:endDate" element={<Timesheets />} />                            
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['DEV']} />} >

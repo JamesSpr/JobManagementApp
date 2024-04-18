@@ -149,7 +149,7 @@ const CreateExpense = ({ id, setJob, employees, newExpense, setNewExpense, attac
             </Grid>
             <Grid item xs={12}>
                 <div className='pdf-preview'>
-                    <img src={"\\" + newExpense?.thumbnailPath} alt="PDF Preview" className='pdf-img'/>
+                    <img src={"/" + newExpense?.thumbnailPath} alt="PDF Preview" className='pdf-img'/>
                 </div>
             </Grid>
         </Grid>

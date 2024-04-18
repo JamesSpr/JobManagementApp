@@ -14,7 +14,10 @@ sys.path.append("...")
 from accounts.models import CustomUser
 
 EMAIL_STYLE = """<body style="font-size:11pt; font-family:'Aptos (Body)'; color: rgb(0,0,0)">"""
-JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
+import environ
+env = environ.Env()
+environ.Env.read_env()
+JOBS_PATH = f"{env('SHAREPOINT_MAINTENANCE_PATH')}/Jobs"
 
 from exchangelib import OAUTH2, OAuth2Credentials, Identity, Account, DELEGATE, Configuration, Message, HTMLBody, FileAttachment, CalendarItem
 from exchangelib.items import (
@@ -111,7 +114,7 @@ class ExchangeEmail():
             'image005.png'
         ]
         for img in signature_images:
-            with open(f"{os.path.dirname(os.path.realpath(__file__))}\email_resources\{img}", "rb") as f:
+            with open(f"{os.path.dirname(os.path.realpath(__file__))}/email_resources/{img}", "rb") as f:
                 img_attachment = FileAttachment(name=img, content=f.read(), is_inline=True, content_id=img)
             m.attach(img_attachment)
 

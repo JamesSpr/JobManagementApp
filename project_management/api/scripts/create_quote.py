@@ -14,13 +14,17 @@ from datetime import date
 import os
 from ..models import Job, Estimate, EstimateHeader
 
+import environ
 import sys
 sys.path.append("...")
 from accounts.models import CustomUser
 
 QUOTE_PATH = "api/templates/QUOTE.docx"
 PO_PATH = "api/templates/PURCHASE ORDER.docx"
-JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
+env = environ.Env()
+environ.Env.read_env()
+JOBS_PATH = f"{env('SHAREPOINT_MAINTENANCE_PATH')}/Jobs"
+
 
 class CreateQuote(graphene.Mutation):
     class Arguments:
@@ -84,8 +88,8 @@ class CreateQuote(graphene.Mutation):
             '[ClientName]' : client_name, 
             '[Location]': location,
             '[Scope]': scope,
-            '[QuoterSignature]': rf'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\temp\user_{estimate.quote_by.first_name.lower()}-signature.png',
-            '[CompanyLogo]' : r'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\temp\aurify_logo-quote.png',
+            '[QuoterSignature]': rf'/home/aurify/JobManagementApp/project_management/api/templates/temp/user_{estimate.quote_by.first_name.lower()}-signature.png',
+            '[CompanyLogo]' : r'/home/aurify/JobManagementApp/project_management/api/templates/temp/aurify_logo-quote.png',
             '[Quoter]': estimate.quote_by.first_name.title().strip() + " " + estimate.quote_by.last_name.capitalize().strip(),
             '[QuoterRole]': estimate.quote_by.position.title().strip(),
         }
@@ -182,7 +186,7 @@ class CreateQuote(graphene.Mutation):
         # Create BGIS Estimate for BGIS Quotes
         if job.client.name == "BGIS":
             xl_file = os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx")
-            xl_template = r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx"
+            xl_template = r"/home/aurify/JobManagementApp/project_management/api/templates/BGIS Estimate Template.xlsx"
             if not os.path.exists(xl_file):
                 workbook = load_workbook(filename=xl_template)
                 sheet = workbook.active
@@ -191,7 +195,7 @@ class CreateQuote(graphene.Mutation):
 
                 # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
                 # xlApp.Visible = True
-                # wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
+                # wb = xlApp.Workbooks.Open(r"/home/aurify/JobManagementApp/project_management/api/templates/BGIS Estimate Template.xlsx")
                 # ws = wb.Sheets("Cost Breakdown")
                 # ws.Range("C5").Value = estimate.name 
 
@@ -230,11 +234,11 @@ class CreateQuote(graphene.Mutation):
 #             pass
 
 #         ## Save to new folder
-#         # shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
+#         # shutil.copy(r"/home/aurify/JobManagementApp/project_management/api/templates/BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(estimate.name).strip() + ".xlsx"))
 
 #         xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
 #         xlApp.Visible = True
-#         wb = xlApp.Workbooks.Open(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx")
+#         wb = xlApp.Workbooks.Open(r"/home/aurify/JobManagementApp/project_management/api/templates/BGIS Estimate Template.xlsx")
 #         ws = wb.Sheets("Cost Breakdown")
 #         ws.Range("C5").Value = estimate.name 
 

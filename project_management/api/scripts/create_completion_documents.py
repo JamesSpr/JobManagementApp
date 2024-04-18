@@ -20,8 +20,10 @@ import sys
 sys.path.append("...")
 from accounts.models import CustomUser
 
-
-JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
+import environ
+env = environ.Env()
+environ.Env.read_env()
+JOBS_PATH = f"{env('SHAREPOINT_MAINTENANCE_PATH')}/Jobs"
 
 # class CreateBGISEstimate(graphene.Mutation):
 #     class Arguments:
@@ -51,7 +53,7 @@ JOBS_PATH = r'C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs'
 #             pass
 
 #         ## Save to new folder
-#         shutil.copy(r"C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
+#         shutil.copy(r"home/aurify/JobManagementApp\project_management\api\templates\BGIS Estimate Template.xlsx", os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx"))
 
 #         xl_file = os.path.join(JOBS_PATH, str(job).strip(), "Estimates", str(estimate.name).strip(), "BGIS Estimate " + str(job).split(' ')[0] + ".xlsx")
 #         workbook = load_workbook(filename=xl_file)
@@ -82,7 +84,7 @@ class CreateCompletionDocuments(graphene.Mutation):
     def mutate(self, root, info, job_id):
 
         job = Job.objects.get(id=job_id)
-        templates_path = r'C:\Users\Aurify Constructions\Documents\JobManagementApp\project_management\api\templates'
+        templates_path = '/home/aurify/JobManagementApp/project_management/api/templates'
 
         if job.po == "" or job.po == None:
             return self(success=False, message="Please ensure job has a PO Number")

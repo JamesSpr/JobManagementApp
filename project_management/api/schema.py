@@ -20,8 +20,10 @@ from .scripts.file_processing import PDFToImage
 from accounts.models import CustomUser
 from myob.models import MyobUser
 
-
-MAIN_FOLDER_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
+import environ
+env = environ.Env()
+environ.Env.read_env()
+MAIN_FOLDER_PATH = f"{env('SHAREPOINT_MAINTENANCE_PATH')}/Jobs"
 
 class CustomNode(graphene.relay.Node):
     class Meta:
@@ -491,13 +493,13 @@ class CreateJobInMyob(graphene.Mutation):
         post_response = CreateMyobJob.mutate(root, info, job_data)
 
         if not post_response.success:
-            print("Error:", post_response.text)
+            print("Error:", post_response.message)
             return self(success=False, message=post_response.message)
             
         job.myob_uid = post_response.uid
         job.save()
 
-        return self(success=True, uid=post_response.uid)
+        return self(success=True, message=post_response.message, uid=post_response.uid)
 
 class UpdateJob(graphene.Mutation):
     class Arguments:
@@ -2245,6 +2247,11 @@ class TestFeature(graphene.Mutation):
     def mutate(self, root, info):
         print(info.context.user)
 
+        for bill in Bill.objects.all():
+            if "/var/www/aurify/" in bill.thumbnail_path:
+                print(bill)
+                bill.thumbnail_path = bill.thumbnail_path.replace("/var/www/aurify/", "")
+                bill.save()
         # ## Merge Contractors
         # primary_contrator = Contractor.objects.get(id=34)
         # secondary_contractor = Contractor.objects.get(id=94)

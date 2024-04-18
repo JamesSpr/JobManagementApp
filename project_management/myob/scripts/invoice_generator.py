@@ -88,7 +88,7 @@ def generate_invoice(job, paths, invoice, accounts_folder):
 
     warnings.filterwarnings("ignore", category=PdfReadWarning)
 
-    stat_dec = "myob\scripts\StatDec.pdf"
+    stat_dec = "./myob/scripts/StatDec.pdf"
     stat_dec_pdf = PdfFileReader(stat_dec)
     if "/AcroForm" in stat_dec_pdf.trailer["/Root"]:
         stat_dec_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})

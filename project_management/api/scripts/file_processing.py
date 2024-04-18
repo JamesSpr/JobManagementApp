@@ -10,7 +10,11 @@ import numpy as np
 from graphql_jwt.decorators import login_required
 from django.conf import settings
 
-INSURANCES_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Admin\Aurify\Insurances"
+import environ
+env = environ.Env()
+environ.Env.read_env()
+INSURANCES_PATH = f"{env('SHAREPOINT_MAINTENANCE_PATH')}/Admin\Aurify\Insurances"
+
 
 class PDFToImage(graphene.Mutation):
     class Arguments:

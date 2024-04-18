@@ -9,6 +9,8 @@ from graphql_auth.schema import UserQuery, MeQuery
 from accounts.models import CustomUser, Company
 from graphql_jwt.decorators import login_required
 
+from django.conf import settings
+
 class CompanyType(DjangoObjectType):
     class Meta:
         model = Company
@@ -43,10 +45,10 @@ class CreateCompany(graphene.Mutation):
             logo = logo.replace('data:image/jpeg;base64,', '').replace('data:image/png;base64,', '')
             logo_b64 = base64.b64decode(logo, validate=True)
 
-            with open(f'./Media/company_logos/{name}_logo.{logo_type}', 'wb') as f:
+            with open(f'{settings.MEDIA_ROOT}/company_logos/{name}_logo.{logo_type}', 'wb') as f:
                 f.write(logo_b64)
             
-            company.logo_path = './Media/company_logos/{name}_logo.{logo_type}'
+            company.logo_path = f'{settings.MEDIA_ROOT}/company_logos/{name}_logo.{logo_type}'
 
         company.save()
         return self(success=True, message="Company Created")

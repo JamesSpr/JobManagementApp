@@ -244,7 +244,7 @@ const EditBill = ({bills, setJob, setEditing, setUpdateWaiting, toggleSave, setT
             <div style={{padding: '10px'}} />
             <Grid item xs={12}>
                 <div className='pdf-preview'>
-                    <img src={"\\" + bill?.thumbnailPath} alt="PDF Preview" className='pdf-img'/>
+                    <img src={"/" + bill?.thumbnailPath} alt="PDF Preview" className='pdf-img'/>
                 </div>
             </Grid>
         </>

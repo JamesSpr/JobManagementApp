@@ -60,7 +60,7 @@ class ExtractRemittanceAdvice(graphene.Mutation):
         img_uid = pdf_to_image(pdf, 'remittance')
         
         if debug: print(img_uid)
-        advice_text = pytesseract.image_to_string(Image.open(f"{settings.MEDIA_ROOT}\\remittance\\{img_uid}.jpg"))
+        advice_text = pytesseract.image_to_string(Image.open(f"{settings.MEDIA_ROOT}/remittance/{img_uid}.jpg"))
 
         data = []
         calculated_total = 0.0
@@ -178,6 +178,7 @@ class ExtractBillDetails(graphene.Mutation):
         else:
             return self(success=False, message="File type not recognised. Please Contact Developer")
 
+        thumbnail_image_path = f"media/bills/{img_uid}.jpg"
         if debug: print(thumbnail_image_path)
         data = {'thumbnailPath': thumbnail_image_path}
 
@@ -329,10 +330,10 @@ def pdf_to_image(pdf, type, num_pages=0):
     temp_pdf.close()
 
     img_filename = uuid.uuid4().hex
-    while os.path.exists(f"{settings.MEDIA_ROOT}\\{type}\\{img_filename}.jpg"):
+    while os.path.exists(f"{settings.MEDIA_ROOT}/{type}/{img_filename}.jpg"):
         img_filename = uuid.uuid4().hex
 
-    thumbnail_image_path = f"{settings.MEDIA_ROOT}\\{type}\\{img_filename}.jpg"
+    thumbnail_image_path = f"{settings.MEDIA_ROOT}/{type}/{img_filename}.jpg"
 
     with fitz.open(temp_pdf.name) as doc: # open document
         img_bytes = []

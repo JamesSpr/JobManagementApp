@@ -205,7 +205,7 @@ const CreateBill = ({ id, setJob, contractors, newBill, setNewBill, attachment, 
             </Grid>
             <Grid item xs={12}>
                 <div className='pdf-preview'>
-                    <img src={"\\" + newBill?.thumbnailPath} alt="PDF Preview" className='pdf-img'/>
+                    <img src={"/" + newBill?.thumbnailPath} alt="PDF Preview" className='pdf-img'/>
                 </div>
             </Grid>
         </Grid>

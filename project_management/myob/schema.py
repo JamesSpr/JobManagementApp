@@ -11,7 +11,7 @@ from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 import json
 import os
-from subprocess import Popen, PIPE
+import subprocess
 from pandas import isna
 from myob.scripts.invoice_generator import generate_invoice
 from .models import MyobUser
@@ -24,7 +24,10 @@ from django.conf import settings
 
 
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
-MAIN_FOLDER_PATH = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
+import environ
+env = environ.Env()
+environ.Env.read_env()
+MAIN_FOLDER_PATH = f"{env('SHAREPOINT_MAINTENANCE_PATH')}/Jobs"
 
 class UIDType(graphene.InputObjectType):
     UID = graphene.String()
@@ -212,10 +215,6 @@ def myob_post(user: MyobUser, url: str, payload) -> requests.Response:
     }
 
     response = requests.post(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}", headers=headers, data=payload)
-    
-    if response.status_code != 200 and response.status_code != 201:
-        print(response.status_code, response.text)
-        return None
     
     return response
 
@@ -470,7 +469,8 @@ class CreateCustomer(graphene.Mutation):
         })
         post_res = myob_post(user, post_url, payload)
 
-        if not post_res.status_code == 201:
+        if post_res.status_code != 200 and post_res.status_code != 201:
+            print(post_res.status_code, post_res.text)
             return self(success=False, message=post_res.text)
         
         myob_uid = get_response_uid(post_res)
@@ -629,7 +629,8 @@ class CreateSupplier(graphene.Mutation):
         })
         response = myob_post(user, endpoint, payload)
 
-        if not response.status_code == 201:
+        if response.status_code != 200 and response.status_code != 201:
+            print(response.status_code, response.text)
             return self(success=False, message=response.text)
 
         myob_uid = response.headers['Location'][-36:]
@@ -961,7 +962,6 @@ class myobRepairJobSync(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         job = Job.objects.get(id=job_id)
-
         filter = f"Number eq '{job.po}'"
         endpoint = "GeneralLedger/Job"
         
@@ -1112,13 +1112,24 @@ class CreateMyobJob(graphene.Mutation):
         })
         post_response = myob_post(user, endpoint, payload)
 
-        if post_response == None or post_response.status_code != 201:
+        if post_response.status_code == 400:
+            errors = json.loads(post_response.text)["Errors"][0]
+            if errors["ErrorCode"] == 4134:
+                filter = f"Number eq '{job['identifier']}'"
+                endpoint = "GeneralLedger/Job"
+                response = myob_get(user, endpoint, filter)
+
+                if len(response['Items']) > 0:
+                    return self(success=True, message="Job Synced with MYOB", uid=response['Items'][0]['UID'])
+
+        if post_response.status_code != 200 and post_response.status_code != 201:
             print("Error:", job)
+            print(post_response.status_code, post_response.text)
             return self(success=False, message=json.dumps(post_response.text))
 
         job_uid = get_response_uid(post_response)
         
-        return self(success=True, message=json.dumps("Job Linked to MYOB"), uid=job_uid)
+        return self(success=True, message="Job Linked to MYOB", uid=job_uid)
      
 class myobSyncClients(graphene.Mutation):
     class Arguments:
@@ -1806,26 +1817,10 @@ class myobCreateInvoice(graphene.Mutation):
                 
                 if not found["estimate"] and not estimate_file is None :
                     print("Converting Spreadsheet to PDF", estimate_file)
-                    # Convert excel sheet to pdf
-                    # df = pd.read_excel(estimate_file)
-                    # df.to_html(estimate_file.strip(".xlsm") + ".html")
-                    # pdfkit.from_file(estimate_file.strip(".xlsm") + ".html", estimate_file.strip(".xlsm") + ".pdf")
-                    
-                    p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
-                    bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
-                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
-                    p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
 
-                    # xlApp = win32.DispatchEx("Excel.Application", pythoncom.CoInitialize())
-                    # time.sleep(1)
-                    # books = xlApp.Workbooks.Open(estimate_file)
-                    # ws = books.Worksheets[0]
-                    # ws.Visible = 1
-                    # ws.ExportAsFixedFormat(0, estimate_file.strip(".xlsm") + ".pdf")
-                    # xlApp.ActiveWorkbook.Close()
-
-                    # xlApp.Quit()
-                    # del xlApp
+                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/')
+                    estimate_folder_name = estimate_folder.replace("\\", '/')
+                    subprocess.call(['soffice', '--headless', '--infilter=\"Microsoft Excel 2007/2010 XML\"', '--convert-to', 'pdf:writer_pdf_Export', f'{estimate_file_name}', '--outdir', f'{estimate_folder_name}'])
 
                     found["estimate"] = True
                     paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
@@ -2052,7 +2047,8 @@ class CreateMyobBill(graphene.Mutation):
 
         response = myob_post(user, post_endpoint, payload)
 
-        if response is None:
+        if response.status_code != 200 and response.status_code != 201:
+            print(response.status_code, response.text)
             return self(success=False, message="Issue creating bill in MYOB. Please contact developer for additional details.")
 
         # Get the bill uid
@@ -2071,10 +2067,10 @@ class CreateMyobBill(graphene.Mutation):
             ],
         }, default=str)
         attachment_response = myob_post(user, attachment_endpoint, attachment_payload)
-
-        if not attachment_response.status_code == 200:
+  
+        if attachment_response.status_code != 200 and attachment_response.status_code != 201:
             print(attachment_response.status_code, attachment_response.text)
-            return self(success=True, message="Error Uploading Attachment. Please manually attach in MYOB", uid=bill_uid, error=response.text)
+            return self(success=True, message="Error Uploading Attachment. Please manually attach in MYOB", uid=bill_uid, error=attachment_response.text)
 
         print("Attachment Added")
 
@@ -2228,7 +2224,8 @@ class CreateCustomerPayment(graphene.Mutation):
         
         endpoint = "Sale/CustomerPayment"
         response = myob_post(user, endpoint, json.dumps(customer_payment, default=str))
-        if response is None:            
+        if response.status_code != 200 and response.status_code != 201:
+            print(response.status_code, response.text)  
             print(customer_payment)
             return self(success=False, message="Post Request Failed")
         
@@ -2306,8 +2303,10 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
             }
         }, default=str)
 
-        post_response = myob_post(user, post_url, payload)
-        if not post_response.status_code == 201:
+        post_response = myob_post(user, post_url, payload)        
+        
+        if response.status_code != 200 and response.status_code != 201:
+            print(response.status_code, response.text)
             return self(success=False, message=post_response.text)
         
         invoice_uid = get_response_uid(post_response)
@@ -2438,10 +2437,9 @@ class generateInvoice(graphene.Mutation):
                 if not found["estimate"] and not estimate_file is None :
                     print("Converting Spreadsheet to PDF", estimate_file)
 
-                    p = Popen("C:/cygwin64/Cygwin.bat", stdin=PIPE, stdout=PIPE)
-                    bash_folder_path = f"/cygdrive/c/{estimate_folder[3:]}"#.replace("\\", '/').replace(" ", "\\ ") 
-                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/').replace(" ", "\\ ") 
-                    p.communicate(input=f"""cd "{bash_folder_path}"\n/cygdrive/c/build/instdir/program/soffice.exe --headless --infilter="Microsoft Excel 2007/2010 XML" --convert-to pdf:writer_pdf_Export {estimate_file_name} --outdir .""".encode())[0]
+                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/')
+                    estimate_folder_name = estimate_folder.replace("\\", '/')
+                    subprocess.call(['soffice', '--headless', '--infilter=\"Microsoft Excel 2007/2010 XML\"', '--convert-to', 'pdf:writer_pdf_Export', f'{estimate_file_name}', '--outdir', f'{estimate_folder_name}'])
 
                     found["estimate"] = True
                     paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 

@@ -361,8 +361,6 @@ class ProcessInvoices(graphene.Mutation):
         return self(success=True, message="Orders have been converted")
 
 
-main_folder_path = r"C:\Users\Aurify Constructions\Aurify\Aurify - Maintenance\Jobs"
-
 # class SendInvoices(graphene.Mutation):
 
 #     success = graphene.Boolean()

@@ -68,15 +68,17 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
             }
         })
 
-        for(let entitlement in currentEntitlements) {
-            const employeeEntitlement = employeePayrollDetails['Entitlements'].find((prd: any) => prd['EntitlementCategory']['Name'] === entitlement)
-            if((employeeEntitlement['Total'] - (currentEntitlements as any)[entitlement]) < 0) {
-                warning = true
-                warningMessage = entitlement + " Limit Exceeded";
-                setValidTimesheets(false);
+        if(employeePayrollDetails) {
+            for(let entitlement in currentEntitlements) {
+                const employeeEntitlement = employeePayrollDetails['Entitlements'].find((prd: any) => prd['EntitlementCategory']['Name'] === entitlement)
+                if((employeeEntitlement['Total'] - (currentEntitlements as any)[entitlement]) < 0) {
+                    warning = true
+                    warningMessage = entitlement + " Limit Exceeded";
+                    setValidTimesheets(false);
+                }
             }
         }
-
+        
         const openTimesheetEditor = () => {
             setOpenEditor(true);
             setEmployeeEntitlements({
@@ -84,7 +86,7 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
                 employee: employee,
                 work: row.original.workdaySet,
                 requested: currentEntitlements,
-                accrued: employeePayrollDetails['Entitlements']
+                accrued: employeePayrollDetails['Entitlements'] ?? undefined
             });
         }
 
