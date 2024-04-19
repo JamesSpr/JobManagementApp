@@ -8,8 +8,8 @@ project_management/api/templates/**
 */generated_quotes/**
 */tester.py
 */accounts/templates/*
-*/scripts/**
-!*/scripts/*.py
+**/scripts/**
+!**/scripts/*.py
 */config/**
 cert.crt
 cert.csr
