@@ -3,22 +3,27 @@ from graphene import InputObjectType, String, Float, Decimal, Int, DateTime, Lis
 # CustomerPayment
 # Supplier
 
-
 class BasicForeignKeyInputObject(InputObjectType):
-    UID = String(),
-    Name = String(),
-    DisplayID = String(),
+    UID = String()
+    Code = String()
     URI = String()
 
-class ForeignCurrencyInputObject(InputObjectType):
+class DisplayIDForeignKeyInputObject(InputObjectType):
+    UID = String()
+    Name = String()
+    DisplayID = String()
+    URI = String()
+
+class NameForeignKeyInputObject(InputObjectType):
     UID = String()
     Code = String()
     Name = String()
     URI = String()
 
-class TaxCodeInputObject(InputObjectType):
+class CurrencyForeignKeyInputObject(InputObjectType):
     UID = String()
     Code = String()
+    CurrencyName = String()
     URI = String()
 
 class InvoicesInputObject(InputObjectType):
@@ -33,8 +38,8 @@ class InvoicesInputObject(InputObjectType):
 class CustomerPaymentInputObject(InputObjectType):
     UID = String()
     DepositTo = String()
-    Account = BasicForeignKeyInputObject()
-    Customer = BasicForeignKeyInputObject()
+    Account = DisplayIDForeignKeyInputObject()
+    Customer = DisplayIDForeignKeyInputObject()
     ReceiptNumber = String()
     Date = String()
     AmountReceived = Decimal()
@@ -43,7 +48,7 @@ class CustomerPaymentInputObject(InputObjectType):
     Memo = String()
     Invoices = InvoicesInputObject(),   
     TransactionID = String()
-    ForeignCurrency = ForeignCurrencyInputObject()
+    ForeignCurrency = NameForeignKeyInputObject()
     CurrencyExchangeRate = Decimal()
     URI = String()
     RowVersion = String()
@@ -90,7 +95,7 @@ class BuyingDetailsInputObject(InputObjectType):
     PurchaseLayout = String()
     PrintedForm = String()
     PurchaseOrderDelivery = String()
-    ExpenseAccount = BasicForeignKeyInputObject()
+    ExpenseAccount = DisplayIDForeignKeyInputObject()
     PaymentMemo = String()
     PurchaseComment = String()
     SupplierBillingRate = Decimal()
@@ -101,8 +106,8 @@ class BuyingDetailsInputObject(InputObjectType):
     ABN = String()
     ABNBranch = String()
     TaxIdNumber = String()
-    TaxCode = TaxCodeInputObject()
-    FreightTaxCode = TaxCodeInputObject()
+    TaxCode = BasicForeignKeyInputObject()
+    FreightTaxCode = BasicForeignKeyInputObject()
     UseSupplierTaxCode = Boolean()
     Terms = TermsInputObject()
 
@@ -135,8 +140,77 @@ class SupplierInputObject(InputObjectType):
     CurrentBalance = Decimal()
     BuyingDetails = BuyingDetailsInputObject()
     PaymentDetails = PaymentDetailsInputObject()
-    ForeignCurrency = ForeignCurrencyInputObject()
+    ForeignCurrency = NameForeignKeyInputObject()
     LastModifiedDateTime = DateTime()
     PhotoURI = String()
+    URI = String()
+    RowVersion = String()
+
+class InvoiceTermsInputObject(InputObjectType):
+    PaymentIsDue = String()
+    DiscountDate = Int()
+    BalanceDueDate = Int()
+    DiscountForEarlyPayment = Decimal()
+    MonthlyChargeForLatePayment = Decimal()
+    DiscountExpiryDate = DateTime()
+    Discount = Decimal()
+    DiscountForeign = Decimal()
+    DueDate = DateTime()
+    FinanceCharge = Decimal()
+    FinanceChargeForeign = Decimal()
+
+class InvoiceLinesInputObject(InputObjectType):
+    RowID = Int()
+    Type = String()
+    Description = String()
+    UnitsOfMeasure = String()
+    UnitCount = Decimal()
+    UnitPrice = Decimal()
+    UnitPriceForeign = Decimal()
+    DiscountPercent = Decimal()
+    Total = Decimal()
+    TotalForeign = Decimal()
+    Account = DisplayIDForeignKeyInputObject()
+    Job = NameForeignKeyInputObject()
+    TaxCode = BasicForeignKeyInputObject()
+    RowVersion = String()
+
+class InvoiceInputObject(InputObjectType):
+    UID = String()
+    Number = String()
+    Date = DateTime()
+    CustomerPurchaseOrderNumber = String()
+    Customer = DisplayIDForeignKeyInputObject()
+    PromisedDate = DateTime()
+    BalanceDueAmount = Decimal()
+    BalanceDueAmountForeign = Decimal()
+    Status = String()
+    Lines = List(InvoiceLinesInputObject)
+    ShipToAddress = String()
+    Terms = InvoiceTermsInputObject()
+    IsTaxInclusive = Boolean()
+    Subtotal = Decimal()
+    SubtotalForeign = Decimal()
+    Freight = Decimal()
+    FreightForeign = Decimal()
+    FreightTaxCode = BasicForeignKeyInputObject()
+    TotalTax = Decimal()
+    TotalTaxForeign = Decimal()
+    TotalAmount = Decimal()
+    TotalAmountForeign = Decimal()
+    Category = DisplayIDForeignKeyInputObject()
+    Salesperson = DisplayIDForeignKeyInputObject()
+    Comment = String()
+    ShippingMethod = String()
+    JournalMemo = String()
+    ReferralSource = String()
+    InvoiceDeliveryStatus = String()
+    LastPaymentDate = DateTime()
+    CanApplySurcharge = Boolean()
+    Order = BasicForeignKeyInputObject()
+    OnlinePaymentMethod = String()
+    ForeignCurrency = CurrencyForeignKeyInputObject()
+    CurrencyExchangeRate = Decimal()
+    LastModified = DateTime()
     URI = String()
     RowVersion = String()

@@ -1,15 +1,18 @@
 import os
 import shutil
 import base64
+import subprocess
 from datetime import datetime
+
 import graphene
+from graphene import relay
 from django.utils import timezone
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
-from graphene import relay
 from graphql_jwt.decorators import login_required
 from django.db.models import Q
 from django.db import connection
+from django.conf import settings
 
 from .models import RemittanceAdvice, Insurance, Estimate, EstimateHeader, EstimateItem, Expense, Job, Location, Contractor, ContractorContact, InvoiceSetting, Client, ClientContact, Region, Invoice, Bill
 from .scripts.create_completion_documents import CreateCompletionDocuments
@@ -17,8 +20,10 @@ from .scripts.email_functions import AllocateJobEmail, CloseOutEmail, EmailQuote
 from .scripts.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .scripts.create_quote import CreateQuote
 from .scripts.file_processing import PDFToImage
+from .scripts.invoice_generator import generate_invoice
 from accounts.models import CustomUser
 from myob.models import MyobUser
+
 
 import environ
 env = environ.Env()
@@ -1662,32 +1667,368 @@ class DeleteInvoice(graphene.Mutation):
 
 class CreateInvoice(graphene.Mutation):
     class Arguments:
-        myob_uid = graphene.String()
-        number = graphene.String()
-        amount = graphene.Float()
-        date_created = graphene.Date()
-        date_issued = graphene.Date()
-        date_paid = graphene.Date()
-        job = graphene.String() 
+        job_id = graphene.String()
 
     success = graphene.Boolean()
+    message = graphene.String()
+    invoice = graphene.Field(InvoiceType)
 
     @classmethod
     @login_required
-    def mutate(self, root, info, myob_uid, number, amount, date_created, date_issued, job):
-        if Invoice.objects.filter(number=number).exists():
-            return self(success=False)
-        
-        invoice = Invoice()
-        invoice.myob_uid = myob_uid
-        invoice.number = number
-        invoice.amount = amount
-        invoice.date_created = date_created
-        invoice.date_issued = date_issued
-        invoice.job = Job.objects.get(po=job)
-        invoice.save()
+    def mutate(self, root, info, job_id):
 
+        print("Creating Invoice")
+
+        job = Job.objects.get(id=job_id) if Job.objects.filter(id=job_id).exists() else None 
+
+        # Error Checking
+        if not job:
+            return self(success=False, message="Job Not Found!")
+
+        if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
+            return self(success=False, message="No Approved Estimate to use as Invoice.")
+
+        if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
+            return self(success=False, message="More than 1 estimate approved. Please fix and try again.")
+
+        estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
+
+        if estimate.price == 0.0:
+            return self(success=False, message="Estimate price is $0. Please check job.")
+
+        if not job.myob_uid:
+            job_identifier = ""
+            if job.po:
+                job_identifier = job.po
+            elif job.other_id:
+                job_identifier = job.other_id
+
+            if job_identifier == "":
+                return self(success=False, message="Job Identifier Error. Please Sync with MYOB")
+
+            job_data = {
+                "identifier": job_identifier,
+                "name": (job.location.name + " " + job.title)[0:30],
+                "description": str(job),
+                "customer_uid": job.client.myob_uid,
+            }
+            res = CreateJobInMyob.mutate(root, info, job_data)
+            if not res.success:
+                return self(success=False, message="Please sync job with MYOB before creating invoice!")
+
+            job.myob_uid = res.uid
+
+        if not job.completion_date:
+            return self(success=False, message="Job completion date not recorded.")
+
+        if Invoice.objects.filter(job=job).exists():
+            return self(success=False, message="Invoice already exists for this job.")
+
+        invoice = []
+
+        folder_name = str(job)
+        job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
+
+        if not os.path.exists(job_folder):
+            return self(success=False, message="Job Folder does not exist.")
+
+        accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
+
+        if not os.path.exists(accounts_folder):
+            os.mkdir(accounts_folder)
+
+        if not os.path.exists(accounts_folder):
+            return self(success=False, message="Jobs Accounts Folder does not exist.")
+
+        estimate_folder = os.path.join(job_folder, "Estimates", estimate.name.strip())
+        
+        if not os.path.exists(estimate_folder):
+            return self(success=False, message="Job Estimate Folder does not exist.")
+
+        if job.client.name == "BGIS":
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"approval": False, "estimate": False}
+            paths = {"invoice": "", "approval": "", "estimate": ""}
+            
+            # Only need approval and breakdown on jobs > $500
+            if estimate.price > 500.00:
+                if not os.path.exists(estimate_folder):
+                    return self(success=False, message="Jobs Estimate Folder does not exist!")
+
+                estimate_file = None
+                for files in os.listdir(estimate_folder):
+                    print(files)
+                    if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
+                        found['approval'] = True
+                        paths['approval'] = os.path.join(estimate_folder, files)
+                    if "BGIS Estimate" in files and not found["estimate"]:
+                        if files.endswith(".pdf"):
+                            found["estimate"] = True
+                            paths["estimate"] = os.path.join(estimate_folder, files)
+                        else:
+                            estimate_file = os.path.join(estimate_folder, files)
+                
+                if not found["estimate"] and not estimate_file is None :
+                    print("Converting Spreadsheet to PDF", estimate_file)
+
+                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/')
+                    estimate_folder_name = estimate_folder.replace("\\", '/')
+                    subprocess.call(['soffice', '--headless', '--infilter=\"Microsoft Excel 2007/2010 XML\"', '--convert-to', 'pdf:writer_pdf_Export', f'{estimate_file_name}', '--outdir', f'{estimate_folder_name}'])
+
+                    found["estimate"] = True
+                    paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
+
+            else:
+                found['approval'] = True
+                found['estimate'] = True
+
+            if estimate.price > 500.00 and not all(found.values()):
+                error_str = " "
+                for [key, val] in found.items():
+                    if not val:
+                        error_str += key.capitalize() + ", "
+
+                return self(success=False, message="Not all required invoice files can be found:" + error_str[:-2])
+        
+        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd" or job.client.display_name == "Create NSW":
+            found = {"not_required": True}
+            paths = {"invoice": ""}
+        else:
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"purchaseOrder": False}
+            paths = {"invoice": "", "purchaseOrder": ""}
+
+            for files in os.listdir(estimate_folder):
+                if job.po in files:
+                    if files.endswith(".pdf"):
+                        found["purchaseOrder"] = True
+                        paths["purchaseOrder"] = os.path.join(estimate_folder, files)
+            
+            if not found['purchaseOrder']:
+                return self(success=False, message="Error. Purchase Order can not be found")
+
+        if job.location.region.bill_to_address == '':
+            shipToAddress = f"{job.client} {job.location}\n{job.location.getFullAddress()}"
+        else:
+            shipToAddress = job.location.region.bill_to_address
+
+        # 4-3000 Maintenance Income - e5495a96-41a3-4e65-b56d-43e585f2742d
+        payload = {
+            "Date": datetime.today(), 
+            "Customer": {"UID": job.client.myob_uid},
+            "CustomerPurchaseOrderNumber": job.po,
+            "Comment": f"Please find details of progress claim C001 attached.",
+            "ShipToAddress": shipToAddress,
+            "IsTaxInclusive": False,
+            "Lines": [
+                {
+                    "Type": "Transaction",
+                    "Description": str(job),
+                    "Account": {"UID": "e5495a96-41a3-4e65-b56d-43e585f2742d"},
+                    "TaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
+                    "Total": estimate.price,
+                    "Job": {"UID": job.myob_uid},
+                }
+            ],
+            "JournalMemo": f"Sale: {job.client.name}",
+        }
+
+        from myob.schema import CreateMYOBSaleOrder
+
+        create_invoice = CreateMYOBSaleOrder.mutate(root, info, payload)
+        if not create_invoice.success:
+            return self(success=False, message=create_invoice.message)
+        
+        new_invoice = Invoice()
+        new_invoice.myob_uid = create_invoice.invoice['UID']
+        new_invoice.number = create_invoice.invoice['Number']
+        new_invoice.amount = round(float(create_invoice.invoice['Subtotal']), 2)
+        new_invoice.job = job
+        new_invoice.save()
+        new_invoice.job.save() ## Update job stage
+        print("Invoice Saved")
+
+        if create_invoice.filename == None:
+            return self(success=True, message=create_invoice.message)
+
+        shutil.copyfile(f"{settings.MEDIA_ROOT}/invoices/{create_invoice.filename}", f"{job_folder}/Accounts/Aurify/{create_invoice.filename}.pdf")
+        paths['invoice'] = f"{job_folder}/Accounts/Aurify/{create_invoice.filename}.pdf"
+
+        # Create Full Invoice using function from invoice_generator.py
+        print("Invoice Generation Starting")
+        result = generate_invoice(job, paths, create_invoice.invoice, accounts_folder)
+        if not result['success']:
+            return self(success=False, message=result['message'])
+
+        print("Invoice Generated")
+        
         return self(success = True)
+
+class GenerateInvoice(graphene.Mutation):
+    class Arguments:
+        job_id = graphene.String()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, job_id):
+
+        print("Generating Invoice")
+        job = Job.objects.get(id=job_id) if Job.objects.filter(id=job_id).exists() else None 
+        # Error Checking
+        if not job:
+            return self(success=False, message="Job Not Found!")
+
+        if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
+            return self(success=False, message="No Approved Estimate to Invoice")
+
+        if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
+            return self(success=False, message="More than 1 estimate approved!")
+
+        estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
+
+        if estimate.price == 0.0:
+            return self(success=False, message="Estimate price is $0. please check job!")
+
+        if not job.myob_uid:
+            return self(success=False, message="Please sync job with MYOB before creating invoice!")
+
+        if not job.completion_date:
+            return self(success=False, message="Job completion date not recorded!")
+        
+        folder_name = str(job)
+        job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
+
+        if not os.path.exists(job_folder):
+            return self(success=False, message="Job Folder does not exist!")
+
+        accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
+        if not os.path.exists(accounts_folder):
+            os.mkdir(accounts_folder)
+
+        estimate_folder = os.path.join(job_folder, "Estimates", estimate.name)
+
+        if job.client.name == "BGIS":
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"invoice": False, "approval": False, "estimate": False}
+            paths = {"invoice": "", "approval": "", "estimate": ""}
+
+            for files in os.listdir(accounts_folder):
+                if "INV" in files:
+                    found['invoice'] = True
+                    paths['invoice'] = os.path.join(accounts_folder, files)
+            
+            # Only need approval and breakdown on jobs > $500
+            if estimate.price > 500.00:
+                if not os.path.exists(estimate_folder):
+                    return self(success=False, message="Estimate has not been created for this job. Please check the estimate folder.")
+                
+                estimate_file = None
+                for files in os.listdir(estimate_folder):
+                    if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
+                        found['approval'] = True
+                        paths['approval'] = os.path.join(estimate_folder, files)
+                    if "BGIS Estimate" in files and not found["estimate"]:
+                        if files.endswith(".pdf"):
+                            found["estimate"] = True
+                            paths["estimate"] = os.path.join(estimate_folder, files)
+                        else:
+                            estimate_file = os.path.join(estimate_folder, files)
+                
+                if not found["estimate"] and not estimate_file is None :
+                    print("Converting Spreadsheet to PDF", estimate_file)
+
+                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/')
+                    estimate_folder_name = estimate_folder.replace("\\", '/')
+                    subprocess.call(['soffice', '--headless', '--infilter=\"Microsoft Excel 2007/2010 XML\"', '--convert-to', 'pdf:writer_pdf_Export', f'{estimate_file_name}', '--outdir', f'{estimate_folder_name}'])
+
+                    found["estimate"] = True
+                    paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
+
+            else:
+                found['approval'] = True
+                found['estimate'] = True
+        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd" or job.client.display_name == "Create NSW":
+            found = {"invoice": False}
+            paths = {"invoice": ""}
+
+            for files in os.listdir(accounts_folder):
+                if "INV" in files:
+                    found['invoice'] = True
+                    paths['invoice'] = os.path.join(accounts_folder, files)
+
+        else:
+            ## Check the required invoice files that are stored in the relevant estimate folder
+            found = {"invoice": False, "purchaseOrder": False}
+            paths = {"invoice": "", "purchaseOrder": ""}
+
+            for files in os.listdir(accounts_folder):
+                if "INV" in files:
+                    found['invoice'] = True
+                    paths['invoice'] = os.path.join(accounts_folder, files)
+
+            for files in os.listdir(estimate_folder):
+                if job.po in files:
+                    if files.endswith(".pdf"):
+                        found["purchaseOrder"] = True
+                        paths["purchaseOrder"] = os.path.join(estimate_folder, files)
+            
+            if not found['purchaseOrder']:
+                return self(success=False, message="Error. Purchase Order can not be found")
+
+        # GET Invoice from MYOB
+        inv = Invoice.objects.get(job=job)
+        invoice_number = inv.number
+        invoice_uid = inv.myob_uid
+        
+        if not invoice_number or not invoice_uid:
+            return self(success=False, message="Invoice not found")
+        
+        sale_type = "Order"
+        if inv.date_issued != None:
+            sale_type = "Invoice"
+
+        if not found['invoice']:
+            from myob.schema import GetSalePDF
+            pdf_data = GetSalePDF.mutate(root, info, sale_type, invoice_uid)
+
+            if not pdf_data.success:
+                return self(success=False, message=pdf_data.message)
+
+            print("Writing Invoice to File")
+            with open(f"{settings.MEDIA_ROOT}/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", "wb") as f:
+                f.write(pdf_data.data)
+
+            shutil.copyfile(f"{settings.MEDIA_ROOT}/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", f"{accounts_folder}/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf")
+            paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf"
+            found['invoice'] = True
+
+            print("Invoice Saved")
+
+        if not all(found.values()):
+            error_str = " "
+            for key, val in found.items():
+                if not val:
+                    error_str += key.capitalize() + ", "
+
+            return self(success=False, message="Not all required invoice files can be found - " + error_str[:-2])
+        
+        from myob.schema import GetSale
+        get_sale = GetSale.mutate(root, info, sale_type, invoice_number)
+        if not get_sale.success:
+            print("Error", get_sale.sale)
+            return self(success=False, message="Can not find Sale invoice/order")
+        
+        invoice = get_sale.sale['Items'][0]
+        
+        # Create Full Invoice using function from invoice_generator.py
+        result = generate_invoice(job, paths, invoice, accounts_folder)
+
+        print("Invoice Generation Finished")
+
+        return self(success=result['success'], message=result['message'])
 
 class UpdateInvoice(graphene.Mutation):
     class Arguments:
@@ -2320,6 +2661,7 @@ class Mutation(graphene.ObjectType):
     update_invoices = UpdateInvoices.Field()
     delete_invoice = DeleteInvoice.Field()
     transfer_invoice = TransferInvoice.Field()
+    generate_invoice = GenerateInvoice.Field()
 
     create_bill = CreateBill.Field()
     update_bill = UpdateBill.Field()

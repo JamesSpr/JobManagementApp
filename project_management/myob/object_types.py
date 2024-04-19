@@ -5,20 +5,26 @@ from graphene import ObjectType, String, Float, Decimal, Int, DateTime, List, Bo
 
 
 class BasicForeignKeyObject(ObjectType):
+    UID = String()
+    Code = String()
+    URI = String()
+
+class DisplayIDForeignKeyObject(ObjectType):
     UID = String(),
     Name = String(),
     DisplayID = String(),
     URI = String()
 
-class ForeignCurrencyObject(ObjectType):
+class NameForeignKeyObject(ObjectType):
     UID = String()
     Code = String()
     Name = String()
     URI = String()
 
-class TaxCodeObject(ObjectType):
+class CurrencyForeignKeyObject(ObjectType):
     UID = String()
     Code = String()
+    CurrencyName = String()
     URI = String()
 
 class InvoicesObject(ObjectType):
@@ -33,8 +39,8 @@ class InvoicesObject(ObjectType):
 class CustomerPaymentObject(ObjectType):
     UID = String(),
     DepositTo = String(),
-    Account = BasicForeignKeyObject(),
-    Customer = BasicForeignKeyObject(),
+    Account = DisplayIDForeignKeyObject(),
+    Customer = DisplayIDForeignKeyObject(),
     ReceiptNumber = String(),
     Date = String(),
     AmountReceived = Decimal(),
@@ -43,7 +49,7 @@ class CustomerPaymentObject(ObjectType):
     Memo = String(),
     Invoices = InvoicesObject(),    
     TransactionID = String(),
-    ForeignCurrency = ForeignCurrencyObject(),
+    ForeignCurrency = NameForeignKeyObject(),
     CurrencyExchangeRate = Decimal(),
     URI = String(),
     RowVersion = String()
@@ -90,7 +96,7 @@ class BuyingDetailsObject(ObjectType):
     PurchaseLayout = String()
     PrintedForm = String()
     PurchaseOrderDelivery = String()
-    ExpenseAccount = BasicForeignKeyObject()
+    ExpenseAccount = DisplayIDForeignKeyObject()
     PaymentMemo = String()
     PurchaseComment = String()
     SupplierBillingRate = Decimal()
@@ -101,8 +107,8 @@ class BuyingDetailsObject(ObjectType):
     ABN = String()
     ABNBranch = String()
     TaxIdNumber = String()
-    TaxCode = TaxCodeObject()
-    FreightTaxCode = TaxCodeObject()
+    TaxCode = BasicForeignKeyObject()
+    FreightTaxCode = BasicForeignKeyObject()
     UseSupplierTaxCode = Boolean()
     Terms = TermsObject()
 
@@ -135,8 +141,117 @@ class SupplierObject(ObjectType):
     CurrentBalance = Decimal()
     BuyingDetails = BuyingDetailsObject()
     PaymentDetails = PaymentDetailsObject()
-    ForeignCurrency = ForeignCurrencyObject()
+    ForeignCurrency = NameForeignKeyObject()
     LastModifiedDateTime = DateTime()
     PhotoURI = String()
+    URI = String()
+    RowVersion = String()
+
+
+class SaleTermsObject(ObjectType):
+    PaymentIsDue = String()
+    DiscountDate = Int()
+    BalanceDueDate = Int()
+    DiscountForEarlyPayment = Decimal()
+    MonthlyChargeForLatePayment = Decimal()
+    DiscountExpiryDate = DateTime()
+    Discount = Decimal()
+    DiscountForeign = Decimal()
+    DueDate = DateTime()
+    FinanceCharge = Decimal()
+    FinanceChargeForeign = Decimal()
+
+class SaleLinesObject(ObjectType):
+    RowID = Int()
+    Type = String()
+    Description = String()
+    UnitsOfMeasure = String()
+    UnitCount = Decimal()
+    UnitPrice = Decimal()
+    UnitPriceForeign = Decimal()
+    DiscountPercent = Decimal()
+    Total = Decimal()
+    TotalForeign = Decimal()
+    Account = DisplayIDForeignKeyObject()
+    Job = NameForeignKeyObject()
+    TaxCode = BasicForeignKeyObject()
+    RowVersion = String()
+
+class SaleInvoiceObject(ObjectType):
+    UID = String()
+    Number = String()
+    Date = DateTime()
+    CustomerPurchaseOrderNumber = String()
+    Customer = DisplayIDForeignKeyObject()
+    PromisedDate = DateTime()
+    BalanceDueAmount = Decimal()
+    BalanceDueAmountForeign = Decimal()
+    Status = String()
+    Lines = List(SaleLinesObject)
+    ShipToAddress = String()
+    Terms = SaleTermsObject()
+    IsTaxInclusive = Boolean()
+    Subtotal = Decimal()
+    SubtotalForeign = Decimal()
+    Freight = Decimal()
+    FreightForeign = Decimal()
+    FreightTaxCode = BasicForeignKeyObject()
+    TotalTax = Decimal()
+    TotalTaxForeign = Decimal()
+    TotalAmount = Decimal()
+    TotalAmountForeign = Decimal()
+    Category = DisplayIDForeignKeyObject()
+    Salesperson = DisplayIDForeignKeyObject()
+    Comment = String()
+    ShippingMethod = String()
+    JournalMemo = String()
+    ReferralSource = String()
+    InvoiceDeliveryStatus = String()
+    LastPaymentDate = DateTime()
+    CanApplySurcharge = Boolean()
+    Order = BasicForeignKeyObject()
+    OnlinePaymentMethod = String()
+    ForeignCurrency = CurrencyForeignKeyObject()
+    CurrencyExchangeRate = Decimal()
+    LastModified = DateTime()
+    URI = String()
+    RowVersion = String()
+
+class SaleOrderObject(ObjectType):
+    UID = String()
+    Number = String()
+    Date = DateTime()
+    ShipToAddress = String()
+    CustomerPurchaseOrderNumber = String()
+    Customer = DisplayIDForeignKeyObject()
+    Terms = SaleTermsObject()
+    IsTaxInclusive = Boolean()
+    Lines = List(SaleLinesObject)
+    Subtotal = Decimal()
+    SubtotalForeign = Decimal()
+    Freight = Decimal()
+    FreightForeign = Decimal()
+    FreightTaxCode = BasicForeignKeyObject()
+    TotalTax = Decimal()
+    TotalTaxForeign = Decimal()
+    TotalAmount = Decimal()
+    TotalAmountForeign = Decimal()
+    Category = DisplayIDForeignKeyObject
+    Salesperson = DisplayIDForeignKeyObject()
+    Comment = String()
+    ShippingMethod = String()
+    JournalMemo = String()
+    PromisedDate = DateTime()
+    DeliveryStatus = String()
+    ReferralSource = String()
+    AppliedToDate = Decimal()
+    AppliedToDateForeign = Decimal()
+    BalanceDueAmount = Decimal()
+    BalanceDueAmountForeign = Decimal()
+    Status = String()
+    LastPaymentDate = DateTime()
+    ForeignCurrency = CurrencyForeignKeyObject()
+    LastModified = DateTime()
+    CurrencyExchangeRate = Decimal()
     URI = String()
     RowVersion = String()

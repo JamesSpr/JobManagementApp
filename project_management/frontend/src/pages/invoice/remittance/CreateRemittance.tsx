@@ -165,7 +165,6 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                     }
                     else {
                         setSnack({'active': true, variant:'error', message: res.message})
-                        console.log(JSON.parse(res.error))
                         onClose(false);
                     }
 

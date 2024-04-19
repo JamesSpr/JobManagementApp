@@ -785,32 +785,32 @@ const MyobActivate = () => {
     }
 
     const createInvoice = async () => {
-        await axiosPrivate({
-            method: 'post',
-            data: JSON.stringify({
-                query: `mutation myobCreateInvoice($uid:String!, $job:String!) {
-                    myob_create_invoice: myobCreateInvoice(uid:$uid, job:$job) {
-                        success
-                        message
-                    }
-                }`,
-                variables: {
-                    uid: auth?.myob?.id,
-                    job: fields.invoice,
-                }
-            })
-        }).then((response) => {
-            // console.log("success", response);
-            const res = response.data?.data?.myob_create_invoice;
-            if(res.success) {
-                // console.log(res.message)
-                const invoice = JSON.parse(res.message);
-                console.log("Invoice Created:", invoice)
-            }
-            else {
-                console.log("Error:", res.message);
-            }
-        })
+        // await axiosPrivate({
+        //     method: 'post',
+        //     data: JSON.stringify({
+        //         query: `mutation myobCreateInvoice($uid:String!, $job:String!) {
+        //             myob_create_invoice: myobCreateInvoice(uid:$uid, job:$job) {
+        //                 success
+        //                 message
+        //             }
+        //         }`,
+        //         variables: {
+        //             uid: auth?.myob?.id,
+        //             job: fields.invoice,
+        //         }
+        //     })
+        // }).then((response) => {
+        //     // console.log("success", response);
+        //     const res = response.data?.data?.myob_create_invoice;
+        //     if(res.success) {
+        //         // console.log(res.message)
+        //         const invoice = JSON.parse(res.message);
+        //         console.log("Invoice Created:", invoice)
+        //     }
+        //     else {
+        //         console.log("Error:", res.message);
+        //     }
+        // })
     }
 
     const generateInvoice = async () => {

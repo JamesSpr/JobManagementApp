@@ -254,16 +254,20 @@ const JobPage = () => {
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation myobCreateInvoice($uid:String!, $job:String!) {
-                    invoice: myobCreateInvoice(uid:$uid, job:$job) {
+                query: `mutation createInvoice($jobId:String!) {
+                    invoice: createInvoice(jobId:$jobId) {
                         success
                         message
-                        number
+                        invoice {
+                            number
+                            dateCreated
+                            dateIssued
+                            datePaid
+                        }
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
-                    job: job.id,
+                    jobId: job.id,
                 }
             })
         }).then((response) => {
@@ -274,7 +278,7 @@ const JobPage = () => {
                 // console.log(res.message)
                 const result = JSON.parse(res.message);
                 setSnack({active: true, variant:'success', message:result})
-                setJob(prev => ({...prev, invoiceSet: [{...prev.invoiceSet[0], dateIssued: '', datePaid: '', number: res.number, dateCreated: new Date().toISOString().slice(0, 10)}]}))
+                setJob(prev => ({...prev, invoiceSet: [res.invoice]}))
             }
             else {
                 // console.log(response);
@@ -295,8 +299,8 @@ const JobPage = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `
-                mutation convertSale($uid:String!, $invoices: [InvoiceInput]!) {
-                    convert: convertSale(uid: $uid, invoices: $invoices) {
+                mutation convertSale($invoice: InvoiceInput!) {
+                    convert: convertSale(invoice: $invoice) {
                         success
                         message
                     }

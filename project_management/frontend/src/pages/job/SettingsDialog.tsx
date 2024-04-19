@@ -92,20 +92,19 @@ const SettingsDialog = ({open, setOpen, job, setJob, handleInput, setUpdateRequi
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
-                query: `mutation generateInvoice($uid:String!, $job:String!) {
-                    generate_invoice: generateInvoice(uid:$uid, job:$job) {
+                query: `mutation generateInvoice($jobId:String!) {
+                    invoice: generateInvoice(jobId:$jobId) {
                         success
                         message
                     }
                 }`,
                 variables: {
-                    uid: auth?.myob?.id,
-                    job: job.id,
+                    jobId: job.id,
                 }
             })
         }).then((response) => {
             // console.log("success", response);
-            const res = response.data?.data?.generate_invoice;
+            const res = response.data?.data?.invoice;
             
             if(res.success) {
                 setSnack({active: true, variant:'success', message: res.message});

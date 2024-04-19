@@ -1,27 +1,26 @@
-from datetime import date, datetime, timedelta
-from genericpath import exists
+from datetime import datetime, timedelta
 import shutil
-from accounts.models import CustomUser
-from api.models import Client, Contractor, Estimate, Job, Invoice, Bill, RemittanceAdvice
-from api.schema import  JobType
-from myob.object_types import CustomerPaymentObject, SupplierObject
-from myob.input_object_types import SupplierInputObject
-import graphene
-from graphene_django import DjangoObjectType
-from graphql_jwt.decorators import login_required
+from pandas import isna
 import json
 import os
 import subprocess
-from pandas import isna
-from myob.scripts.invoice_generator import generate_invoice
-from .models import MyobUser
-from django.utils import timezone
 import environ
 import requests
 import urllib.parse
 import inspect
+
+import graphene
+from graphene_django import DjangoObjectType
+from graphql_jwt.decorators import login_required
+from django.utils import timezone
 from django.conf import settings
 
+from accounts.models import CustomUser
+from api.models import Client, Contractor, Estimate, Job, Invoice, Bill, RemittanceAdvice
+from api.schema import  JobType
+from .models import MyobUser
+from myob.object_types import CustomerPaymentObject, SupplierObject, SaleInvoiceObject, SaleOrderObject
+from myob.input_object_types import SupplierInputObject, InvoiceInputObject
 
 INVOICE_TEMPLATE = "James Tax Invoice 2022"
 import environ
@@ -138,7 +137,7 @@ def check_user_token_auth_new(usr) -> MyobUser:
         return user
 
 
-def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False) -> dict:
+def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False, return_response:bool = False) -> dict:
     """ Basic Get request to myob with option for filter
 
     ``user`` is the myob user object
@@ -169,6 +168,9 @@ def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False) -> dic
     if response.status_code != 200:
         print(response.status_code, response.text)
         return None
+
+    if return_response:
+        return response
 
     if not all:
         return json.loads(response.text)
@@ -1704,259 +1706,58 @@ class myobImportBGISInvoices(graphene.Mutation):
         print("Imported BGIS Invoices")
         return self(success=True, message=json.dumps(invs))
 
-class myobCreateInvoice(graphene.Mutation):
+
+
+class CreateMYOBSaleOrder(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        job = graphene.String()
+        new_invoice = InvoiceInputObject()
 
     success = graphene.Boolean()
     message = graphene.String()
-    number = graphene.String()
+    invoice = graphene.Field(SaleInvoiceObject)
+    filename = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, job):
-        env = environ.Env()
-        environ.Env.read_env()
-
-        user = check_user_token_auth(uid, info.context.user)
+    def mutate(self, root, info, new_invoice: InvoiceInputObject):
+        user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
-        print("Creating Invoice")
-
-        job = Job.objects.get(id=job) if Job.objects.filter(id=job).exists() else None 
-
-        # Error Checking
-        if not job:
-            return self(success=False, message="Job Not Found!")
-
-        if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
-            return self(success=False, message="No Approved Estimate to use as Invoice.")
-
-        if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
-            return self(success=False, message="More than 1 estimate approved. Please fix and try again.")
-
-        estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
-
-        if estimate.price == 0.0:
-            return self(success=False, message="Estimate price is $0. Please check job.")
-
-        if not job.myob_uid:
-            job_identifier = ""
-            if job.po:
-                job_identifier = job.po
-            elif job.other_id:
-                job_identifier = job.other_id
-
-            if job_identifier == "":
-                return self(success=False, message="Job Identifier Error. Please Sync with MYOB")
-
-            job_data = {
-                "identifier": job_identifier,
-                "name": (job.location.name + " " + job.title)[0:30],
-                "description": str(job),
-                "customer_uid": job.client.myob_uid,
-            }
-            res = CreateMyobJob.mutate(root, info, job_data)
-            if not res.success:
-                return self(success=False, message="Please sync job with MYOB before creating invoice!")
-
-            job.myob_uid = res.uid
-            job.save()        
-
-        if not job.completion_date:
-            return self(success=False, message="Job completion date not recorded.")
-
-        if Invoice.objects.filter(job=job).exists():
-            return self(success=False, message="Invoice already exists for this job.")
-
-        invoice = []
-
-        folder_name = str(job)
-        job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
-
-        if not os.path.exists(job_folder):
-            return self(success=False, message="Job Folder does not exist.")
-
-        accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
-
-        if not os.path.exists(accounts_folder):
-            os.mkdir(accounts_folder)
-
-        if not os.path.exists(accounts_folder):
-            return self(success=False, message="Jobs Accounts Folder does not exist.")
-
-        estimate_folder = os.path.join(job_folder, "Estimates", estimate.name.strip())
-        
-        if not os.path.exists(estimate_folder):
-            return self(success=False, message="Job Estimate Folder does not exist.")
-
-        if job.client.name == "BGIS":
-            ## Check the required invoice files that are stored in the relevant estimate folder
-            found = {"approval": False, "estimate": False}
-            paths = {"invoice": "", "approval": "", "estimate": ""}
-            
-            # Only need approval and breakdown on jobs > $500
-            if estimate.price > 500.00:
-                if not os.path.exists(estimate_folder):
-                    return self(success=False, message="Jobs Estimate Folder does not exist!")
-
-                estimate_file = None
-                for files in os.listdir(estimate_folder):
-                    print(files)
-                    if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
-                        found['approval'] = True
-                        paths['approval'] = os.path.join(estimate_folder, files)
-                    if "BGIS Estimate" in files and not found["estimate"]:
-                        if files.endswith(".pdf"):
-                            found["estimate"] = True
-                            paths["estimate"] = os.path.join(estimate_folder, files)
-                        else:
-                            estimate_file = os.path.join(estimate_folder, files)
-                
-                if not found["estimate"] and not estimate_file is None :
-                    print("Converting Spreadsheet to PDF", estimate_file)
-
-                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/')
-                    estimate_folder_name = estimate_folder.replace("\\", '/')
-                    subprocess.call(['soffice', '--headless', '--infilter=\"Microsoft Excel 2007/2010 XML\"', '--convert-to', 'pdf:writer_pdf_Export', f'{estimate_file_name}', '--outdir', f'{estimate_folder_name}'])
-
-                    found["estimate"] = True
-                    paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
-
-            else:
-                found['approval'] = True
-                found['estimate'] = True
-
-            if estimate.price > 500.00 and not all(found.values()):
-                error_str = " "
-                for [key, val] in found.items():
-                    if not val:
-                        error_str += key.capitalize() + ", "
-
-                return self(success=False, message="Not all required invoice files can be found:" + error_str[:-2])
-        
-        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
-            found = {"not_required": True}
-            paths = {"invoice": ""}
-        else:
-            ## Check the required invoice files that are stored in the relevant estimate folder
-            found = {"purchaseOrder": False}
-            paths = {"invoice": "", "purchaseOrder": ""}
-
-            for files in os.listdir(estimate_folder):
-                if job.po in files:
-                    if files.endswith(".pdf"):
-                        found["purchaseOrder"] = True
-                        paths["purchaseOrder"] = os.path.join(estimate_folder, files)
-            
-            if not found['purchaseOrder']:
-                return self(success=False, message="Error. Purchase Order can not be found")
-
-        if job.location.region.bill_to_address == '':
-            shipToAddress = f"{job.client} {job.location}\n{job.location.getFullAddress()}"
-        else:
-            shipToAddress = job.location.region.bill_to_address
-
         print("Posting Sale Order")
 
-        # 4-3000 Maintenance Income - e5495a96-41a3-4e65-b56d-43e585f2742d
         # POST Invoice to MYOB
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service/"
-        payload = json.dumps({
-            "Date": datetime.today(), 
-            "Customer": {"UID": job.client.myob_uid},
-            "CustomerPurchaseOrderNumber": job.po,
-            "Comment": f"Please find details of progress claim C001 attached.",
-            "ShipToAddress": shipToAddress,
-            "IsTaxInclusive": False,
-            "Lines": [
-                {
-                    "Type": "Transaction",
-                    "Description": str(job),
-                    "Account": {"UID": "e5495a96-41a3-4e65-b56d-43e585f2742d"},
-                    "TaxCode": {"UID": "d35a2eca-6c7d-4855-9a6a-0a73d3259fc4"},
-                    "Total": estimate.price,
-                    "Job": {"UID": job.myob_uid},
-                }
-            ],
-            "JournalMemo": f"Sale: {job.client.name}",
-        }, default=str)
+        endpoint = "Sale/Order/Service"
+        response = myob_post(user, endpoint, json.dumps(new_invoice, default=str))
 
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-            'Content-Type': 'application/json',
-        }
-        response = requests.request("POST", url, headers=headers, data=payload)
-
-        if(not response.status_code == 201):
-            print("Error:", job, response)
-            return self(success=False, message=json.loads(response.text))
+        if not response.status_code == 201:
+            print("Error:", response.text)
+            return self(success=False, message=json.dumps(response.text))
 
         # Get the invoice number and create new invoice model
-        invoice_uid = response.headers['Location'][-36:]
-        print("Invoice Created for", str(job), " - UID =", invoice_uid)
+        invoice_uid = get_response_uid(response)
+        print("Invoice Created", invoice_uid)
 
         ## Confirm Creation and get details (number)
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter=UID eq guid'{invoice_uid}'"
-        
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        res = requests.request("GET", url, headers=headers, data={})
-        res = json.loads(res.text)
-
-        invoice = res['Items'][0]
-
-        new_invoice, created = Invoice.objects.get_or_create(myob_uid=invoice_uid)
-        new_invoice.number = invoice['Number']
-        new_invoice.date = invoice['Date'].split('T')[0]
-        new_invoice.amount = round(float(invoice['Subtotal']), 2)
-        new_invoice.job = job
-        new_invoice.save()
-        new_invoice.job.save() ## Update job stage
+        get_filter = f"UID eq guid'{invoice_uid}'"
+        get_inv = myob_get(user, endpoint, get_filter)
+        invoice = get_inv['Items'][0]
 
         # Get invoice as PDF
         print("Getting PDF")
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
-    
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-            'Accept': 'Application/PDF'
-        }
-        pdf_response = requests.request("GET", url, headers=headers, data={})
+        pdf_endpoint = f"Sale/Order/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
+        pdf_response = myob_get(user, pdf_endpoint, return_response=True)
 
-        if(not pdf_response.status_code == 200):
-            print(pdf_response, "Error retrieving PDF for", job)
-            return self(success=False, message=json.loads(response.text))
+        if not pdf_response.status_code == 200:
+            print(pdf_response.text, "Error retrieving PDF for Invoice", invoice["Number"])
+            return self(success=True, message="Invoice created successfully but there was an erroring creating the PDF", invoice=invoice)
         
         print("Writing Invoice to File")
-        with open(f"{settings.MEDIA_ROOT}/invoices/INV{invoice['Number']} - {job.po}.pdf", "wb") as f:
+        invoice_filename = f"INV{invoice['Number']} - {invoice['CustomerPurchaseOrderNumber']}.pdf"
+        with open(f"{settings.MEDIA_ROOT}/invoices/{invoice_filename}", "wb") as f:
             f.write(pdf_response.content)
 
-        shutil.copyfile(f"{settings.MEDIA_ROOT}/invoices/INV{invoice['Number']} - {job.po}.pdf", f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf")
-        paths['invoice'] = f"{job_folder}/Accounts/Aurify/INV{invoice['Number']} - {job.po}.pdf"
-
-        print("Invoice Saved")
-
-        # Create Full Invoice using function from invoice_generator.py
-        print("Invoice Generation Starting")
-        result = generate_invoice(job, paths, invoice, accounts_folder)
-        if not result['success']:
-            return self(success=False, message=result['message'])
-
-        print("Invoice Generated")
-        return self(success=True, message=json.dumps(result['message']), number=invoice['Number'])
+        return self(success=True, message="Invoice Successfully Created in MYOB", invoice=invoice, filename=invoice_filename)
 
 class BillInputType(graphene.InputObjectType):
     id = graphene.String()
@@ -2274,6 +2075,20 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
         # Convert the sale order to invoice
         if order['Status'] == "ConvertedToInvoice":
             print("Already Converted:", order['Number'])
+            url = "Sale/Invoice/Service"
+            filter = f"Number eq '{invoice.number}'"
+            response = myob_get(user, url, filter)
+
+            inv = response['Items']
+            inv = inv[0]
+            invoice.myob_uid = inv['UID']
+            if not invoice.date_issued: invoice.date_issued = datetime.now().strftime("%Y-%m-%d")
+            invoice.save()
+
+            # save job to update stage
+            job = invoice.job
+            job.save()
+
             return self(success=True, message="Already an Invoice")
             
         # Remove line RowIDs for the 
@@ -2305,8 +2120,8 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
 
         post_response = myob_post(user, post_url, payload)        
         
-        if response.status_code != 200 and response.status_code != 201:
-            print(response.status_code, response.text)
+        if post_response.status_code != 200 and post_response.status_code != 201:
+            print(post_response.status_code, post_response.text)
             return self(success=False, message=post_response.text)
         
         invoice_uid = get_response_uid(post_response)
@@ -2321,233 +2136,56 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
 
         return self(success=True, message="Successfully Converted Sale Order")
 
-## Test Function
-# class myobCustomFunction(graphene.Mutation):
-    # class Arguments:
-
-#     success = graphene.Boolean()
-#     message = graphene.String()
-#     obj = graphene.String()
-#     items = graphene.List(graphene.String)
-
-#     @classmethod
-#     @login_required
-#     def mutate(self, root, info):
-#         env = environ.Env()
-#         environ.Env.read_env()
-
-#         user = check_user_token_auth(uid, info.context.user)
-#         if user is None:
-#             return self(success=False, message="MYOB User Authentication Error")
-
-#         url = "Sale/Invoice/Service"
-#         response = myob_get(user, url, all=True)
-#         res = response['Items']
-
-#         for invoice in res:
-#             if Invoice.objects.filter(number=invoice['Number']).exists():
-#                 inv = Invoice.objects.get(number=invoice['Number'])
-#                 if not inv.myob_uid == invoice['UID']:
-#                     print(invoice['Number'])
-#                     inv.myob_uid = invoice['UID']
-#                     inv.save()
-
-class generateInvoice(graphene.Mutation):
+class GetSale(graphene.Mutation):
     class Arguments:
-        uid = graphene.String()
-        job = graphene.String()
-
+        sale_type = graphene.String()
+        invoice_number = graphene.String()
+    
     success = graphene.Boolean()
     message = graphene.String()
-
+    sale = graphene.Field(SaleInvoiceObject) or graphene.Field(SaleOrderObject)
+    
     @classmethod
     @login_required
-    def mutate(self, root, info, uid, job):
-        env = environ.Env()
-        environ.Env.read_env()
-
-        user = check_user_token_auth(uid, info.context.user)
+    def mutate(self, root, info, sale_type: str, invoice_number: str):
+        user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
-        print("Creating Invoice")
-        job = Job.objects.get(id=job) if Job.objects.filter(id=job).exists() else None 
-        # Error Checking
-        if not job:
-            return self(success=False, message="Job Not Found!")
+        endpoint = f"Sale/{sale_type}/Service"
+        filter = f"Number eq '{invoice_number}'"
+        sale = myob_get(user, endpoint, filter)
 
-        if not Estimate.objects.filter(job_id=job).exclude(approval_date=None).exists():
-            return self(success=False, message="No Approved Estimate to Invoice")
+        return self(success=True, message="Successfully Retrieved Sale", sale=sale)
 
-        if len(Estimate.objects.filter(job_id=job).exclude(approval_date=None)) > 1:
-            return self(success=False, message="More than 1 estimate approved!")
+class GetSalePDF(graphene.Mutation):
+    class Arguments:
+        sale_type = graphene.String()
+        uid = graphene.String()
 
-        estimate = Estimate.objects.filter(job_id=job).exclude(approval_date=None)[0]
+    success = graphene.Boolean()
+    message = graphene.String()
+    data = graphene.String()
 
-        if estimate.price == 0.0:
-            return self(success=False, message="Estimate price is $0. please check job!")
-
-        if not job.myob_uid:
-            return self(success=False, message="Please sync job with MYOB before creating invoice!")
-
-        if not job.completion_date:
-            return self(success=False, message="Job completion date not recorded!")
+    @classmethod
+    @login_required
+    def mutate(self, root, info, sale_type, uid):
         
-        invoice = []
-
-        folder_name = str(job)
-        job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
-
-        if not os.path.exists(job_folder):
-            return self(success=False, message="Job Folder does not exist!")
-
-        accounts_folder = os.path.join(job_folder, "Accounts", "Aurify")
-        if not os.path.exists(accounts_folder):
-            os.mkdir(accounts_folder)
-
-        estimate_folder = os.path.join(job_folder, "Estimates", estimate.name)
-
-        if job.client.name == "BGIS":
-            ## Check the required invoice files that are stored in the relevant estimate folder
-            found = {"invoice": False, "approval": False, "estimate": False}
-            paths = {"invoice": "", "approval": "", "estimate": ""}
-
-            for files in os.listdir(accounts_folder):
-                if "INV" in files:
-                    found['invoice'] = True
-                    paths['invoice'] = os.path.join(accounts_folder, files)
-            
-            # Only need approval and breakdown on jobs > $500
-            if estimate.price > 500.00:
-                if not os.path.exists(estimate_folder):
-                    return self(success=False, message="Estimate has not been created for this job. Please check the estimate folder.")
-                
-                estimate_file = None
-                for files in os.listdir(estimate_folder):
-                    if "Approval" in files and not found['approval'] and files.endswith(".pdf"):
-                        found['approval'] = True
-                        paths['approval'] = os.path.join(estimate_folder, files)
-                    if "BGIS Estimate" in files and not found["estimate"]:
-                        if files.endswith(".pdf"):
-                            found["estimate"] = True
-                            paths["estimate"] = os.path.join(estimate_folder, files)
-                        else:
-                            estimate_file = os.path.join(estimate_folder, files)
-                
-                if not found["estimate"] and not estimate_file is None :
-                    print("Converting Spreadsheet to PDF", estimate_file)
-
-                    estimate_file_name = estimate_file.split('\\')[len(estimate_file.split('\\'))-1].replace("\\", '/')
-                    estimate_folder_name = estimate_folder.replace("\\", '/')
-                    subprocess.call(['soffice', '--headless', '--infilter=\"Microsoft Excel 2007/2010 XML\"', '--convert-to', 'pdf:writer_pdf_Export', f'{estimate_file_name}', '--outdir', f'{estimate_folder_name}'])
-
-                    found["estimate"] = True
-                    paths["estimate"] = estimate_file.strip(".xlsm") + ".pdf" 
-
-            else:
-                found['approval'] = True
-                found['estimate'] = True
-        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd":
-            found = {"invoice": False}
-            paths = {"invoice": ""}
-
-            for files in os.listdir(accounts_folder):
-                if "INV" in files:
-                    found['invoice'] = True
-                    paths['invoice'] = os.path.join(accounts_folder, files)
-
-        else:
-            ## Check the required invoice files that are stored in the relevant estimate folder
-            found = {"invoice": False, "purchaseOrder": False}
-            paths = {"invoice": "", "purchaseOrder": ""}
-
-            for files in os.listdir(accounts_folder):
-                if "INV" in files:
-                    found['invoice'] = True
-                    paths['invoice'] = os.path.join(accounts_folder, files)
-
-            for files in os.listdir(estimate_folder):
-                if job.po in files:
-                    if files.endswith(".pdf"):
-                        found["purchaseOrder"] = True
-                        paths["purchaseOrder"] = os.path.join(estimate_folder, files)
-            
-            if not found['purchaseOrder']:
-                return self(success=False, message="Error. Purchase Order can not be found")
-
-        # GET Invoice from MYOB
-        inv = Invoice.objects.get(job=job)
-        invoice_number = inv.number
-        invoice_uid = inv.myob_uid
+        user = check_user_token_auth_new(info.context.user)
+        if user is None:
+            return self(success=False, message="MYOB User Authentication Error")
         
-        if not invoice_number or not invoice_uid:
-            return self(success=False, message=json.dumps("Invoice not found"))
+        print("Getting PDF")
+        endpoint = f"Sale/{sale_type}/Service/{uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
+    
+        pdf_response = myob_get(user, endpoint)
+
+        if(pdf_response.status_code != 200):
+            print(pdf_response, "Error retrieving PDF")
+            return self(success=False, message=json.loads(pdf_response.text))
         
-        sale_type = "Order"
-        if inv.date_issued != None:
-            sale_type = "Invoice"
+        return self(success=True, message="Successfully got PDF", data=pdf_response.content)
 
-        if not found['invoice']:
-            print("Getting PDF")
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
-        
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-                'Accept': 'Application/PDF'
-            }
-            pdf_response = requests.request("GET", url, headers=headers, data={})
-
-            if(pdf_response.status_code != 200):
-                print(pdf_response, "Error retrieving PDF for", job)
-                return self(success=False, message=json.loads(pdf_response.text))
-            else:
-                print("Writing Invoice to File")
-                with open(f"{settings.MEDIA_ROOT}/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", "wb") as f:
-                    f.write(pdf_response.content)
-
-                shutil.copyfile(f"{settings.MEDIA_ROOT}/invoices/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf", f"{accounts_folder}/INV{invoice_number} - {str(job).split(' - ')[0]}.pdf")
-                paths['invoice'] = f"{accounts_folder}/INV{invoice_number} - {job.po}.pdf"
-                found['invoice'] = True
-
-                print("Invoice Saved")
-
-        if not all(found.values()):
-            error_str = " "
-            for key, val in found.items():
-                if not val:
-                    error_str += key.capitalize() + ", "
-
-            return self(success=False, message="Not all required invoice files can be found - " + error_str[:-2])
-
-        print("Invoice: ", invoice_number)
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/{sale_type}/Service?$filter=Number eq '{invoice_number}'"
-        
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        response = requests.request("GET", url, headers=headers, data={})
-        
-        ## Save Invoice as PDF
-        if not response.status_code == 200:
-            print("Error:", job)
-            return self(success=False, message=json.loads(response.text))
-        else:
-            res = json.loads(response.text)
-            res = res['Items']
-            invoice = res[0]
-            
-            # Create Full Invoice using function from invoice_generator.py
-            result = generate_invoice(job, paths, invoice, accounts_folder)
-
-            print("Invoice Generation Finished")
-            
-            return self(success=result['success'], message=result['message'])
 
 class GetTimesheets(graphene.Mutation):
     class Arguments:
@@ -2739,16 +2377,12 @@ class Mutation(graphene.ObjectType):
     myob_import_bgis_invoices = myobImportBGISInvoices.Field()
 
     create_myob_job = CreateMyobJob.Field()
-    myob_create_invoice = myobCreateInvoice.Field()
+    myob_create_sale_order = CreateMYOBSaleOrder.Field()
     myob_create_bill = CreateMyobBill.Field()
     myob_update_bill = myobUpdateBill.Field()
     
-    generate_invoice = generateInvoice.Field()
     repair_sync = myobRepairJobSync.Field()
     convert_sale = convertSaleOrdertoInvoice.Field()
-
-    # myob_custom_function = myobCustomFunction.Field()
-
 
 # 4-1000 Construction Income - 8fa9fc62-8cb0-4cad-9f08-686ffa76c98b
 # 5-1000 Subcontractors - 6c8f22f3-39dc-41f0-9f59-0949f9ee0b76
