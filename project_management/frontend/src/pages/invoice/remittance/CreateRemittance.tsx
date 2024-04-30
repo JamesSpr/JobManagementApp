@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo }  from 'react';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
-import { Dialog, DialogContent, DialogTitle, Grid, Typography, IconButton } from '@mui/material';
+import { Dialog, DialogContent, DialogTitle, Grid, Typography, IconButton, Divider } from '@mui/material';
 import { FileUploadSection, InputField, ProgressButton, SnackBar, Table, Tooltip } from '../../../components/Components';
 import CloseIcon from '@mui/icons-material/Close';
 import { Box } from '@mui/system';
@@ -29,6 +29,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
     const [remittanceDate, setRemittanceDate] = useState('');
     const [invalidInvoices, setInvalidInvoices] = useState(true);
     const [uploaded, setUploaded] = useState(false);
+    const [create, setCreate] = useState(false);
     const [snack, setSnack] = useState<SnackType>({active: false, message: '', variant:'info'})
     const [fieldError, setFieldError] = useState({})
     
@@ -108,6 +109,12 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
 
                 setWaiting(prev => ({...prev, 'submit': true}));
 
+                // Remove irrelevant dates as graphql recieves string index out of bounds when a date with the value "" is sent
+                for(let i = 0; i < data.length; i++) {
+                    const {dateCreated, dateIssued, datePaid, ...newInvoice} = data[i]
+                    data[i] = newInvoice
+                }
+ 
                 // MYOB Payment
                 await axiosPrivate({
                     method: 'post',
@@ -382,7 +389,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
             </DialogTitle>
             <DialogContent style={{padding: '4px 12px'}}>
                 <Grid container spacing={1} direction='column' alignItems='center'>
-                    { uploaded ? <>
+                    { uploaded || create ? <>
                         <Grid item xs={12}>
                             <InputField width={300}
                                 type="select"
@@ -429,6 +436,13 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                                     button="Upload"
                                     />
                             </Box>
+                        </Grid>
+                        <Divider>OR</Divider>
+                        <Grid item xs={12}>
+                            <p className='centered'>Manually Create a New Remittance Advice</p>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <ProgressButton name='Create New' buttonVariant='outlined' waiting={false} onClick={() => setCreate(true)} />
                         </Grid>
                         </>
                     }
