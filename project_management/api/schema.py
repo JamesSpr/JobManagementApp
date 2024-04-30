@@ -1712,7 +1712,7 @@ class CreateInvoice(graphene.Mutation):
                 "description": str(job),
                 "customer_uid": job.client.myob_uid,
             }
-            res = CreateJobInMyob.mutate(root, info, job_data)
+            res = CreateJobInMyob.mutate(root, info, job_id)
             if not res.success:
                 return self(success=False, message="Please sync job with MYOB before creating invoice!")
 
