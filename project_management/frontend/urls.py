@@ -19,6 +19,7 @@ urlpatterns = [
     path('invoices/update/<str:input>', index, name="invoices-update"),
     path('analytics', index, name="analytics"),
     path('financials', index, name="financials"),
+    path('reports', index, name="reports"),
     path('job', index, name="jobs"),
     # path('job/approved/<str:input>', index, name="jobs-approved"),
     path('job/create/<str:input>', index, name="job-create"),

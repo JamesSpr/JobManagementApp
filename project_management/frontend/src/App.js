@@ -24,7 +24,7 @@ import CompanyAdmin from "./pages/admin/Company";
 import Timesheets from "./pages/timesheets/Timesheets";
 import ClientList from "./pages/clients/ClientList";
 import Client from "./pages/clients/Client";
-
+import Reports from "./pages/reporting/Reports"
 
 const App = () => {
     return ( 
@@ -62,6 +62,8 @@ const App = () => {
                         <Route element={<RequireAuth allowedRoles={['PMU', 'SMU', 'ADM', 'DEV']} />} >
                             <Route path="admin" element={<CompanyAdmin />} />
                             <Route path="analytics" element={<Dashboard />} />
+                            <Route path="reports" element={<Reports />} />
+
                         </Route>
 
                         <Route element={<RequireAuth allowedRoles={['ADM', 'DEV']} />} >

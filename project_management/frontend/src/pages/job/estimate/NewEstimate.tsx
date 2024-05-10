@@ -118,7 +118,7 @@ const NewEstimate = ({job, setJob, users, snack, setSnack}: {
                 setJob(prev => ({...prev, estimateSet: [...prev.estimateSet, res.estimate]}))
             }
             else {
-                setSnack({active: true, variant:'error', message: 'Error Creating Estimate'})
+                setSnack({active: true, variant:'error', message: res.message})
             }
 
         }).catch((err) => {

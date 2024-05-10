@@ -170,6 +170,7 @@ const Timesheets = () => {
                 }),
             }).then((response) => {
                 const res = response?.data?.data.details;
+                console.log(res);
 
                 if(res?.success) {
                     setPayrollDetails(JSON.parse(res.details));
@@ -232,6 +233,7 @@ const Timesheets = () => {
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { ConstructionOutlined } from '@mui/icons-material'
 
 const TimesheetTable = ({timesheets, setTimesheets}: {
     timesheets: TimesheetType[]

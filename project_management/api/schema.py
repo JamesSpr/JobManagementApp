@@ -709,8 +709,10 @@ class CreateEstimate(graphene.Mutation):
 
         try:
             os.mkdir(os.path.join(MAIN_FOLDER_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
-        except:
-            return self(success=False, message="Job Folder Cannot Be Found. Please Check OneDrive")
+        except Exception as e: 
+            print("Failed to create folder", os.path.join(MAIN_FOLDER_PATH, str(job).strip(), "Estimates", str(estimate.name).strip()))
+            print(e)
+            return self(success=False, message="Folder Cannot Be Found/Created. Please Check OneDrive")
 
         est = Estimate()
         est.quote_by = CustomUser.objects.get(id=estimate.quote_by.id)

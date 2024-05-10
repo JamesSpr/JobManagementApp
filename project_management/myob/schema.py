@@ -67,7 +67,7 @@ def check_user_token_auth(uid, usr):
             if not response.status_code == 200:
                 print("MYOB Authentication error for", user.username)
                 print(response)
-                return False
+                return None
 
             res = json.loads(response.text)
 
@@ -121,7 +121,7 @@ def check_user_token_auth_new(usr) -> MyobUser:
         if not response.status_code == 200:
             print("MYOB Authentication error for", user.username)
             print(response)
-            return False
+            return None
 
         res = json.loads(response.text)
 
@@ -352,7 +352,7 @@ class updateOrCreateMyobAccount(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, access_token, expires_in, refresh_token, uid, user_id, username=None):
+    def mutate(self, root, info, user_id, access_token, expires_in, refresh_token, uid, username=None):
 
         app_user = CustomUser.objects.get(id=user_id) if CustomUser.objects.filter(id=user_id).exists() else False
         user = MyobUser.objects.get(id=uid) if is_valid_myob_user(uid, info.context.user) else False
@@ -378,6 +378,32 @@ class updateOrCreateMyobAccount(graphene.Mutation):
 
         return self(success=True, message="Account Updated")
 
+class MyobUserInput(graphene.InputObjectType):
+    id = graphene.String()
+    username = graphene.String()
+    uid = graphene.String()
+
+class UpdateMyobUser(graphene.Mutation):
+    class Arguments:
+        user_details = MyobUserInput()
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, user_details):
+
+        user = MyobUser.objects.get(id=user_details.id) if is_valid_myob_user(user_details.id, info.context.user) else False
+        
+        if not user:
+            return self(success=False, message="Could Not Find User")
+
+        user.username = user_details.username
+        user.save()
+
+        return self(success=True, message="Account Updated")
+
 class DeleteMyobUser(graphene.Mutation):
     class Arguments:
         # user_id = graphene.String()
@@ -387,9 +413,9 @@ class DeleteMyobUser(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, user_id, myob_uid):
+    def mutate(self, root, info, myob_uid):
         myob_user = MyobUser.objects.get(id=myob_uid) if MyobUser.objects.filter(id=myob_uid).exists() else False
-        app_user = CustomUser.objects.get(id=user_id) if CustomUser.objects.filter(id=user_id).exists() else False
+        app_user = CustomUser.objects.get(myob_user=myob_user) if CustomUser.objects.filter(myob_user=myob_user).exists() else False
         
         app_user.myob_user = None
         app_user.save()
@@ -2067,7 +2093,7 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
 
         order = response['Items']
         if len(order) == 0:
-            return self(success=True, message="Invoice not found")
+            return self(success=False, message="Invoice not found")
         if len(order) > 1:
             return self(success=False, message="Multiple Invoices Found")
         order = order[0]
@@ -2126,8 +2152,8 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
         
         invoice_uid = get_response_uid(post_response)
 
-        invoice.myob_uid = invoice_uid
-        if not invoice.date_issued: invoice.date_issued = invoice.date_issued
+        invoice.myob_uid = invoice_uid            
+        if not invoice.date_issued: invoice.date_issued = datetime.now().strftime("%Y-%m-%d")
         invoice.save()
 
         # save job to update stage
@@ -2345,6 +2371,8 @@ class Mutation(graphene.ObjectType):
     myob_initial_connection = myobInitialConnection.Field()
     myob_get_access_token = myobGetAccessToken.Field()
     update_or_create_myob_account = updateOrCreateMyobAccount.Field()
+    update_myob_user = UpdateMyobUser.Field()
+
     delete_myob_user = DeleteMyobUser.Field()
     myob_refresh_token = myobRefreshToken.Field()
 
