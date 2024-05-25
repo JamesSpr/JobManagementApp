@@ -80,15 +80,15 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
         }
         
         const openTimesheetEditor = () => {
-            console.log("Opening Editor")
-            console.log(payrollDetails)
-            console.log({
-                id: row.id,
-                employee: employee,
-                work: row.original.workdaySet,
-                requested: currentEntitlements,
-                accrued: employeePayrollDetails?.['Entitlements'] ?? undefined
-            })
+            // console.log("Opening Editor")
+            // console.log(payrollDetails)
+            // console.log({
+            //     id: row.id,
+            //     employee: employee,
+            //     work: row.original.workdaySet,
+            //     requested: currentEntitlements,
+            //     accrued: employeePayrollDetails?.['Entitlements'] ?? undefined
+            // })
             setOpenEditor(true);
             setEmployeeEntitlements({
                 id: row.id,

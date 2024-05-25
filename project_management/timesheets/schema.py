@@ -66,7 +66,7 @@ class GetMyobActiveEmployees(graphene.Mutation):
         employees = get_employees.employees
         employees = employees
 
-        not_included = ["David Phillips", "Leo Sprague", "Colin Baggott", "Robert Stapleton", "Brett Macpherson"]
+        not_included = ["David Phillips"]
         active_employees = []
         for employee in employees:
             emp = Employee()
@@ -292,7 +292,6 @@ class UpdateTimesheet(graphene.Mutation):
         return self(success=True)
 
 class SyncMyobJobs(graphene.Mutation):
-
     success = graphene.Boolean()
     message = graphene.String()
     details = graphene.String()
@@ -307,7 +306,6 @@ class SyncMyobJobs(graphene.Mutation):
         if not get_jobs.success:
             return self(success=False, message=get_jobs.message)
         jobs = json.loads(get_jobs.jobs)
-        jobs = jobs["Items"]
 
         # Update the pay basis for employees to ensure correct pay
         for j in jobs:
@@ -335,6 +333,10 @@ class GetMyobPayrollDetails(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info):
+        get_active_employees = GetMyobActiveEmployees.mutate(root, info)
+        if not get_active_employees.success:
+            return self(success=False, message=get_active_employees.message)
+
         get_payroll_details = GetPayrollDetails.mutate(root, info)
         if not get_payroll_details.success:
             return self(success=False, message=get_payroll_details.message)

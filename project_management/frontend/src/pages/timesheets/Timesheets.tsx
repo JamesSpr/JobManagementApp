@@ -170,7 +170,6 @@ const Timesheets = () => {
                 }),
             }).then((response) => {
                 const res = response?.data?.data.details;
-                console.log(res);
 
                 if(res?.success) {
                     setPayrollDetails(JSON.parse(res.details));

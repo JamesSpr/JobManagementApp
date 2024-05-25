@@ -11,6 +11,11 @@ from timesheets.scripts.save_timesheets import get_myob_employees, get_employee_
 from timesheets.scripts.exchange_email import ExchangeEmail
 from timesheets.models import Timesheet, Employee
 
+
+env = environ.Env()
+environ.Env.read_env()
+email = ExchangeEmail()
+
 @shared_task
 def restart_processing_timesheet():
     # Turn on task scheduler
@@ -20,13 +25,10 @@ def restart_processing_timesheet():
 
 @shared_task
 def process_timesheets():
-    email = ExchangeEmail()
     email.connect()
     email.account.inbox.refresh()
 
     if email.account.inbox.all().count() > 0:
-        env = environ.Env()
-        environ.Env.read_env()
 
         date = datetime.now()
         today = date.date()
@@ -98,10 +100,7 @@ def process_timesheets():
 @shared_task
 def timesheet_emails():
     """ Connects to an exchange email server and sends emails about timesheets"""   
-    env = environ.Env()
-    environ.Env.read_env()
-
-    email = ExchangeEmail()
+    
     email.connect()
 
     date = datetime.now()
@@ -110,8 +109,6 @@ def timesheet_emails():
     # Get the active employees from MYOB
     employees = get_active_myob_employees()
     employee_emails = get_emails_from_myob_employees(employees)
-    # employee_emails = ['james@aurify.com.au']
-
     with open(os.path.join(env("SHAREPOINT_DOCUMENTS_PATH"), "Aurify Timesheet.xlsx"), "rb") as f:
         timesheet_template = FileAttachment(name="Aurify Timesheet.xlsx", content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.template", content=f.read())
 
@@ -155,16 +152,17 @@ def timesheet_emails():
                 if employee['Addresses'][0]['Email'] != "":
                     remaining_employees.append(employee)
         
-        if len(remaining_employees) > 0:
-            # Final Reminder
-            for employee in remaining_employees:
-                subject = "Reminder: Submit your Timesheet Today"
-                body = """<p>Hi """ + f"{employee['FirstName']}" + """,</p>
-                <p>We need to process timesheets and have not yet received yours.</p>
-                <p>If you have not already, please complete your timesheet and reply to this email or send to <a href='mailto:HR@aurify.com.au'>HR@aurify.com.au</a></p>"""
-                email.send_email(to=[employee['Addresses'][0]['Email']], cc=None, bcc=None, subject=subject, attachments=[timesheet_template], body=body, importance=email.Importance.HIGH)
-                
+        if len(remaining_employees) == 0:
             return
+        
+        # Final Reminder
+        for employee in remaining_employees:
+            subject = "Reminder: Submit your Timesheet Today"
+            body = """<p>Hi """ + f"{employee['FirstName']}" + """,</p>
+            <p>We need to process timesheets and have not yet received yours.</p>
+            <p>If you have not already, please complete your timesheet and reply to this email or send to <a href='mailto:HR@aurify.com.au'>HR@aurify.com.au</a></p>"""
+            email.send_email(to=[employee['Addresses'][0]['Email']], cc=None, bcc=None, subject=subject, attachments=[timesheet_template], body=body, importance=email.Importance.HIGH)
+                
         
         
 
