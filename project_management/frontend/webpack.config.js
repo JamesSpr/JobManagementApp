@@ -5,7 +5,7 @@ const source = path.resolve(__dirname, "src");
 module.exports = {
   entry: "./src/index.tsx",
   output: {
-    path: path.resolve(__dirname, "./static/frontend"),
+    path: path.resolve(__dirname, "/var/www/aurify/static/frontend"),
     filename: "[name].js",
   },
   resolve: {

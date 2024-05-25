@@ -90,7 +90,7 @@ def run():
         body = f"""<p>Hi Leo,</p>
         <p>The timesheets are ready to be processed.</p>
         <p><a href="https://maintenance.aurify.com.au/timesheets/{pay_period.strftime("%Y-%m-%d")}">Click here to access the periods timesheets.</a></p>"""
-        email.send_email(to=["leo@aurify.com.au"], cc=None, bcc=None, subject=subject, attachments=[], body=body, importance=email.Importance.HIGH)
+        email.send_email(to=["leo@aurify.com.au"], cc=None, bcc=["james@aurify.com.au"], subject=subject, attachments=[], body=body, importance=email.Importance.HIGH)
         
         # Turn off task scheduler
 
@@ -206,26 +206,26 @@ def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_pe
 
     # Update the Employee Data Validation
     for i, employee in enumerate(employees):
-        selection_sheet[f"E{i+1}"] = f"""{employee['FirstName']} {employee['LastName']}"""
+        selection_sheet[f"C{i+1}"] = f"""{employee['FirstName']} {employee['LastName']}"""
 
-    employee_dv = DataValidation(type="list", formula1=f"=Selections!$E$1:$E${len(employees)}")
+    employee_dv = DataValidation(type="list", formula1=f"=Selections!$C$1:$C${len(employees)}")
     sheet.add_data_validation(employee_dv)
     employee_dv.add("E4")
 
     # Update the Jobs Data Validation
-    selection_sheet["G1"] = "Aurify Head Office"
-    selection_sheet["G2"] = "Maintenance Works"
+    selection_sheet["D1"] = "Aurify Head Office"
+    selection_sheet["D2"] = "Maintenance Works"
 
     num_jobs = 2
     for i, job in enumerate(os.listdir(env('PROJECTS_PATH'))):
-        selection_sheet[f"G{i+3}"] = job
+        selection_sheet[f"D{i+3}"] = job
         num_jobs += 1
 
-    job_dv = DataValidation(type="list", formula1=f"=Selections!$G$1:$G${num_jobs}")
+    job_dv = DataValidation(type="list", formula1=f"=Selections!$D$1:$D${num_jobs}")
     sheet.add_data_validation(job_dv)
     job_dv.add("K7:K20")
     
-    time_dv = DataValidation(type="list", formula1=f"=Selections!$C$1:$C$2")
+    time_dv = DataValidation(type="list", formula1=f"=Selections!$B$1:$B$2")
     sheet.add_data_validation(time_dv)
     time_dv.add("G7:G20")
     time_dv.add("I7:I20")
@@ -233,6 +233,12 @@ def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_pe
     pay_type_dv = DataValidation(type="list", formula1=f"=Selections!$A$1:$A$5")
     sheet.add_data_validation(pay_type_dv)
     pay_type_dv.add("L7:L20")
+
+    # Add normal pay to weekdays
+    for i in range(7, 12):
+        sheet[f"L{i}"] = "Normal Pay"
+    for i in range(14, 19):
+        sheet[f"L{i}"] = "Normal Pay"
 
     # Update the Dates
     for i in range(20, 6, -1):

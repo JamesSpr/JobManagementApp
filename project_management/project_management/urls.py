@@ -17,7 +17,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from graphene_django.views import GraphQLView
-from graphene_file_upload.django import FileUploadGraphQLView
 from project_management.schema import schema
 from graphql_jwt.decorators import jwt_cookie
 from django.conf import settings
