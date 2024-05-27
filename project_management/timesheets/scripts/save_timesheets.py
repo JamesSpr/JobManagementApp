@@ -56,8 +56,8 @@ def get_employee_timesheets_from_email(env, email_account: ExchangeEmail, employ
             if timesheet_attachment is None:
                 # Send email notifying no attachment was sent
                 print(" Timesheet Error - Attachment")
-                # email_account.reply(email, subject="No Timesheet Attached", body="The email you have sent does not have a timesheet attached. Please resend the timesheet to this email account.")
-                # email.move(pay_period_folder)
+                email_account.reply(email, subject="No Timesheet Attached", body="The email you have sent does not have a timesheet attached. Please resend the timesheet to this email account.")
+                email.move(pay_period_folder)
                 continue
 
             # Check timesheet is Valid
@@ -67,8 +67,8 @@ def get_employee_timesheets_from_email(env, email_account: ExchangeEmail, employ
 
             if name == "" or name is None:
                 print(" Timesheet Error - Name")
-                # email_account.reply(email, subject="Timesheet Missing Information", body="The attached timesheet does not have a name listed. Please correct your timesheet and send back to this email account.") 
-                # email.move(pay_period_folder)
+                email_account.reply(email, subject="Timesheet Missing Information", body="The attached timesheet does not have a name listed. Please correct your timesheet and send back to this email account.") 
+                email.move(pay_period_folder)
                 continue
 
             valid_dates = True
@@ -79,8 +79,8 @@ def get_employee_timesheets_from_email(env, email_account: ExchangeEmail, employ
                 
             if not valid_dates:
                 print(" Timesheet Error - Dates")
-                # email_account.reply(email, subject="Timesheet has Incorrect Dates", body="The attached timesheet does not have the correct dates. Please correct your timesheet and send back to this email account.")
-                # email.move(pay_period_folder)
+                email_account.reply(email, subject="Timesheet has Incorrect Dates", body="The attached timesheet does not have the correct dates. Please correct your timesheet and send back to this email account.")
+                email.move(pay_period_folder)
                 continue
 
             workbook.close()

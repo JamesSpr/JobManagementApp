@@ -3,10 +3,7 @@
 # Adds subcontractor statement with the details that are entered into the system
 import os
 from datetime import date, datetime
-from PyPDF2 import PdfFileReader, PdfFileWriter
-from PyPDF2.generic import BooleanObject, NameObject, IndirectObject, NumberObject
-from PyPDF2.errors import PdfReadWarning
-import warnings
+import pymupdf
 import sys
 sys.path.append("...")
 from api.models import Insurance
@@ -46,7 +43,7 @@ def generate_invoice(job, paths, invoice, accounts_folder):
     start_date = job.commencement_date
     finish_date = job.completion_date
     
-    addData = {
+    pdf_data = {
         "contact number/identifier/name": str(job),
         "principal contractor": job.client.name,
         "ABN 2": job.client.abn,
@@ -67,103 +64,91 @@ def generate_invoice(job, paths, invoice, accounts_folder):
         "date 5c": str(invoice_date.year)[-2:]
     }
 
-    ## Put together invoice
-    def set_need_appearances_writer(writer: PdfFileWriter):
-        # See 12.7.2 and 7.7.2 for more information: http://www.adobe.com/content/dam/acom/en/devnet/acrobat/pdfs/PDF32000_2008.pdf
-        try:
-            catalog = writer._root_object
-            # get the AcroForm tree
-            if "/AcroForm" not in catalog:
-                writer._root_object.update({
-                    NameObject("/AcroForm"): IndirectObject(len(writer._objects), 0, writer)
-                })
-
-            need_appearances = NameObject("/NeedAppearances")
-            writer._root_object["/AcroForm"][need_appearances] = BooleanObject(True)
-            return writer
-
-        except Exception as e:
-            print('set_need_appearances_writer() catch : ', repr(e))
-            return writer
-
-    warnings.filterwarnings("ignore", category=PdfReadWarning)
-
-    stat_dec = "./api/scripts/StatDec.pdf"
-    stat_dec_pdf = PdfFileReader(stat_dec)
-    if "/AcroForm" in stat_dec_pdf.trailer["/Root"]:
-        stat_dec_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-
-    invoice_pdf = PdfFileReader(paths['invoice'])
-    if "/AcroForm" in invoice_pdf.trailer["/Root"]:
-        invoice_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-
-    writer = PdfFileWriter()
-    writer = set_need_appearances_writer(writer)
-    if "/AcroForm" in writer._root_object:
-        writer._root_object["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-
-    data = stat_dec_pdf.getPage(0)
-    dictionary = stat_dec_pdf.getFields()
+    doc = pymupdf.open()
 
     # print(paths['approval'])
     if job.client.name == "BGIS":
         if (invoice['Subtotal'] > 500.00):
-            approval_pdf = PdfFileReader(paths['approval'])
-            if "/AcroForm" in approval_pdf.trailer["/Root"]:
-                approval_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-            breakdown_pdf = PdfFileReader(paths['estimate'])
-            if "/AcroForm" in breakdown_pdf.trailer["/Root"]:
-                breakdown_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-            writer.addPage(invoice_pdf.getPage(0))
-            writer.addPage(approval_pdf.getPage(0))
-            writer.addPage(breakdown_pdf.getPage(0))
+
+            inv = pymupdf.open(paths['invoice'])
+            doc.insert_pdf(inv)
+            inv.close()
+
+            approval = pymupdf.open(paths['approval'])
+            approval.select([0])
+            doc.insert_pdf(approval)
+            approval.close()
+
+            estimate = pymupdf.open(paths['estimate'])
+            doc.insert_pdf(estimate)
+            estimate.close()
 
             for i in insurances:
-                ins_page = PdfFileReader(i.filename)
-                if "/AcroForm" in ins_page.trailer["/Root"]:
-                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-                writer.appendPagesFromReader(ins_page)
-                ins_page = ''
+                ins = pymupdf.open(i.filename)
+                doc.insert_pdf(ins)
+                ins.close()
 
-            writer.addPage(stat_dec_pdf.getPage(0))
-            writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
-            writer.addPage(stat_dec_pdf.getPage(1))
-            
-            # Make Fields Read Only
-            for j in range(0, len(data['/Annots'])):
-                writer_annot = data['/Annots'][j].getObject()
-                for field in dictionary:
-                    if writer_annot.get('/T') == field:
-                        writer_annot.update({
-                            NameObject("/Ff"): NumberObject(1)    # make ReadOnly
-                        })
+            stat_dec = pymupdf.open("./api/scripts/StatDec.pdf")
+            page = stat_dec[0]
+            for field in page.widgets():
+                field.text_font = "Helv"
+                field.text_fontsize = 10
+                if field.field_name in pdf_data:
+                    field.field_value = pdf_data[field.field_name]
+                    field.update()
+
+            page=stat_dec.reload_page(page)
+            stat_dec.bake()
+            doc.insert_pdf(stat_dec)
+            stat_dec.close()
 
         else:
-            writer.appendPagesFromReader(invoice_pdf)
+            inv = pymupdf.open(paths['invoice'])
+            doc.insert_pdf(inv)
+            inv.close()
+
             for i in insurances:
-                ins_page = PdfFileReader(i.filename)
-                if "/AcroForm" in ins_page.trailer["/Root"]:
-                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-                writer.appendPagesFromReader(ins_page)
-                ins_page = ''
-            writer.addPage(stat_dec_pdf.getPage(0))
-            writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
-            writer.addPage(stat_dec_pdf.getPage(1))
+                ins = pymupdf.open(i.filename)
+                doc.insert_pdf(ins)
+                ins.close()
+                
+            stat_dec = pymupdf.open("./api/scripts/StatDec.pdf")
+            page = stat_dec[0]
+            for field in page.widgets():
+                field.text_font = "Helv"
+                field.text_fontsize = 10
+                if field.field_name in pdf_data:
+                    field.field_value = pdf_data[field.field_name]
+                    field.update()
+
+            page=stat_dec.reload_page(page)
+            stat_dec.bake()
+            doc.insert_pdf(stat_dec)
+            stat_dec.close()
+            
     elif  job.client.name == "CBRE Group Inc":
         for i in insurances:
-            ins_page = PdfFileReader(i.filename)
-            if "/AcroForm" in ins_page.trailer["/Root"]:
-                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-            writer.appendPagesFromReader(ins_page)
-            ins_page = ''
-        writer.addPage(stat_dec_pdf.getPage(0))
-        writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
-        writer.addPage(stat_dec_pdf.getPage(1))
+            ins = pymupdf.open(i.filename)
+            doc.insert_pdf(ins)
+            ins.close()
+            
+        stat_dec = pymupdf.open("./api/scripts/StatDec.pdf")
+        page = stat_dec[0]
+        for field in page.widgets():
+            field.text_font = "Helv"
+            field.text_fontsize = 10
+            if field.field_name in pdf_data:
+                field.field_value = pdf_data[field.field_name]
+                field.update()
+
+        page=stat_dec.reload_page(page)
+        stat_dec.bake()
+        doc.insert_pdf(stat_dec)
+        stat_dec.close()
 
         invoiceFile = os.path.join(accounts_folder, "Supporting Documents for " + str(job).split(' - ')[0] + ".pdf")
-        with open(invoiceFile, "wb") as edited:
-            writer.write(edited)
-            edited.close()
+        doc.save(invoiceFile)
+        doc.close()
 
         ## Check insurances expiry date
         if date.today() ==  insurances[0].expiry_date:
@@ -172,31 +157,37 @@ def generate_invoice(job, paths, invoice, accounts_folder):
         return {'success': True, 'message': "Generated Successfully"}
 
     else:
-        writer.appendPagesFromReader(invoice_pdf)
+        inv = pymupdf.open(paths['invoice'])
+        doc.insert_pdf(inv)
+        inv.close()
 
         if 'purchaseOrder' in paths:
-            purchaseOrder_pdf = PdfFileReader(paths['purchaseOrder'], strict=False)
-            if "/AcroForm" in purchaseOrder_pdf.trailer["/Root"]:
-                    purchaseOrder_pdf.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-            
-            po = purchaseOrder_pdf.getPage(0)
-            writer.addPage(po)
+            po = pymupdf.open(paths['purchaseOrder'])
+            doc.insert_pdf(po)
+            po.close()
 
         for i in insurances:
-            ins_page = PdfFileReader(i.filename)
-            if "/AcroForm" in ins_page.trailer["/Root"]:
-                    ins_page.trailer["/Root"]["/AcroForm"].update({NameObject("/NeedAppearances"): BooleanObject(True)})
-            writer.appendPagesFromReader(ins_page)
-            ins_page = ''
+            ins = pymupdf.open(i.filename)
+            doc.insert_pdf(ins)
+            ins.close()
+            
+        stat_dec = pymupdf.open("./api/scripts/StatDec.pdf")
+        page = stat_dec[0]
+        for field in page.widgets():
+            field.text_font = "Helv"
+            field.text_fontsize = 10
+            if field.field_name in pdf_data:
+                field.field_value = pdf_data[field.field_name]
+                field.update()
 
-        writer.addPage(stat_dec_pdf.getPage(0))
-        writer.updatePageFormFieldValues(stat_dec_pdf.getPage(0), addData)
-        writer.addPage(stat_dec_pdf.getPage(1))
+        page=stat_dec.reload_page(page)
+        stat_dec.bake()
+        doc.insert_pdf(stat_dec)
+        stat_dec.close()
 
     invoiceFile = os.path.join(accounts_folder, "Invoice for " + str(job).split(' - ')[0] + ".pdf")
-    with open(invoiceFile, "wb") as edited:
-        writer.write(edited)
-        edited.close()
+    doc.save(invoiceFile)
+    doc.close()
 
     ## Check insurances expiry date
     if date.today() ==  insurances[0].expiry_date:
