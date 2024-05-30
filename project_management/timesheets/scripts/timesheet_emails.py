@@ -90,7 +90,7 @@ def run():
         body = f"""<p>Hi Leo,</p>
         <p>The timesheets are ready to be processed.</p>
         <p><a href="https://maintenance.aurify.com.au/timesheets/{pay_period.strftime("%Y-%m-%d")}">Click here to access the periods timesheets.</a></p>"""
-        email.send_email(to=["leo@aurify.com.au"], cc=None, bcc=["james@aurify.com.au"], subject=subject, attachments=[], body=body, importance=email.Importance.HIGH)
+        email.send_email(to=["leo@aurify.com.au"], cc=["james@aurify.com.au"], bcc=None, subject=subject, attachments=[], body=body, importance=email.Importance.HIGH)
         
         # Turn off task scheduler
 
@@ -202,7 +202,7 @@ def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_pe
     sheet.protection.disable()
 
     # Delete existing employee and job selection options
-    selection_sheet.delete_cols(5, 3)
+    selection_sheet.delete_cols(1, 6)
 
     # Update the Employee Data Validation
     for i, employee in enumerate(employees):
@@ -217,7 +217,7 @@ def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_pe
     selection_sheet["D2"] = "Maintenance Works"
 
     num_jobs = 2
-    for i, job in enumerate(os.listdir(env('PROJECTS_PATH'))):
+    for i, job in enumerate(os.listdir(env('SHAREPOINT_PROJECTS_PATH'))):
         selection_sheet[f"D{i+3}"] = job
         num_jobs += 1
 
@@ -225,12 +225,21 @@ def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_pe
     sheet.add_data_validation(job_dv)
     job_dv.add("K7:K20")
     
-    time_dv = DataValidation(type="list", formula1=f"=Selections!$B$1:$B$2")
+
+    times = ["AM", "PM"]
+    for i, t in enumerate(times):
+        selection_sheet[f"B{i+1}"] = t
+
+    time_dv = DataValidation(type="list", formula1=f"=Selections!$B$1:$B${len(times)}")
     sheet.add_data_validation(time_dv)
     time_dv.add("G7:G20")
     time_dv.add("I7:I20")
 
-    pay_type_dv = DataValidation(type="list", formula1=f"=Selections!$A$1:$A$5")
+    pay_types = ["Normal Pay", "Annual Leave", "Sick Leave", "Leave Without Pay", "Public Holiday"]
+    for i, pt in enumerate(pay_types):
+        selection_sheet[f"A{i+1}"] = pt
+
+    pay_type_dv = DataValidation(type="list", formula1=f"=Selections!$A$1:$A${len(pay_types)}")
     sheet.add_data_validation(pay_type_dv)
     pay_type_dv.add("L7:L20")
 

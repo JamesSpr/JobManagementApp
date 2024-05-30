@@ -193,6 +193,7 @@ const TimesheetEditor = ({open, setOpen, timesheets, setTimesheets, employeeEnti
                                 ))}
                             </InputField>
                             <p>{work?.job?.number ?? "No Job Allocated"}</p>
+                            <p>{work?.notes}</p>
                         </Grid>
                     )
                 })}

@@ -477,7 +477,7 @@ class CreateCustomer(graphene.Mutation):
         get_res = myob_get(user, get_url, customer_filter)
 
         if len(get_res['Items']) > 0:
-            if len(get_res['Items'] > 1):
+            if len(get_res['Items']) > 1:
                 return self(success=False, message="There are multiple customers with the same ABN in MYOB. Please manually merge and retry")
 
             return self(success=True, message="Customer Already Exists in MYOB. Customer info has been linked", myob_uid=get_res['Items'][0]['UID'])
@@ -1109,6 +1109,7 @@ class myobSyncJobs(graphene.Mutation):
         return self(success=True, message=json.dumps(jobs['Items']), errors=json.dumps(error_responses))
 
 class JobInputType(graphene.InputObjectType):
+    id = graphene.String()
     uid = graphene.String()
     identifier = graphene.String()
     name = graphene.String()

@@ -7,7 +7,7 @@ from exchangelib import FileAttachment
 from django_celery_beat.models import PeriodicTask
 
 from timesheets.scripts.timesheet_emails import get_active_myob_employees, get_emails_from_myob_employees, get_pay_period, create_new_timesheet_template
-from timesheets.scripts.save_timesheets import get_myob_employees, get_employee_timesheets_from_email, get_timesheet_data, process_timesheet
+from timesheets.scripts.save_timesheets import get_employee_timesheets_from_email, get_timesheet_data, process_timesheet
 from timesheets.scripts.exchange_email import ExchangeEmail
 from timesheets.models import Timesheet, Employee
 
@@ -23,7 +23,7 @@ def restart_processing_timesheet():
     task.enabled = True
     task.save()
 
-@shared_task
+@shared_task    
 def process_timesheets():
     email.connect()
     email.account.inbox.refresh()
@@ -38,7 +38,7 @@ def process_timesheets():
         if (pay_period - today).days > 7:
             pay_period = get_pay_period() - timedelta(days=14)
 
-        employees = get_myob_employees()
+        employees = get_active_myob_employees()
         timesheets = get_employee_timesheets_from_email(env, email, employees, pay_period)
 
         for timesheet in timesheets:
@@ -55,7 +55,6 @@ def process_timesheets():
                 if employee['Addresses'][0]['Email'] != "":
                     remaining_employees.append(employee)
 
-
         if len(remaining_employees) > 0:
             return
         
@@ -64,7 +63,7 @@ def process_timesheets():
         body = f"""<p>Hi Leo,</p>
         <p>The timesheets are ready to be processed.</p>
         <p><a href="https://maintenance.aurify.com.au/timesheets/{pay_period.strftime("%Y-%m-%d")}">Click here to access the periods timesheets.</a></p>"""
-        email.send_email(to=["leo@aurify.com.au"], cc=None, bcc=None, subject=subject, attachments=[], body=body, importance=email.Importance.HIGH)
+        email.send_email(to=["leo@aurify.com.au"], cc=None, bcc=["james@aurify.com.au"], subject=subject, attachments=[], body=body, importance=email.Importance.HIGH)
         
         # Turn off task scheduler
         task = PeriodicTask.objects.get(name="Process Timesheets")
@@ -100,7 +99,7 @@ def process_timesheets():
 @shared_task
 def timesheet_emails():
     """ Connects to an exchange email server and sends emails about timesheets"""   
-    
+
     email.connect()
 
     date = datetime.now()
@@ -162,9 +161,6 @@ def timesheet_emails():
             <p>We need to process timesheets and have not yet received yours.</p>
             <p>If you have not already, please complete your timesheet and reply to this email or send to <a href='mailto:HR@aurify.com.au'>HR@aurify.com.au</a></p>"""
             email.send_email(to=[employee['Addresses'][0]['Email']], cc=None, bcc=None, subject=subject, attachments=[timesheet_template], body=body, importance=email.Importance.HIGH)
-                
-        
-        
 
     return
     

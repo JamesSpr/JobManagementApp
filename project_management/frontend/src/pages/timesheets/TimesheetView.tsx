@@ -163,7 +163,7 @@ const TimesheetView = ({timesheets, setTimesheets, payrollDetails, employees, au
                         return (<p style={{backgroundColor: formatType, padding: '14px 0px', margin: '0px'}}>8.00 {getValue() != "8.00" ? "*" : ""}</p>)
                     }
                     
-                    return (<p style={{backgroundColor: formatType, padding: '14px 0px', margin: '0px'}}>{getValue()} {OT}</p>)
+                    return (<p style={{backgroundColor: formatType, padding: '14px 0px', margin: '0px'}}>{getValue()}{OT}</p>)
                 },
                 size: 80,
             })

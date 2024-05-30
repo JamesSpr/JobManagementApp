@@ -885,13 +885,14 @@ def create_default_client_invoice_settings(client):
         {'name': "Statutory Declaration", "file_location": "System", 'rule': "N/A", "active": True, "default": True}
     ]
     for setting in defaultInvoiceSettings:
-        invoiceSetting = InvoiceSetting()
-        invoiceSetting.name = setting['name']
-        invoiceSetting.file_location = setting['file_location']
-        invoiceSetting.rule = setting['rule']
-        invoiceSetting.active = setting['active']
-        invoiceSetting.default = setting['default']
-        invoiceSetting.save()
+        invoice_setting = InvoiceSetting()
+        invoice_setting.client = client
+        invoice_setting.name = setting['name']
+        invoice_setting.file_location = setting['file_location']
+        invoice_setting.rule = setting['rule']
+        invoice_setting.active = setting['active']
+        invoice_setting.default = setting['default']
+        invoice_setting.save()
 
 class CreateClient(graphene.Mutation):
     class Arguments:
