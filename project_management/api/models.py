@@ -51,6 +51,9 @@ class Client(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def get_preferred_name(self):
+        return self.display_name if self.display_name else self.name 
 
 class InvoiceSetting(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
@@ -64,7 +67,7 @@ class InvoiceSetting(models.Model):
 class Region(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     client = models.ForeignKey(Client, on_delete=PROTECT)
-    short_name = models.CharField(max_length=30, blank=True)
+    short_name = models.CharField(max_length=50, blank=True)
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=80, blank=True, null=True)
     bill_to_address = models.CharField(max_length=256)
@@ -198,6 +201,19 @@ class Job(models.Model):
 
         return str(identifier) + " - " + str(self.location) + " - "  + str(building) + str(self.title)
     
+    def get_identifier(self):
+        identifier = self.po
+
+        if self.po == '':
+            if "VP" in self.other_id:
+                identifier = self.other_id
+            elif self.sr != '':
+                identifier = self.sr
+            elif self.other_id != '':
+                identifier = self.other_id
+        
+        return str(identifier)
+
     def save(self, *args, **kwargs):
         self.work_type = "Commercial"
         self.opportunity_type = "Reactive Maintenance"

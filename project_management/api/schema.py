@@ -21,6 +21,7 @@ from .scripts.data_extraction import ExtractRemittanceAdvice, ExtractBillDetails
 from .scripts.create_quote import CreateQuote
 from .scripts.file_processing import PDFToImage
 from .scripts.invoice_generator import generate_invoice
+from .schemas.reports import GenerateFinancialReport
 from accounts.models import CustomUser
 from myob.models import MyobUser
 
@@ -2550,7 +2551,7 @@ class Query(graphene.ObjectType):
         if client:
             return Client.objects.filter(id=client)
 
-        return Client.objects.all().order_by('id')
+        return Client.objects.all().order_by('name')
 
     @login_required
     def resolve_client_contacts(root, info, client=None, **kwargs):
@@ -2615,12 +2616,6 @@ class TestFeature(graphene.Mutation):
 class Mutation(graphene.ObjectType):
     test_feature = TestFeature.Field()
     update_job_status = UpdateJobStatus.Field()
-    # upload_clients_csv = UploadClientsCSV.Field()
-    # upload_client_regions_csv = UploadRegionsCSV.Field()
-    # upload_client_contacts_csv = UploadClientContactsCSV.Field()
-    # upload_locations_csv = UploadLocationsCSV.Field()
-    # upload_jobs_csv = UploadJobsCSV.Field()
-    # upload_invoice_details_csv = UploadInvoiceDetailsCSV.Field()
     
     extract_remittance_advice = ExtractRemittanceAdvice.Field()
     extract_bill_details = ExtractBillDetails.Field()
@@ -2694,3 +2689,6 @@ class Mutation(graphene.ObjectType):
     delete_insurance = DeleteInsurance.Field()
 
     process_remittance = ProcessRemittanceAdvice.Field()
+
+    # Reports
+    generate_financial_report = GenerateFinancialReport.Field()
