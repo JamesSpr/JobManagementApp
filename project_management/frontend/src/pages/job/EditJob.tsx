@@ -275,9 +275,7 @@ const JobPage = () => {
             const res = response.data?.data?.invoice;
 
             if(res.success) {
-                // console.log(res.message)
-                const result = JSON.parse(res.message);
-                setSnack({active: true, variant:'success', message:result})
+                setSnack({active: true, variant:'success', message:res.message})
                 setJob(prev => ({...prev, invoiceSet: [res.invoice]}))
             }
             else {

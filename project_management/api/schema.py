@@ -1517,7 +1517,7 @@ class CreateBill(graphene.Mutation):
         # Check to see if bill already exists in the system
         if Bill.objects.filter(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).exists():
             print(Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber'], invoice_date=newBill['invoiceDate']).id)
-            return self(success=False, message="Bill Already Exists", error=Bill.objects.get(supplier=supplier, invoice_number=newBill['invoiceNumber']))
+            return self(success=False, message="Bill Already Exists")
 
         # Ensure Job is in MYOB
         if not job.myob_uid:
@@ -1532,7 +1532,7 @@ class CreateBill(graphene.Mutation):
         job_folder = os.path.join(MAIN_FOLDER_PATH, folder_name)
 
         if not os.path.exists(job_folder):
-            return self(success=False, message="Job Folder Does Not Exist", error="Folder Not Found")
+            return self(success=False, message="Job Folder Does Not Exist")
 
         accounts_folder = os.path.join(job_folder, "Accounts", supplier.name)
 
@@ -1866,7 +1866,7 @@ class CreateInvoice(graphene.Mutation):
 
         print("Invoice Generated")
         
-        return self(success = True)
+        return self(success = True, message="Successfully Created Invoice", invoice=new_invoice)
 
 class GenerateInvoice(graphene.Mutation):
     class Arguments:
