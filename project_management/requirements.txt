@@ -22,7 +22,7 @@ django-environ==0.11.2
 django-extensions==3.2.3
 django-filter==23.5
 django-graphql-auth==0.3.16
-django-graphql-jwt==0.3.0
+django-graphql-jwt==0.4.0
 django-timezone-field==6.1.0
 dnspython==2.6.1
 et-xmlfile==1.1.0
@@ -48,7 +48,7 @@ psycopg2-binary==2.9.9
 pycparser==2.22
 pycryptodome==3.20.0
 Pygments==2.18.0
-PyJWT==1.7.1
+PyJWT==2.8.0
 PyMuPDF==1.24.4
 PyMuPDFb==1.24.3
 pyspnego==0.10.2
