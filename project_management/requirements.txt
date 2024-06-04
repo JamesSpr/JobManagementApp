@@ -15,7 +15,7 @@ click-repl==0.3.0
 cron-descriptor==1.4.3
 cryptography==42.0.7
 defusedxml==0.7.1
-Django==4.0
+Django==4.2.13
 django-celery-beat==2.6.0
 django-celery-results==2.5.1
 django-environ==0.11.2
