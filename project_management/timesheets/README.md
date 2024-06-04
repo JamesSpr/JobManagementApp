@@ -16,8 +16,7 @@ Django app for timesheet functionality with MYOB
     - Leave Without Pay
     - Personal Leave Pay
 
-## Scheduling - Windows Task Scheduler
-Call the python functions in the script folder at the desired times:
+## Scheduling - Celery
  - New Timesheet: Beginning and End of timesheet period
  - Save Timesheets: Over the weekend when the timesheets are expected to be submitted.
  - Reminder Emails: On the saturday & sunday before the timesheets are meant to be processed
