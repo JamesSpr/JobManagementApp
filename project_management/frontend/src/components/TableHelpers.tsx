@@ -133,6 +133,22 @@ export const EditableDateCell = ({ getValue, row: { index }, column: { id }, tab
   )
 }
 
+export const numericSort = (rowA: { getValue: (arg0: any) => string }, rowB: { getValue: (arg0: any) => string }, columnId: any) => {
+        
+  let valA:number = 0.0
+  let valB:number = 0.0
+
+  if(rowA.getValue(columnId) !== "") {
+      valA = parseFloat(rowA.getValue(columnId))
+  }
+
+  if(rowB.getValue(columnId) !== "") {
+      valB = parseFloat(rowB.getValue(columnId))
+  }
+
+  return valA < valB ? 1 : -1;
+}
+
 export const dateSort = (rowA: { getValue: (arg0: any) => string }, rowB: { getValue: (arg0: any) => string }, columnId: any) => {
         
   let valA = new Date(0)

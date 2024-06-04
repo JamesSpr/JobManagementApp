@@ -14,7 +14,7 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 import CloseIcon from '@mui/icons-material/Close';
-import { fuzzyFilter, dateSort, inDateRange } from '../../components/TableHelpers';
+import { fuzzyFilter, dateSort, inDateRange, numericSort } from '../../components/TableHelpers';
 import { SnackBar, Table, Tooltip } from '../../components/Components';
 import { fetchArchivedData } from './QueryData';
 import JobAllocator from './JobAllocator';
@@ -146,6 +146,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'jobNumber',
             header: () => 'Job Number',
             cell: info => info.getValue(),
+            sortingFn: 'alphanumeric',
             footer: ({column}) => footerCounts(column),
             size: 120,
         },
@@ -153,18 +154,21 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             accessorFn: row => row.po ?? ' ',
             id: 'po',
             header: () => 'PO',
+            sortingFn: 'alphanumeric',
             footer: '',
             size: 100,
         },
         {
             accessorFn: row => row.sr ?? ' ',
             id: 'sr',
+            sortingFn: 'alphanumeric',
             header: () => 'SR',
             footer: '',
             size: 100,
         },
         {
             accessorKey: 'otherId',
+            sortingFn: 'alphanumeric',
             header: () => 'Other',
             footer: '',
             size: 100,
@@ -180,6 +184,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
         {
             accessorKey: 'building',
             header: () => 'Building',
+            sortingFn: 'alphanumeric',
             footer: '',
             size: 160,
         },
@@ -274,6 +279,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'quotedPrice',
             header: () => 'Quoted Price',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            sortingFn: numericSort,
             footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 140,
         },
@@ -287,6 +293,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'approvedQuote',
             header: () => 'Approved Quote',
             cell: info => info.getValue(),
+            sortingFn: numericSort,
             size: 140,
         },
         {
@@ -313,6 +320,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'approvedPrice',
             header: () => 'Approved Price',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            sortingFn: numericSort,
             footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 140,
         },
@@ -352,6 +360,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'billSum',
             header: () => 'Bill Amount',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            sortingFn: numericSort,
             footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 120,
         },
@@ -362,6 +371,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'grossProfit',
             header: () => 'Gross Profit',
             cell: info => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(info.getValue() as number),
+            sortingFn: numericSort,
             footer: ({table, column}) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(footerSum(table, column)),
             size: 120,
         },
@@ -370,6 +380,7 @@ const JobTable = ({tableData, setRefreshTableData, users, jobStages}: {
             id: 'invoice',
             header: () => 'Invoice #',
             cell: info => info.getValue(),
+            sortingFn: numericSort,
             footer: '',
             size: 90,
         },
