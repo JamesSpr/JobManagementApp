@@ -1,6 +1,7 @@
 # PYTHON
 */templates/**
 project_management/api/templates/**
+*/email_resources/**
 */generated_quotes/**
 */tester.py
 */accounts/templates/*
