@@ -1,10 +1,6 @@
 # PYTHON
-project_management/project_management/settings.py
 */templates/**
 project_management/api/templates/**
-*/email_resources/**
-*/frontend/**/axios.js
-*/frontend/**/axios.tsx
 */generated_quotes/**
 */tester.py
 */accounts/templates/*
