@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timedelta
 
 from celery import shared_task
-from exchangelib import FileAttachment
+from exchangelib import FileAttachment, Folder
 from django_celery_beat.models import PeriodicTask
 
 from timesheets.scripts.timesheet_emails import get_active_myob_employees, get_emails_from_myob_employees, get_pay_period, create_new_timesheet_template
@@ -79,6 +79,16 @@ def process_timesheets():
             pay_period = get_pay_period() + timedelta(days=14)
 
         # Create new timesheet folder
+        ## Outlook
+        folder = email.account.inbox // "Timesheets"
+        if folder != None:
+            print(folder)
+            return folder
+            
+        new_folder = Folder(parent=email.account.inbox, name="Timesheets")
+        new_folder.save()
+        
+        ## OS
         pay_period_folder_name = f"WE{pay_period.day:02d}-{pay_period.month:02d}"
         save_folder = os.path.join(env("TIMESHEET_SAVE_PATH"), str(datetime.now().year), pay_period_folder_name)
         if not os.path.exists(save_folder):
