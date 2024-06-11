@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from celery import shared_task
 from exchangelib import FileAttachment, Folder
+from exchangelib.errors import ErrorFolderNotFound
 from django_celery_beat.models import PeriodicTask
 
 from timesheets.scripts.timesheet_emails import get_active_myob_employees, get_emails_from_myob_employees, get_pay_period, create_new_timesheet_template
@@ -79,17 +80,22 @@ def process_timesheets():
             pay_period = get_pay_period() + timedelta(days=14)
 
         # Create new timesheet folder
-        ## Outlook
-        folder = email.account.inbox // "Timesheets"
-        if folder != None:
-            print(folder)
-            return folder
-            
-        new_folder = Folder(parent=email.account.inbox, name="Timesheets")
-        new_folder.save()
-        
-        ## OS
         pay_period_folder_name = f"WE{pay_period.day:02d}-{pay_period.month:02d}"
+
+        ## Outlook
+        try:
+            timesheet_folder = email.account.inbox // "Timesheets"
+        except ErrorFolderNotFound:
+            timesheet_folder = Folder(parent=email.account.inbox, name="Timesheets")
+            timesheet_folder.save()
+
+        try:
+            timesheet_period_folder = timesheet_folder // pay_period_folder_name
+        except ErrorFolderNotFound:
+            timesheet_period_folder = Folder(parent=timesheet_folder, name=pay_period_folder_name)
+            timesheet_period_folder.save()
+
+        ## OS
         save_folder = os.path.join(env("TIMESHEET_SAVE_PATH"), str(datetime.now().year), pay_period_folder_name)
         if not os.path.exists(save_folder):
             os.mkdir(save_folder)
@@ -105,11 +111,56 @@ def process_timesheets():
         <p>Note, a reminder email will be sent near the end of the fortnight with an updated job list.</p>"""
         email.send_email(to=None, cc=None, bcc=employee_emails, subject=subject, attachments=[timesheet_template], body=body)
 
+@shared_task
+def send_new_timesheet():
+    email.connect()
+    email.account.inbox.refresh()
+
+    date = datetime.now()
+    today = date.date()
+    employees = get_active_myob_employees()
+    employee_emails = get_emails_from_myob_employees(employees)
+
+    # Send a new timesheet once everyone has submitted
+    pay_period = get_pay_period()
+    if (pay_period - today).days < 7:
+        pay_period = get_pay_period() + timedelta(days=14)
+
+    # Create new timesheet folder
+    pay_period_folder_name = f"WE{pay_period.day:02d}-{pay_period.month:02d}"
+
+    ## Outlook
+    try:
+        timesheet_folder = email.account.inbox // "Timesheets"
+    except ErrorFolderNotFound:
+        timesheet_folder = Folder(parent=email.account.inbox, name="Timesheets")
+        timesheet_folder.save()
+
+    try:
+        timesheet_period_folder = timesheet_folder // pay_period_folder_name
+    except ErrorFolderNotFound:
+        timesheet_period_folder = Folder(parent=timesheet_folder, name=pay_period_folder_name)
+        timesheet_period_folder.save()
+
+    ## OS
+    save_folder = os.path.join(env("TIMESHEET_SAVE_PATH"), str(datetime.now().year), pay_period_folder_name)
+    if not os.path.exists(save_folder):
+        os.mkdir(save_folder)
+
+    # Create new timesheet template
+    timesheet_template = create_new_timesheet_template(env, employees, pay_period)
+
+    # Send timesheet template to all active employees
+    subject = "Aurify Timesheet"
+    body = """<p>Hi Team,</p>
+    <p>Here is the new timesheet for this pay period</p>
+    <p>Please fill out the attached timesheet, ensuring all details are correct and send to <a href='mailto:HR@aurify.com.au'>HR@aurify.com.au</a> at the end of the fortnight</p>
+    <p>Note, a reminder email will be sent near the end of the fortnight with an updated job list.</p>"""
+    email.send_email(to=None, cc=None, bcc=employee_emails, subject=subject, attachments=[timesheet_template], body=body)
 
 @shared_task
 def timesheet_emails():
-    """ Connects to an exchange email server and sends emails about timesheets"""   
-
+    """ Connects to an exchange email server and sends emails about timesheets"""  
     email.connect()
 
     date = datetime.now()
