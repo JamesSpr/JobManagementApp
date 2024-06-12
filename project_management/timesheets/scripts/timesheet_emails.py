@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from exchangelib import FileAttachment
 from openpyxl import load_workbook
-from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.datavalidation import DataValidation, DataValidationList
 from typing import List
 
 from timesheets.scripts.exchange_email import ExchangeEmail
@@ -200,6 +200,9 @@ def create_new_timesheet_template(env: environ.Env, employees: List[str], pay_pe
     selection_sheet = workbook['Selections']    
     sheet = workbook['Aurify Time Sheet']
     sheet.protection.disable()
+
+    # Reset data validation for the sheet
+    sheet.data_validations = DataValidationList() 
 
     # Delete existing employee and job selection options
     selection_sheet.delete_cols(1, 6)
