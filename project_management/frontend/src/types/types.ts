@@ -302,7 +302,7 @@ export interface InputFieldType {
     type: string
     name?: string
     label?: string
-    min?: number
+    min?: number | string
     max?: string
     maxLength?: number
     children?: ReactNode

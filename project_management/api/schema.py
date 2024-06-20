@@ -1681,9 +1681,8 @@ class CreateInvoice(graphene.Mutation):
     @login_required
     def mutate(self, root, info, job_id):
 
-        print("Creating Invoice")
-
         job = Job.objects.get(id=job_id) if Job.objects.filter(id=job_id).exists() else None 
+        print("Creating Invoice for {job.client.display_name} - {str(job)}")
 
         # Error Checking
         if not job:
@@ -1710,12 +1709,6 @@ class CreateInvoice(graphene.Mutation):
             if job_identifier == "":
                 return self(success=False, message="Job Identifier Error. Please Sync with MYOB")
 
-            job_data = {
-                "identifier": job_identifier,
-                "name": (job.location.name + " " + job.title)[0:30],
-                "description": str(job),
-                "customer_uid": job.client.myob_uid,
-            }
             res = CreateJobInMyob.mutate(root, info, job_id)
             if not res.success:
                 return self(success=False, message="Please sync job with MYOB before creating invoice!")
@@ -1794,7 +1787,7 @@ class CreateInvoice(graphene.Mutation):
 
                 return self(success=False, message="Not all required invoice files can be found:" + error_str[:-2])
         
-        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd" or job.client.display_name == "Create NSW":
+        elif job.client.display_name == "CBRE (GCS)" or job.client.name == "CBRE Pty Ltd" or job.client.name == "CDC Data Centres Pty Ltd" or job.client.display_name == "Create NSW":
             found = {"not_required": True}
             paths = {"invoice": ""}
         else:
@@ -1879,8 +1872,8 @@ class GenerateInvoice(graphene.Mutation):
     @login_required
     def mutate(self, root, info, job_id):
 
-        print("Generating Invoice")
         job = Job.objects.get(id=job_id) if Job.objects.filter(id=job_id).exists() else None 
+        print(f"Generating Invoice for {job.client.display_name} - {str(job)}")
         # Error Checking
         if not job:
             return self(success=False, message="Job Not Found!")
@@ -1954,7 +1947,7 @@ class GenerateInvoice(graphene.Mutation):
             else:
                 found['approval'] = True
                 found['estimate'] = True
-        elif job.client.name == "CBRE Group Inc" or job.client.name == "CDC Data Centres Pty Ltd" or job.client.display_name == "Create NSW":
+        elif job.client.display_name == "CBRE (GCS)" or job.client.name == "CBRE Pty Ltd" or job.client.name == "CDC Data Centres Pty Ltd" or job.client.display_name == "Create NSW":
             found = {"invoice": False}
             paths = {"invoice": ""}
 
