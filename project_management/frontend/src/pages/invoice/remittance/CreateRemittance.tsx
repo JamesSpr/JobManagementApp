@@ -210,7 +210,7 @@ const CreateRemittance = ({ open, onClose, invoices, clients, setRemittanceAdvic
                 let invoiceAmount = (invoice?.amount ?? 0).toFixed(2);
                 let invAmount = typeof invoice?.amount === "number" ? ((inv.amount ?? 0) * 1.1).toFixed(2) : parseFloat(((inv.amount ?? 0) * 1.1).toString()).toFixed(2);
 
-                if(invoiceAmount !== invAmount) {
+                if(invoiceAmount != invAmount) {
                     setSnack({'active': true, variant:'error', message: "Some invoice prices do not match. Please review advice."});
                     setWaiting(prev => ({...prev, 'check': false}));
                     errorFound = true;

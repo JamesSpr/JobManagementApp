@@ -278,12 +278,13 @@ class GenerateFinancialReport(graphene.Mutation):
         ## Finalised
         finalised = report.create_sheet("Finalised")
         finalised_table_name = "Finalised"
-        finalised_headers = ["Client", "Job Number", "Location", "Building", "Title", "Amount", "Costs to Date", "Profits to Date", "Invoice #", "Date Invoiced", "Date Paid", "Days to Pay"]
-        finalised_types = ["General", "General", "General", "General", "General", AUD_CURRENCY_FORMAT, AUD_CURRENCY_FORMAT, AUD_CURRENCY_FORMAT, "General", "dd/mm/yyyy", "dd/mm/yyyy", "General"]
-        finalised_total_row = ["Total", f"=COUNTA({finalised_table_name}[{finalised_headers[1]}])", "", "", "", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[5]}])", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[6]}])", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[7]}])", "", "", "", f"=SUBTOTAL(101,{finalised_table_name}[{finalised_headers[11]}])"]
+        finalised_headers = ["Client", "Job Number", "Location", "Building", "Title", "Amount", "Estimated Costs", "Estimated Profits", "Costs to Date", "Profits to Date", "Invoice #", "Date Invoiced", "Date Paid", "Days to Pay"]
+        finalised_types = ["General", "General", "General", "General", "General", AUD_CURRENCY_FORMAT, AUD_CURRENCY_FORMAT, AUD_CURRENCY_FORMAT, AUD_CURRENCY_FORMAT, AUD_CURRENCY_FORMAT, "General", "dd/mm/yyyy", "dd/mm/yyyy", "General"]
+        finalised_total_row = ["Total", f"=COUNTA({finalised_table_name}[{finalised_headers[1]}])", "", "", "", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[5]}])", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[6]}])", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[7]}])", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[8]}])", f"=SUBTOTAL(109,{finalised_table_name}[{finalised_headers[9]}])", "", "", "", f"=SUBTOTAL(101,{finalised_table_name}[{finalised_headers[13]}])"]
         finalised_col_widths = [len(x) for x in finalised_headers]
 
         def finalised_values(job, est, inv, bills): 
+            costs, profits = get_estimate_breakdowns(est)
             days_to_pay = (inv.date_paid-inv.date_issued).days if inv.date_issued else ""
             bill_total = float(sum([b.amount for b in bills])) / 1.1
             return [
@@ -293,6 +294,8 @@ class GenerateFinancialReport(graphene.Mutation):
                 job.building, 
                 job.title,
                 est.price,
+                costs,
+                profits,
                 bill_total,
                 float(est.price) - bill_total, 
                 inv.number,
@@ -360,8 +363,8 @@ class GenerateFinancialReport(graphene.Mutation):
         summary["B12"] = "Total Completed & Paid"
         summary["C12"] = f"={finalised_table_name}!B{finalised.max_row}"
         summary["D12"] = f"={finalised_table_name}!F{finalised.max_row}"
-        summary["E12"] = f"={finalised_table_name}!G{finalised.max_row}"
-        summary["F12"] = f"={finalised_table_name}!H{finalised.max_row}"
+        summary["E12"] = f"={finalised_table_name}!I{finalised.max_row}"
+        summary["F12"] = f"={finalised_table_name}!J{finalised.max_row}"
         summary["B13"] = "Forecast for EOFY"
         summary["C13"] = f"=C10+C12"
         summary["D13"] = f"=D10+D12"

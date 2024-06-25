@@ -6,6 +6,7 @@ from exchangelib.items import (
     SEND_TO_NONE,
     SEND_TO_ALL_AND_SAVE_COPY,
 )
+# from exchangelib.errors import TokenExpiredError
 import os
 
 from typing import List
@@ -33,9 +34,17 @@ class ExchangeEmail():
             - Password
 
         """
-
         if self.account is not None:
-            return 
+            invalid_account = False
+            # Check if expired
+            try:
+                self.account.inbox.refresh()
+            except:
+                invalid_account = True
+
+            if not invalid_account:
+                return
+
         
         env = environ.Env()
         environ.Env.read_env()
