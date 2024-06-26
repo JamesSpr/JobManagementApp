@@ -18,14 +18,6 @@ const SearchBar = () => {
         modalRef.current?.showModal();
     }
     
-    // When the user clicks anywhere outside of the modal, close it
-    window.addEventListener("click", (event) => {
-        event.
-        if (event.target == modalRef.current) {
-            modalRef.current?.close()
-        }
-    })
-
     useEffect(() => {
         const controller = new AbortController();
 
