@@ -56,7 +56,7 @@ export interface JobType {
     workType: string
     cancelled: boolean
     cancelReason: string
-
+    jobName?: string
 }
 
 export interface EstimateType {

@@ -22,6 +22,7 @@ from .scripts.create_quote import CreateQuote
 from .scripts.file_processing import PDFToImage
 from .scripts.invoice_generator import generate_invoice
 from .schemas.reports import GenerateFinancialReport
+from .schemas.searching import JobSearch
 from accounts.models import CustomUser
 from myob.models import MyobUser
 
@@ -2685,3 +2686,6 @@ class Mutation(graphene.ObjectType):
 
     # Reports
     generate_financial_report = GenerateFinancialReport.Field()
+
+    # Searching
+    search_jobs = JobSearch.Field()

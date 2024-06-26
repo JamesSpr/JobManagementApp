@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from "react-router-dom";
 import { IconButton, Button, Box, FormControl, AppBar, Toolbar, Menu, MenuItem, Typography } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import useAuth from "../pages/auth/useAuth";
@@ -9,6 +8,7 @@ import useApp from '../context/useApp';
 import axios from '../hooks/axios';
 import SideBar from './SideBar';
 import { openInNewTab } from '../components/Functions';
+import SearchBar from './SearchBar';
 
 const Navbar = () => {
     const { auth, setAuth } = useAuth();
@@ -25,6 +25,7 @@ const Navbar = () => {
     };
     
     const [toggleSidebar, setToggleSidebar] = useState(false);
+    const [openSearchBox, setOpenSearchBox] = useState(false);
 
     useEffect(() => {
         setAuth(prev => ({...prev, sidebar: toggleSidebar}));
@@ -81,14 +82,6 @@ const Navbar = () => {
         navigate('/login');
     }
 
-    const authLinks = () => (
-        <>
-            <FormControl style={{float:'right', paddingTop:10, paddingRight:15}} >
-                <Button variant="outlined" style={{color: 'rgb(60, 60, 60)', border: '0', marginBottom: '10px', width: '161px', marginRight: '16px'}} startIcon={<SearchIcon /> }>Search...</Button>
-            </FormControl>
-        </>
-    );
-
     // Set the tile whenever something changes it
     const [title, setTitle] = useState("");
     useEffect(() => {
@@ -115,6 +108,7 @@ const Navbar = () => {
     }, [width])
 
     return (
+        <>
         <Box sx={{ flexGrow: 1}}>
             <AppBar position="fixed" sx={{ zIndex: 999 }}
             style={{backgroundColor: 'rgb(250,250,250)', boxShadow: 'rgb(0 0 0 / 10%) 0px 1px 1px -1px, rgb(0 0 0 / 10%) 0px 1px 1px 0px, rgb(0 0 0 / 10%) 0px 0 10px 2px'}}>
@@ -136,19 +130,17 @@ const Navbar = () => {
                         <img alt="Aurify logo" src={"/static/images/aurify_logo.png"} width='145px'/>
                     </IconButton> 
 
-                    <Box sx={{flexGrow:1, textAlign: 'center'}}>
+                    <Box sx={{flexGrow:1, marginLeft: '-45px', textAlign: 'center'}}>
                         {app ? <>
                             <Typography variant='h6'>{title ?? ""}</Typography>
                             <Typography variant='h6'>{app?.subTitle ?? ''}</Typography>
                         </> : <></>}
-                    </Box>
-                    
-                    <Box sx={{flexGrow:0}}>
-                        {auth?.user ? authLinks() : <></>}
-                    </Box>
+                    </Box> 
 
                     {auth?.user ? 
+                    <>
                     <Box sx={{flexGrow:0}}>
+                        <SearchBar />
                         <IconButton
                             size="large"
                             aria-label="account of current user"
@@ -157,7 +149,7 @@ const Navbar = () => {
                             onClick={handleMenu}
                             color="inherit"
                             style={{float:"right"}}
-                        >
+                            >
                             <AccountCircle style={{color: '#44d62c'}}/>
                         </IconButton>
                         <Menu
@@ -174,17 +166,22 @@ const Navbar = () => {
                             }}
                             open={Boolean(anchorEl)}
                             onClose={handleClose}
-                        >
+                            >
                             <MenuItem onClick={(e) => navigate('/myaccount')}>My account</MenuItem>
                             <MenuItem onClick={(e) => {handleClose(); navigate('/settings');}}>Settings</MenuItem>
                             <MenuItem onClick={(e) => {handleClose(); logout();}}>Logout</MenuItem>
                         </Menu>
                     </Box>
+                    </>
                     : <></>}
                 </Toolbar>
             </AppBar>
             {toggleSidebar && auth?.user ? <SideBar /> : <></>}
         </Box>
+
+        
+
+        </>
     );
 }
 
