@@ -188,47 +188,6 @@ class ImportTimesheets(graphene.Mutation):
 
                 work_day.save()
 
-        # # Add basic timesheets in for certain employees
-        # directors = ['Leo Sprague', 'Robert Stapleton', 'Colin Baggott', "Brett Macpherson"]
-        # for director in directors:
-            
-        #     employee = Employee.objects.get(name=director)
-        #     if not Employee.objects.filter(name=director).exists():
-        #         continue
-
-        #     if not Timesheet.objects.filter(start_date=start_date, end_date=end_date, employee=employee).exists():
-        #         timesheet = Timesheet()
-        #         timesheet.employee = employee
-        #         timesheet.start_date = start_date
-        #         timesheet.end_date = end_date
-        #         timesheet.save()
-        #     else:
-        #         continue
-        #         # timesheet = Timesheet.objects.get(start_date=start_date, end_date=end_date, employee=Employee.objects.get(name=director))
-
-        #     for day in summary[0]['work_days']:
-        #         work_date = parse_date_to_string(day['date'])
-        #         work_day = WorkDay()
-
-        #         if WorkDay.objects.filter(timesheet=timesheet, date=work_date).exists():
-        #             work_day = WorkDay.objects.get(timesheet=timesheet, date=work_date)
-
-        #         work_day.timesheet = timesheet
-        #         work_day.date = work_date
-
-        #         day_of_work = datetime.strptime(work_date, "%Y-%m-%d").weekday()
-        #         if day_of_work < 5:
-        #             work_day.hours = 8
-        #             work_day.work_type = "Normal"
-        #         else:
-        #             work_day.hours = 0
-        #             work_day.work_type = ""
-
-        #         work_day.job = None
-        #         work_day.notes = ""
-        #         work_day.allow_overtime = employee.pay_basis == "Hourly"
-        #         work_day.save()
-
         return self(success=True)
 
 def parse_date(dateString):
@@ -385,6 +344,12 @@ class SubmitTimesheets(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, uid, timesheets, start_date, end_date):       
+        # Sync Categories
+        sync_categories = GetMyobPayrollCategories.mutate(root, info)
+        if not sync_categories.success:
+            print(sync_categories)
+            return self(success=False, message="Error Syncing Categories")
+
         processed = []
 
         all_timesheet_data = []
@@ -413,7 +378,7 @@ class SubmitTimesheets(graphene.Mutation):
                 "Normal": ['Base Hourly', 'Overtime (1.5x)', 'Overtime (2x)'],
                 "SICK": 'Personal Leave Pay', 
                 "AL":'Annual Leave Pay',
-                "PH": ['Base Hourly', 'Overtime (2x)'],
+                "PH": ['Public Holiday', 'Base Hourly'],
                 "LWP": 'Leave Without Pay',
             }
 
@@ -459,17 +424,14 @@ class SubmitTimesheets(graphene.Mutation):
                         timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
 
                     elif worktype == "PH" :
-                        # Add 2x Overtime for working on public holiday
+                        # Add Worked hours for public holiday
                         prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][1]).myob_uid
                         timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
 
-                        # Give base 8 hours of pay for public holiday
-                        if workday.hours < 8:
-                            public_holiday_base = workday.copy()
-                            if workday.hours < 8: 
-                                public_holiday_base['hours'] = 8 - workday.hours
-                                prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][0]).myob_uid
-                                timesheet_lines = add_to_timesheets(timesheet_lines, public_holiday_base, prc_uid)
+                        # Add 8 hours of public holiday pay
+                        workday.hours = 8
+                        prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][0]).myob_uid
+                        timesheet_lines = add_to_timesheets(timesheet_lines, workday, prc_uid)
 
                     elif datetime.strptime(workday.date, "%Y-%m-%d").weekday() == 5: # Saturday
                         if workday.hours > 2:
@@ -526,6 +488,9 @@ class SubmitTimesheets(graphene.Mutation):
                 else:
                     # Default 8 hrs for normal weekday salary work
                     if worktype == "Normal" and timesheet.employee.pay_basis == "Salary" and datetime.strptime(workday.date, "%Y-%m-%d").weekday() < 5:
+                        workday['hours'] = 8
+                    if worktype == "PH":
+                        prc_uid = PayrollCategory.objects.get(name=payroll_categories[worktype][0]).myob_uid
                         workday['hours'] = 8
 
                     # Add Normal Day

@@ -159,12 +159,18 @@ const Timesheets = () => {
                 method: 'post',
                 signal: controller.signal,
                 data: JSON.stringify({
-                    query: `mutation getMyobPayrollDetails {
+                    query: `mutation 
+                    getMyobPayrollDetails {
                         details: getMyobPayrollDetails {
                             success
                             message
                             details
                         }
+                    }
+                    getMyobPayrollCategories() {
+                    categories: getMyobPayrollCategories() {
+                        success
+                        message
                     }`,
                     variables: {}
                 }),
