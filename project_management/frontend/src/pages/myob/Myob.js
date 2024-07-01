@@ -18,7 +18,7 @@ const MyobActivate = () => {
                                              contractorName: "", contractorABN: "", clientName: "",});
 
     const [fields, setFields] = useState({invoice: ""})
-    const [waiting, setWaiting] = useState({getJobs: false, getCustomer: false, getgeneralJournal: false, getAccounts: false,})
+    const [waiting, setWaiting] = useState({getJobs: false, getCustomer: false, getContractor: false, getgeneralJournal: false, getAccounts: false,})
 
     if(code) {
         useEffect(() => {
@@ -431,7 +431,7 @@ const MyobActivate = () => {
                 console.log("Jobs:", JSON.parse(res.jobs))
             }
             else {
-                console.log("Error:", JSON.parse(res.message) ?? "");
+                console.log("Error:", res.message);
             }
         }).finally(() => {
             setWaiting(prev => ({...prev, getJobs: false}))
@@ -439,13 +439,101 @@ const MyobActivate = () => {
     }
 
     const getContractors = async () => {
+        setWaiting(prev => ({...prev, getContractor: true}))
         await axiosPrivate({
             method: 'post',
             data: JSON.stringify({
                 query: `mutation myobGetSupplier($filter:String!) {
-                    myob_get_contractors: myobGetSupplier(filter:$filter) {
+                    contractors: myobGetSupplier(filter:$filter) {
                         success
                         message
+                        suppliers {
+                            UID
+                            CompanyName
+                            LastName
+                            FirstName
+                            IsIndividual
+                            DisplayID
+                            IsActive
+                            Addresses {
+                                Location
+                                Street
+                                City
+                                State
+                                PostCode
+                                Country
+                                Phone1
+                                Phone2
+                                Phone3
+                                Fax
+                                Email
+                                Website
+                                ContactName
+                                Salutation
+                            }
+                            Notes
+                            BuyingDetails {
+                                PurchaseLayout
+                                PrintedForm
+                                PurchaseOrderDelivery
+                                ExpenseAccount {
+                                    UID
+                                    Name
+                                    DisplayID
+                                    URI
+                                }
+                                PaymentMemo
+                                PurchaseComment
+                                SupplierBillingRate
+                                ShippingMethod
+                                IsReportable
+                                CostPerHour
+                                Credit {
+                                    Limit
+                                    Available
+                                    PastDue
+                                }
+                                ABN
+                                ABNBranch
+                                TaxIdNumber
+                                TaxCode {
+                                    UID
+                                    Code
+                                    URI
+                                }
+                                FreightTaxCode {
+                                    UID
+                                    Code
+                                    URI
+                                }
+                                UseSupplierTaxCode
+                                Terms {
+                                    PaymentIsDue
+                                    DiscountDate
+                                    BalanceDueDate
+                                    DiscountForEarlyPayment
+                                    VolumeDiscount
+                                }
+                            }
+                            PaymentDetails {
+                                BSBNumber
+                                BankAccountNumber
+                                BankAccountName
+                                StatementText
+                                StatementCode
+                                StatementReference
+                                Refund {
+                                    PaymentMethod
+                                    CardNumber
+                                    NameOnCard
+                                    Notes
+                                }
+                            }
+                            LastModifiedDateTime
+                            CurrentBalance
+                            PhotoURI
+                            URI
+                        }
                     }
                 }`,
                 variables: {
@@ -454,14 +542,16 @@ const MyobActivate = () => {
             })
         }).then((response) => {
             // console.log("success", response);
-            const res = response.data?.data?.myob_get_contractors;
+            const res = response.data?.data?.contractors;
             if(res.success) {
-                const contractors = JSON.parse(res.message);
-                console.log("Contractors:", contractors)
+                // const contractors = JSON.parse(res.message);
+                console.log("Contractors:", res.suppliers)
             }
             else {
-                console.log("error!", JSON.parse(res.message) ?? "");
+                console.log("Error:", res.message);
             }
+        }).finally(() => {
+            setWaiting(prev => ({...prev, getContractor: false}))
         })
     }
 
@@ -876,7 +966,7 @@ const MyobActivate = () => {
                     </Grid>
                     <Grid item xs={12}>
                         <InputField width={500} label="Contractor Filter" value={queries.contractor} onChange={(e) => setQueries(prev => ({...prev, contractor: e.target.value}))}/>
-                        <Button style={{width: '180px', margin: 'auto 10px', padding: '2px'}} variant='outlined' onClick={getContractors}>Get Contractors</Button>
+                        <ProgressButton name='Get Contractors' buttonVariant='outlined' onClick={getContractors} waiting={waiting.getContractors} />
                     </Grid>
                     <Grid item xs={12}>
                         <InputField width={500} label="Orders Filter" value={queries.order} onChange={(e) => setQueries(prev => ({...prev, order: e.target.value}))}/>

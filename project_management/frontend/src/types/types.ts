@@ -343,6 +343,13 @@ export interface SnackBarType {
 export const AusStates = ['NSW','QLD','VIC','TAS','WA','SA','ACT','NT']
 
 
+export interface CompanyInformationType {
+    id: string
+    name: string
+    defaultMyobFile: {id: string}
+    defaultMyobAccount: {id: string}
+}
+
 export interface InsuranceType {
     id?: string
     description: string
@@ -357,4 +364,9 @@ export interface InsuranceType {
 export interface MYOBUserType {
     id?: string
     username: string
+}
+
+export interface MYOBCompanyFileType {
+    id: string
+    companyName: string
 }

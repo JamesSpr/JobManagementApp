@@ -7,8 +7,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import Insurances from "./Insurances";
 import Employees from "./Employees";
-import { EmployeeType, InsuranceType, MYOBUserType, SnackType } from "../../types/types";
-import { Footer, ProgressIconButton, SnackBar } from "../../components/Components";
+import { CompanyInformationType, EmployeeType, InsuranceType, MYOBCompanyFileType, MYOBUserType, SnackType } from "../../types/types";
+import { Footer, InputField, ProgressIconButton, SnackBar } from "../../components/Components";
 
 
 type TabPanelProps = {
@@ -41,10 +41,12 @@ const CompanyAdmin = () => {
 
     const axiosPrivate = useAxiosPrivate();
     const [loading, setLoading] = useState(true);
-    const [insurances, setInsurances] = useState<InsuranceType[]>([])
+    const [companyInformation, setCompanyInformation] = useState<CompanyInformationType>({id: '', name: '', defaultMyobFile: {id: ''}, defaultMyobAccount: {id: ''}})
     const [employees, setEmployees] = useState<EmployeeType[]>([])
     const [myobUsers, setMyobUsers] = useState<MYOBUserType[]>([])
     const [userRoles, setUserRoles] = useState<string[]>([])
+    const [insurances, setInsurances] = useState<InsuranceType[]>([])
+    const [companyFiles, setCompanyFiles] = useState<MYOBCompanyFileType[]>([])
     
     const [snack, setSnack] = useState<SnackType>({variant: 'info', active: false, message: ''});
 
@@ -66,6 +68,16 @@ const CompanyAdmin = () => {
                 data: JSON.stringify({
                     query: `
                     query {
+                        myCompany {
+                            id
+                            name
+                            defaultMyobFile {
+                                id
+                            }
+                            defaultMyobAccount {
+                                id
+                            }
+                        }
                         insurances {
                             id
                             description
@@ -98,6 +110,10 @@ const CompanyAdmin = () => {
                             id
                             username
                         }
+                        companyFiles {
+                            id
+                            companyName
+                        }
                         __type(name:"CustomUserRole"){
                             name
                             enumValues {
@@ -113,10 +129,12 @@ const CompanyAdmin = () => {
                 console.log(res);
                 
                 setInsurances(res.insurances);
+                setCompanyInformation(res.myCompany);
                 const employees = res.users.edges.map((emp: any) => {return emp?.node});
                 setEmployees(employees);
                 setMyobUsers(res.myobUsers);
-                setUserRoles(res.__type.enumValues)
+                setCompanyFiles(res.companyFiles);
+                setUserRoles(res.__type.enumValues);
             }).catch((err) => {
                 console.log("error fetching data:", err);
             }).finally(() => {
@@ -141,13 +159,14 @@ const CompanyAdmin = () => {
             method: 'post',
             data: JSON.stringify({
                 query: `
-                mutation updateCompany($employees: [UserInputType]!, $insurances: [InsuranceInputType]!) {
-                    update: updateCompany(employees: $employees, insurances: $insurances) {
+                mutation updateCompany($companyInfo: CompanyInputType!, $employees: [UserInputType]!, $insurances: [InsuranceInputType]!) {
+                    update: updateCompany(companyInfo: $companyInfo, employees: $employees, insurances: $insurances) {
                         success
                         message
                     }
                 }`,
                 variables: {
+                    companyInfo: companyInformation,
                     employees: employees,
                     insurances: insurances
                 },
@@ -178,7 +197,8 @@ const CompanyAdmin = () => {
     const [tabValue, setTabValue] = useState(1); // Active Tab Value
     const tabLabels = ["Home", "Employees", "Insurances"]
     const tabPanels = [
-        <About />,
+        <About companyInformation={companyInformation} setCompanyInformation={setCompanyInformation} 
+            setUpdateRequired={setUpdateRequired} companyFiles={companyFiles}/>,
         <Employees employees={employees} setEmployees={setEmployees} 
             userRoles={userRoles}
             setUpdateRequired={setUpdateRequired} myobUsers={myobUsers} />,
@@ -223,7 +243,29 @@ const CompanyAdmin = () => {
     )
 }
 
-const About = () => {
+const About = ({companyInformation, setCompanyInformation, setUpdateRequired, companyFiles}: {
+    companyInformation: CompanyInformationType
+    setCompanyInformation: React.Dispatch<React.SetStateAction<CompanyInformationType>>
+    setUpdateRequired: React.Dispatch<React.SetStateAction<boolean>>
+    companyFiles: MYOBCompanyFileType[]
+}) => {
+
+    useEffect(() => {
+        console.log(companyInformation);
+    }, [])
+
+    const onChange = (e: { target: { name: any; value: any; }; }) => {
+        if(companyInformation[e.target.name as keyof CompanyInformationType] != e.target.value) {
+            setCompanyInformation(prev => ({...prev, [e.target.name]: e.target.value}))
+            setUpdateRequired(true)
+        }
+    }
+
+    const onChangeID = (e: { target: { name: any; value: any; }; }) => {
+        setCompanyInformation(prev => ({...prev, [e.target.name]: {id: e.target.value}}))
+        setUpdateRequired(true)
+    }
+
     return (
         <>
             <Grid container
@@ -231,9 +273,16 @@ const About = () => {
                 alignItems={'center'}
             >
                 <Grid item xs={12}>
-                    <p>Name</p>
+                    <InputField type="text" label="Name" name="name" value={companyInformation.name} onChange={onChange} />
                     <p>Logo</p>
                     <p>Other Settings</p>
+                    <InputField type="select" label="MYOB Company File" name="defaultMyobFile" 
+                        value={companyInformation.defaultMyobFile.id} onChange={onChangeID}>
+                        <option key="nullCompanyFile" value=""></option>
+                        {companyFiles.map((cf) => (
+                            <option key={cf.id} value={cf.id}>{cf.companyName}</option>
+                        ))}
+                    </InputField>
                 </Grid>
             </Grid>
         </>

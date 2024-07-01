@@ -1,8 +1,7 @@
-from graphene import ObjectType, String, Float, Decimal, Int, DateTime, List, Boolean
+from graphene import ObjectType, String, Field, Float, Decimal, Int, DateTime, List, Boolean
 
 # CustomerPayment
 # Supplier
-
 
 class BasicForeignKeyObject(ObjectType):
     UID = String()
@@ -10,9 +9,9 @@ class BasicForeignKeyObject(ObjectType):
     URI = String()
 
 class DisplayIDForeignKeyObject(ObjectType):
-    UID = String(),
-    Name = String(),
-    DisplayID = String(),
+    UID = String()
+    Name = String()
+    DisplayID = String()
     URI = String()
 
 class NameForeignKeyObject(ObjectType):
@@ -28,30 +27,30 @@ class CurrencyForeignKeyObject(ObjectType):
     URI = String()
 
 class InvoicesObject(ObjectType):
-    RowID = Int(),
-    Number = String(),
-    UID = String(),
-    AmountApplied = Decimal(),
-    AmountAppliedForeign = Decimal(),
-    Type = String(),
+    RowID = Int()
+    Number = String()
+    UID = String()
+    AmountApplied = Decimal()
+    AmountAppliedForeign = Decimal()
+    Type = String()
     URI = String()
 
 class CustomerPaymentObject(ObjectType):
-    UID = String(),
-    DepositTo = String(),
-    Account = DisplayIDForeignKeyObject(),
-    Customer = DisplayIDForeignKeyObject(),
-    ReceiptNumber = String(),
-    Date = String(),
-    AmountReceived = Decimal(),
-    AmountReceivedForeign = Decimal(),
-    PaymentMethod = String(),
-    Memo = String(),
-    Invoices = InvoicesObject(),    
-    TransactionID = String(),
-    ForeignCurrency = NameForeignKeyObject(),
-    CurrencyExchangeRate = Decimal(),
-    URI = String(),
+    UID = String()
+    DepositTo = String()
+    Account = DisplayIDForeignKeyObject()
+    Customer = DisplayIDForeignKeyObject()
+    ReceiptNumber = String()
+    Date = String()
+    AmountReceived = Decimal()
+    AmountReceivedForeign = Decimal()
+    PaymentMethod = String()
+    Memo = String()
+    Invoices = InvoicesObject()    
+    TransactionID = String()
+    ForeignCurrency = NameForeignKeyObject()
+    CurrencyExchangeRate = Decimal()
+    URI = String()
     RowVersion = String()
 
 class AddressObject(ObjectType):
@@ -96,21 +95,21 @@ class BuyingDetailsObject(ObjectType):
     PurchaseLayout = String()
     PrintedForm = String()
     PurchaseOrderDelivery = String()
-    ExpenseAccount = DisplayIDForeignKeyObject()
+    ExpenseAccount = Field(DisplayIDForeignKeyObject)
     PaymentMemo = String()
     PurchaseComment = String()
     SupplierBillingRate = Decimal()
     ShippingMethod = String()
     IsReportable = Boolean()
     CostPerHour = Decimal()
-    Credit = CreditObject()
+    Credit = Field(CreditObject)
     ABN = String()
     ABNBranch = String()
     TaxIdNumber = String()
-    TaxCode = BasicForeignKeyObject()
-    FreightTaxCode = BasicForeignKeyObject()
+    TaxCode = Field(BasicForeignKeyObject)
+    FreightTaxCode = Field(BasicForeignKeyObject)
     UseSupplierTaxCode = Boolean()
-    Terms = TermsObject()
+    Terms = Field(TermsObject)
 
 class PaymentDetailsObject(ObjectType):
     BSBNumber = String()
@@ -119,7 +118,7 @@ class PaymentDetailsObject(ObjectType):
     StatementText = String()
     StatementCode = String()
     StatementReference = String()
-    Refund = RefundObject()
+    Refund = Field(RefundObject)
 
 class SupplierObject(ObjectType):
     UID = String()
@@ -132,16 +131,16 @@ class SupplierObject(ObjectType):
     Addresses = List(AddressObject)
     Notes = String()
     Identifiers = List(ARIdentifierObject)
-    CustomList1 = ARIdentifierObject()
-    CustomList2 = ARIdentifierObject()
-    CustomList3 = ARIdentifierObject()
-    CustomField1 = ARIdentifierObject()
-    CustomField2 = ARIdentifierObject()
-    CustomField3 = ARIdentifierObject()
+    CustomList1 = Field(ARIdentifierObject)
+    CustomList2 = Field(ARIdentifierObject)
+    CustomList3 = Field(ARIdentifierObject)
+    CustomField1 = Field(ARIdentifierObject)
+    CustomField2 = Field(ARIdentifierObject)
+    CustomField3 = Field(ARIdentifierObject)
     CurrentBalance = Decimal()
-    BuyingDetails = BuyingDetailsObject()
-    PaymentDetails = PaymentDetailsObject()
-    ForeignCurrency = NameForeignKeyObject()
+    BuyingDetails = Field(BuyingDetailsObject)
+    PaymentDetails = Field(PaymentDetailsObject)
+    ForeignCurrency = Field(NameForeignKeyObject)
     LastModifiedDateTime = DateTime()
     PhotoURI = String()
     URI = String()

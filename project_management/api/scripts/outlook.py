@@ -176,7 +176,7 @@ class ProcessInvoice(graphene.Mutation):
         invoice = Invoice.objects.get(number=invoice)
 
         # Check to see if the sale is an order
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter=UID eq guid'{invoice.myob_uid}'"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter=UID eq guid'{invoice.myob_uid}'"
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
             'x-myobapi-key': env('CLIENT_ID'),
@@ -208,7 +208,7 @@ class ProcessInvoice(graphene.Mutation):
             })
 
             # Convert order to Invoice / POST to MYOB
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
             payload = json.dumps({
                 "Date": datetime.now(), 
                 "Number": order['Number'],
@@ -282,7 +282,7 @@ class ProcessInvoices(graphene.Mutation):
                     queryFilter += " or "
 
             # Check to see if the sale is an order
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter={queryFilter}"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service?$filter={queryFilter}"
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
                 'x-myobapi-key': env('CLIENT_ID'),
@@ -318,7 +318,7 @@ class ProcessInvoices(graphene.Mutation):
                 })
 
                 # Convert order to Invoice / POST to MYOB
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
+                url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/"
                 payload = json.dumps({
                     "Date": datetime.now(), 
                     "Number": order['Number'],

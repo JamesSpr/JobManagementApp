@@ -274,6 +274,8 @@ class CreateJob(graphene.Mutation):
     @login_required
     def mutate(self, root, info, input):
         print("Creating Job")
+        user = CustomUser.objects.get(id=info.context.user.id)
+        company = user.company
 
         missing = False
         updated = False
@@ -357,6 +359,7 @@ class CreateJob(graphene.Mutation):
                 job.description = input['description'] if not job.description else job.description
                 if input['overdue_date']: job.overdue_date = input['overdue_date'].replace(tzinfo=timezone.get_fixed_timezone(0)) if not input['overdue_date'] == None else job.overdue_date
                 job.bsafe_link = input['bsafe_link'] if not input['bsafe_link'] == "" else job.bsafe_link
+                job.myob_company = company.default_myob_file 
                 job.save()
 
                 # Check folder name and rename if they're different
@@ -397,6 +400,7 @@ class CreateJob(graphene.Mutation):
             if input['overdue_date']: job.overdue_date = input['overdue_date'].replace(tzinfo=timezone.get_fixed_timezone(0))
             job.bsafe_link = input['bsafe_link'].strip()
             job.total_hours = "0.00"
+            job.myob_company = company.default_myob_file 
             job.save()
 
             ## Create new folder
@@ -497,7 +501,7 @@ class CreateJobInMyob(graphene.Mutation):
         }
         
         from myob.schema import CreateMyobJob
-        post_response = CreateMyobJob.mutate(root, info, job_data)
+        post_response = CreateMyobJob.mutate(root, info, job_data, myob_file_id = job.myob_company.file_id)
 
         if not post_response.success:
             print("Error:", post_response.message)
@@ -1251,8 +1255,8 @@ class CreateContractor(graphene.Mutation):
         existing_contractor = GetSuppliers.mutate(root, info, contractor_check)
         print(existing_contractor)
 
-        if len(existing_contractor.supplier) > 0:
-            existing = existing_contractor.supplier[0]
+        if len(existing_contractor.suppliers) > 0:
+            existing = existing_contractor.suppliers[0]
             
             new_contractor = Contractor()
             new_contractor.myob_uid = existing['UID']
@@ -1557,7 +1561,7 @@ class CreateBill(graphene.Mutation):
         bill.thumbnail_path = newBill['thumbnailPath']
         bill.file_path = os.path.join(accounts_folder, attachmentName)
 
-        create_bill = CreateMyobBill.mutate(root, info, str(job), job.myob_uid, supplier.myob_uid, newBill, attachment, attachmentName)
+        create_bill = CreateMyobBill.mutate(root, info, str(job), job.myob_uid, supplier.myob_uid, newBill, attachment, attachmentName, myob_file_id = job.myob_company.file_id)
         bill.myob_uid = create_bill.uid
 
         if not create_bill.success:
@@ -1832,8 +1836,7 @@ class CreateInvoice(graphene.Mutation):
         }
 
         from myob.schema import CreateMYOBSaleOrder
-
-        create_invoice = CreateMYOBSaleOrder.mutate(root, info, payload)
+        create_invoice = CreateMYOBSaleOrder.mutate(root, info, payload, myob_file_id = job.myob_company.file_id)
         if not create_invoice.success:
             return self(success=False, message=create_invoice.message)
         
@@ -1990,7 +1993,7 @@ class GenerateInvoice(graphene.Mutation):
 
         if not found['invoice']:
             from myob.schema import GetSalePDF
-            pdf_data = GetSalePDF.mutate(root, info, sale_type, invoice_uid)
+            pdf_data = GetSalePDF.mutate(root, info, sale_type, invoice_uid, myob_file_id = job.myob_company.file_id)
 
             if not pdf_data.success:
                 return self(success=False, message=pdf_data.message)
@@ -2014,7 +2017,7 @@ class GenerateInvoice(graphene.Mutation):
             return self(success=False, message="Not all required invoice files can be found - " + error_str[:-2])
         
         from myob.schema import GetSale
-        get_sale = GetSale.mutate(root, info, sale_type, invoice_number)
+        get_sale = GetSale.mutate(root, info, sale_type, invoice_number, myob_file_id = job.myob_company.file_id)
         if not get_sale.success:
             print("Error", get_sale.sale)
             return self(success=False, message="Can not find Sale invoice/order")
@@ -2156,41 +2159,6 @@ class InsuranceInputType(graphene.InputObjectType):
     active = graphene.Boolean()
     filename = graphene.String()
     thumbnail = graphene.String()
-
-class UpdateCompany(graphene.Mutation):
-    class Arguments:
-        employees = graphene.List(UserInputType)
-        insurances = graphene.List(InsuranceInputType)
-
-    success = graphene.String()
-    message = graphene.String()
-
-    @classmethod
-    @login_required
-    def mutate(self, root, info, employees, insurances):
-        for emp in employees:
-            if CustomUser.objects.filter(email=emp.email).exists():
-                user = CustomUser.objects.get(email=emp.email)
-                user.first_name = emp.first_name
-                user.last_name = emp.last_name
-                user.is_active = emp.is_active
-                user.is_staff = emp.is_staff
-                user.role = emp.role
-                user.myob_user = MyobUser.objects.get(id=emp.myob_user.id) if emp.myob_user and MyobUser.objects.filter(id=emp.myob_user.id).exists() else None
-                user.myob_access = emp.myob_access
-                user.save()
-
-        for ins in insurances:
-            if Insurance.objects.filter(id=ins.id).exists():
-                insurance = Insurance.objects.get(id=ins.id)
-                insurance.description = ins.description
-                insurance.issue_date = ins.issueDate
-                insurance.start_date = ins.startDate
-                insurance.expiry_date = ins.expiryDate
-                insurance.active = ins.active
-                insurance.save()
-            
-        return self(success=True, message="Company Details Updated")
 
 class InsuranceType(DjangoObjectType):
     class Meta:
@@ -2577,20 +2545,36 @@ class UpdateJobStatus(graphene.Mutation):
         return self(success=True)
 
 
-
 class TestFeature(graphene.Mutation):
     success = graphene.Boolean()
 
     @classmethod
     @login_required
     def mutate(self, root, info):
+        # print(dir(info.context.user))
+        # print(vars(info.context))
         print(info.context.user)
 
-        for bill in Bill.objects.all():
-            if "/var/www/aurify/" in bill.thumbnail_path:
-                print(bill)
-                bill.thumbnail_path = bill.thumbnail_path.replace("/var/www/aurify/", "")
-                bill.save()
+        raise Exception("Testing functionality")
+
+
+        # from accounts.models import Company, CustomUser
+        # from myob.models import CompanyFile
+
+        # for user in CustomUser.objects.all():
+        #     if "@aurify.com.au" in user.email:
+        #         user.company = Company.objects.get(id=1)
+        #         user.save()
+
+        # c = Company.objects.get(id=1)
+        # c.default_myob_file = CompanyFile.objects.get(company_name="Aurify Maintenance Services Pty Ltd")
+        # c.save()
+
+        # myob_company = CompanyFile.objects.get(company_name="Aurify Constructions Pty Ltd")
+        # for job in Job.objects.all():
+        #     job.myob_company = myob_company
+        #     job.save()
+
         # ## Merge Contractors
         # primary_contrator = Contractor.objects.get(id=34)
         # secondary_contractor = Contractor.objects.get(id=94)
@@ -2677,7 +2661,6 @@ class Mutation(graphene.ObjectType):
     create_quote = CreateQuote.Field()
     create_completion_documents = CreateCompletionDocuments.Field()
 
-    update_company = UpdateCompany.Field()
     create_insurance = CreateInsurance.Field()
     update_insurance = UpdateInsurance.Field()
     delete_insurance = DeleteInsurance.Field()

@@ -8,17 +8,19 @@ import environ
 import requests
 import urllib.parse
 import inspect
+from typing import Tuple, Union
 
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 from django.utils import timezone
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
-from accounts.models import CustomUser
+from .exceptions import MYOBError
 from api.models import Client, Contractor, Estimate, Job, Invoice, Bill, RemittanceAdvice
 from api.schema import  JobType
-from .models import MyobUser
+from .models import MyobUser, CompanyFile
 from myob.object_types import CustomerPaymentObject, SupplierObject, SaleInvoiceObject, SaleOrderObject
 from myob.input_object_types import SupplierInputObject, InvoiceInputObject
 
@@ -33,10 +35,9 @@ class UIDType(graphene.InputObjectType):
 
 def is_valid_myob_user(uid, user):
     if MyobUser.objects.filter(id=uid).exists():
-        
         myob_user = MyobUser.objects.get(id=uid)
-        if not user: user = CustomUser.objects.get(email=user, myob_user=myob_user)
-    
+
+        if not user: user = get_user_model().objects.get(email=user, myob_user=myob_user)
         return user.myob_access
     
     return False
@@ -86,67 +87,78 @@ def check_user_token_auth(uid, usr):
         return None
     
 def get_myob_user(user):
-    user = CustomUser.objects.get(email=user)
+    user = get_user_model().objects.get(email=user)
 
     if user.myob_access and user.myob_user:    
         return user.myob_user
     
     return None
 
-# Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
-def check_user_token_auth_new(usr) -> MyobUser:
-    env = environ.Env()
-    environ.Env.read_env()
+def get_user_default_company_file_id(info):
+    """ Get the users default company file based on the request context
+        ``info``: graphene context_value 
+    """
+    user = get_user_model().objects.get(email=info.context.user)
+    return user.company.default_myob_file.file_id
 
-    print(f'Checking MYOB Auth from {inspect.stack()[1][0].f_locals["self"].__name__}')
-
+def check_user_token_auth_new(usr: str) -> MyobUser:
+    """ Check the current authentication of user, and refresh token if required (within 2 minutes of expiry)
+    """
     user = get_myob_user(usr)
     if user is None:
         print('Error with MYOB User Auth')
         return None
 
-    if timezone.now() >= (user.access_expires_at - timedelta(minutes=2)):
-        
-        link = "https://secure.myob.com/oauth2/v1/authorize"
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        payload = {
-            'client_id': env('CLIENT_ID'),
-            'client_secret': env('CLIENT_SECRET'),
-            'refresh_token': user.refresh_token,
-            'grant_type':'refresh_token',
-        }
-        # print(payload)
-        response = requests.post(link, data=payload, headers=headers)
-
-        if not response.status_code == 200:
-            print("MYOB Authentication error for", user.username)
-            print(response)
-            return None
-
-        res = json.loads(response.text)
-
-        user.access_token = res['access_token']
-        user.refresh_token = res['refresh_token']
-        user.access_expires_at = timezone.now() + timedelta(seconds=int(res['expires_in']))
-        user.save()
-        
-        print('MYOB Auth Refreshed By', user.username)
-        return user
-    else:
+    # Check token expiry time
+    if timezone.now() <= (user.access_expires_at - timedelta(minutes=2)):
         print('MYOB Auth Active')
         return user
+        
+    # Refresh Token
+    link = "https://secure.myob.com/oauth2/v1/authorize"
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    payload = {
+        'client_id': env('CLIENT_ID'),
+        'client_secret': env('CLIENT_SECRET'),
+        'refresh_token': user.refresh_token,
+        'grant_type':'refresh_token',
+    }
+    response = requests.post(link, data=payload, headers=headers)
+
+    if not response.status_code == 200:
+        print("MYOB Authentication error for", user.username)
+        print(response)
+        return None
+
+    res = json.loads(response.text)
+
+    user.access_token = res['access_token']
+    user.refresh_token = res['refresh_token']
+    user.access_expires_at = timezone.now() + timedelta(seconds=int(res['expires_in']))
+    user.save()
+    
+    print('MYOB Auth Refreshed By', user.username)
+    return user
 
 
-def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False, return_response:bool = False) -> dict:
+def myob_get(info, url: str, filter:str = '', all:bool = False, return_response:bool = False, company_file_id:str = None) -> dict:
     """ Basic Get request to myob with option for filter
 
-    ``user`` is the myob user object
+    ``info`` is the graphene context_value
     ``url`` is the myob endpoint for the get request
     ``filter`` is an optional string with the odata query for the myob endpoint
     
-    returns json object with the response data
+    returns tuple object with the first value representing the success and the second being the response data or message
 
     """
+    print(f'Checking MYOB Auth from {inspect.stack()[1][0].f_locals["self"].__name__}')
+    user = check_user_token_auth_new(info.context.user)
+    if user is None:
+        raise MYOBError("MYOB Authentication Error")
+    
+    if company_file_id is None: 
+        company_file_id = get_user_default_company_file_id(info)
+
     print("MYOB GET", url, filter)
 
     env = environ.Env()
@@ -163,11 +175,11 @@ def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False, return
     if all:
         get_filter += "&$top=1000" if filter else "?$top=1000"
 
-    response = requests.get(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}{get_filter}", headers=headers) 
+    response = requests.get(f"{env('MYOB_API_URL')}/{company_file_id}/{url}{get_filter}", headers=headers) 
 
     if response.status_code != 200:
         print(response.status_code, response.text)
-        return None
+        raise MYOBError(f"Request Failed ({response.status_code})")
 
     if return_response:
         return response
@@ -181,11 +193,11 @@ def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False, return
     
     while res['NextPageLink'] != None:
         skip = 1000*counter
-        response = requests.get(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}/{get_filter}{'?' if get_filter == '' else '&'}$skip={skip}", headers=headers)
+        response = requests.get(f"{env('MYOB_API_URL')}/{company_file_id}/{url}/{get_filter}{'?' if get_filter == '' else '&'}$skip={skip}", headers=headers)
         
         if response.status_code != 200:
             print(response.status_code, response.text)
-            raise BaseException("Get Request Failed")
+            raise MYOBError(f"Request Failed ({response.status_code})")
             
         res = json.loads(response.text)
         data['Items'].extend(res['Items'])
@@ -195,7 +207,7 @@ def myob_get(user: MyobUser, url: str, filter:str = '', all:bool = False, return
 
     return data
 
-def myob_post(user: MyobUser, url: str, payload) -> requests.Response:
+def myob_post(user: MyobUser, url: str, payload, company_file_id:str = env('COMPANY_FILE_ID')) -> requests.Response:
     """ Basic Post request to myob with a payload
 
         ``user`` is the myob user object
@@ -216,11 +228,11 @@ def myob_post(user: MyobUser, url: str, payload) -> requests.Response:
         'Accept-Encoding': 'gzip,deflate',
     }
 
-    response = requests.post(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}", headers=headers, data=payload)
+    response = requests.post(f"{env('MYOB_API_URL')}/{company_file_id}/{url}", headers=headers, data=payload)
     
     return response
 
-def myob_put(user: MyobUser, url: str, payload) -> requests.Response:
+def myob_put(user: MyobUser, url: str, payload, company_file_id:str = env('COMPANY_FILE_ID')) -> requests.Response:
     """ Basic Put request to myob with a payload
 
         ``user`` is the myob user object
@@ -245,7 +257,7 @@ def myob_put(user: MyobUser, url: str, payload) -> requests.Response:
         'Accept-Encoding': 'gzip,deflate',
     }
 
-    response = requests.put(f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{url}", headers=headers, data=payload)
+    response = requests.put(f"{env('MYOB_API_URL')}/{company_file_id}/{url}", headers=headers, data=payload)
 
     
     print(response.status_code, response.text)
@@ -257,6 +269,32 @@ def myob_put(user: MyobUser, url: str, payload) -> requests.Response:
 
 def get_response_uid(response):
     return response.headers['Location'][-36:]
+
+class CompanyFileType(DjangoObjectType):
+    class Meta:
+        model = CompanyFile
+        fields = "__all__"
+
+class CompanyFileInput(graphene.InputObjectType):
+    name = graphene.String()
+    file_id = graphene.String()
+
+class CreateCompanyFile(graphene.Mutation):
+    class Arguments:
+        company_file = CompanyFileInput()
+    
+    success = graphene.Boolean()
+    company_file = graphene.Field(CompanyFileType)
+
+    @classmethod
+    @login_required
+    def mutate(self, root, info, company_file): 
+        cf = CompanyFile()
+        cf.company_name = company_file.name
+        cf.file_id = company_file.file_id
+        cf.save()
+
+        return self(success=True, company_file=cf)
 
 class MyobUserType(DjangoObjectType):
     class Meta:
@@ -354,7 +392,7 @@ class updateOrCreateMyobAccount(graphene.Mutation):
     @login_required
     def mutate(self, root, info, user_id, access_token, expires_in, refresh_token, uid, username=None):
 
-        app_user = CustomUser.objects.get(id=user_id) if CustomUser.objects.filter(id=user_id).exists() else False
+        app_user = get_user_model().objects.get(id=user_id) if get_user_model().objects.filter(id=user_id).exists() else False
         user = MyobUser.objects.get(id=uid) if is_valid_myob_user(uid, info.context.user) else False
         
         if not app_user:
@@ -415,7 +453,7 @@ class DeleteMyobUser(graphene.Mutation):
     @login_required
     def mutate(self, root, info, myob_uid):
         myob_user = MyobUser.objects.get(id=myob_uid) if MyobUser.objects.filter(id=myob_uid).exists() else False
-        app_user = CustomUser.objects.get(myob_user=myob_user) if CustomUser.objects.filter(myob_user=myob_user).exists() else False
+        app_user = get_user_model().objects.get(myob_user=myob_user) if get_user_model().objects.filter(myob_user=myob_user).exists() else False
         
         app_user.myob_user = None
         app_user.save()
@@ -443,13 +481,12 @@ class GetCustomers(graphene.Mutation):
     @classmethod
     @login_required
     def mutate(self, root, info, filter):
-        user = check_user_token_auth_new(info.context.user)
-        if user is None:
-            return self(success=False, message="MYOB User Authentication Error")
-
         endpoint = "Contact/Customer"
-        response = myob_get(user, endpoint, filter)
-
+        try:
+            response = myob_get(info, endpoint, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
+        
         return self(success=True, customers=json.dumps(response['Items']))
 
 class CreateCustomer(graphene.Mutation):
@@ -474,7 +511,10 @@ class CreateCustomer(graphene.Mutation):
         # Check if the customer exists based on the ABN
         customer_filter = f"SellingDetails/ABN eq '{customer.abn}'"
         get_url = "Contact/Customer"
-        get_res = myob_get(user, get_url, customer_filter)
+        try:
+            get_res = myob_get(info, get_url, customer_filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         if len(get_res['Items']) > 0:
             if len(get_res['Items']) > 1:
@@ -523,12 +563,18 @@ class UpdateCustomer(graphene.Mutation):
         # Check if the customer exists based on the ABN
         filter = f"UID eq guid'{customer.myob_uid}'"
         get_endpoint = "Contact/Customer"
-        get_res = myob_get(user, get_endpoint, filter)
+        try:
+            get_res = myob_get(info, get_endpoint, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         # If ABN has been updated we need to check the new ABN is not going to be the same as another client
         if customer.abn != get_res['Items'][0]['SellingDetails']['ABN']:
             filter_abn_check = f"SellingDetails/ABN eq '{customer.abn}'"
-            get_res_abn_check = myob_get(user, get_endpoint, filter_abn_check)
+            try:
+                get_res_abn_check = myob_get(info, get_endpoint, filter_abn_check)
+            except MYOBError as e:
+                return self(success=False, message=str(e))
 
             if len(get_res_abn_check['Items']) >= 1:
                 return self(success=False, message="The ABN entered already exists for another client, you may already have this client in MYOB.")
@@ -559,7 +605,8 @@ class GetSuppliers(graphene.Mutation):
         filter = graphene.String()
 
     success = graphene.Boolean()
-    supplier = graphene.Field(SupplierObject)
+    message = graphene.String()
+    suppliers = graphene.List(SupplierObject)
 
     @classmethod
     @login_required
@@ -569,9 +616,12 @@ class GetSuppliers(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         endpoint = "Contact/Supplier"
-        response = myob_get(user, endpoint, filter)
+        try:
+            response = myob_get(info, endpoint, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
-        return self(success=True, supplier=response['Items'])
+        return self(success=True, suppliers=response['Items'])
 
 
 class myobSupplierContactInput(graphene.InputObjectType):
@@ -683,13 +733,19 @@ class UpdateSupplier(graphene.Mutation):
         endpoint = "Contact/Supplier"
         if existing_supplier is None:
             filter = f"UID eq guid'{supplier.myob_uid}'"
-            response = myob_get(user, endpoint, filter)
+            try:
+                response = myob_get(info, endpoint, filter)
+            except MYOBError as e:
+                return self(success=False, message=str(e))
             existing_supplier = response['Items'][0]
 
         # If ABN has been updated we need to check the new ABN is not going to be the same as another client
         if supplier.abn != existing_supplier['BuyingDetails']['ABN']:
             filter_abn_check = f"BuyingDetails/ABN eq '{supplier.abn}'"
-            get_res_abn_check = myob_get(user, endpoint, filter_abn_check)
+            try:
+                get_res_abn_check = myob_get(info, endpoint, filter_abn_check)
+            except MYOBError as e:
+                return self(success=False, message=str(e))
 
             if len(get_res_abn_check['Items']) >= 1:
                 return self(success=False, message="The ABN entered already exists for another supplier, you may already have this supplier in MYOB.")
@@ -737,7 +793,10 @@ class GetInvoice(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
     
         endpoint = "Sale/Invoice/Service"
-        invoice = myob_get(user, endpoint, filter)
+        try:
+            invoice = myob_get(info, endpoint, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, invoice=invoice['Items'])
 
@@ -762,7 +821,7 @@ class myobGetInvoices(graphene.Mutation):
 
         invoice_filter = "" if inv == "" else "?$filter=" + inv
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service{invoice_filter}"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service{invoice_filter}"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -785,7 +844,7 @@ class myobGetInvoices(graphene.Mutation):
         if len(res) > 1:
             for invoice in res:
                 # Get invoice from MYOB
-                url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
+                url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
             
                 headers = {                
                     'Authorization': f'Bearer {user.access_token}',
@@ -804,7 +863,7 @@ class myobGetInvoices(graphene.Mutation):
         invoice = res[0]
 
         # Get invoice from MYOB
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service/{invoice['UID']}/?format=pdf&templatename=James Tax Invoice 2022"
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
             'x-myobapi-key': env('CLIENT_ID'),
@@ -839,7 +898,7 @@ class myobGetOrders(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         filter = "" if query == "" else "?$filter=" + query
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service{filter}"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Order/Service{filter}"
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
             'x-myobapi-key': env('CLIENT_ID'),
@@ -867,7 +926,10 @@ class GetMyobJobs(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         endpoint = "GeneralLedger/Job"
-        response = myob_get(user, endpoint, filter, all=True)
+        try:
+            response = myob_get(info, endpoint, filter, all=True)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, message="Successfully retrieved jobs", jobs=json.dumps(response['Items']))
 
@@ -890,7 +952,7 @@ class myobGetBills(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         bill_filter = "" if bill == "" else "?$filter=" + bill
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service{bill_filter}"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service{bill_filter}"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -917,7 +979,10 @@ class GetAccounts(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         endpoint = "GeneralLedger/Account"
-        response = myob_get(user, endpoint, filter, all=True)
+        try:
+            response = myob_get(info, endpoint, filter, all=True)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, message=json.dumps(response['Items']))
 
@@ -938,7 +1003,7 @@ class myobGetTaxCodes(graphene.Mutation):
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/TaxCode?$top=1000"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/TaxCode?$top=1000"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -969,7 +1034,10 @@ class GetGeneralJournal(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         endpoint = "GeneralLedger/JournalTransaction"
-        general_journal = myob_get(user, endpoint, filter, all=True)
+        try:
+            general_journal = myob_get(info, endpoint, filter, all=True)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, general_journal=json.dumps(general_journal['Items']))
 
@@ -993,7 +1061,10 @@ class myobRepairJobSync(graphene.Mutation):
         filter = f"Number eq '{job.po}'"
         endpoint = "GeneralLedger/Job"
         
-        response = myob_get(user, endpoint, filter)
+        try:
+            response = myob_get(info, endpoint, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         if len(response['Items']) > 0:
             job.myob_uid = response['Items'][0]['UID']
@@ -1029,7 +1100,7 @@ class myobSyncJobs(graphene.Mutation):
         
         print("MYOB Job Sync - Beginning Download")
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1044,7 +1115,7 @@ class myobSyncJobs(graphene.Mutation):
 
         while res['NextPageLink'] != None:
             skip = 1000*counter
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000&$skip={skip}"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job?$top=1000&$skip={skip}"
         
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -1079,7 +1150,7 @@ class myobSyncJobs(graphene.Mutation):
                 # print(one_job)
                 estimate = Estimate.objects.filter(job_id=one_job.id).exclude(approval_date=None)
                 if estimate:
-                    url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
+                    url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/GeneralLedger/Job/"
                     payload = json.dumps({
                         "Number": one_job.po,
                         "Name": (one_job.location.name + " " + one_job.title)[0:30],
@@ -1119,6 +1190,7 @@ class JobInputType(graphene.InputObjectType):
 class CreateMyobJob(graphene.Mutation):
     class Arguments:
         job = JobInputType()
+        myob_file_id = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -1126,7 +1198,7 @@ class CreateMyobJob(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, job):
+    def mutate(self, root, info, job, myob_file_id):
         user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
@@ -1139,14 +1211,17 @@ class CreateMyobJob(graphene.Mutation):
             "IsHeader": False,
             "LinkedCustomer": {"UID": job['customer_uid']},
         })
-        post_response = myob_post(user, endpoint, payload)
+        post_response = myob_post(user, endpoint, payload, company_file_id=myob_file_id)
 
         if post_response.status_code == 400:
             errors = json.loads(post_response.text)["Errors"][0]
             if errors["ErrorCode"] == 4134:
                 filter = f"Number eq '{job['identifier']}'"
                 endpoint = "GeneralLedger/Job"
-                response = myob_get(user, endpoint, filter)
+                try:
+                    response = myob_get(info, endpoint, filter, company_file_id=myob_file_id)
+                except MYOBError as e:
+                    return self(success=False, message=str(e))
 
                 if len(response['Items']) > 0:
                     return self(success=True, message="Job Synced with MYOB", uid=response['Items'][0]['UID'])
@@ -1179,7 +1254,7 @@ class myobSyncClients(graphene.Mutation):
 
         clients = []
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1194,7 +1269,7 @@ class myobSyncClients(graphene.Mutation):
 
         while res['NextPageLink'] != None:
             skip = 1000*counter
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000&$skip={skip}"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$top=1000&$skip={skip}"
         
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -1234,7 +1309,7 @@ class myobSyncContractors(graphene.Mutation):
 
         contractors = []
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1249,7 +1324,7 @@ class myobSyncContractors(graphene.Mutation):
 
         while res['NextPageLink'] != None:
             skip = 1000*counter
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000&$skip={skip}"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$top=1000&$skip={skip}"
         
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -1296,7 +1371,7 @@ class myobSyncInvoices(graphene.Mutation):
 
         invoices = []
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1311,7 +1386,7 @@ class myobSyncInvoices(graphene.Mutation):
 
         while res['NextPageLink'] != None:
             skip = 1000*counter
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000&$skip={skip}"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000&$skip={skip}"
         
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -1361,7 +1436,7 @@ class myobSyncBills(graphene.Mutation):
 
         bills = []
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1376,7 +1451,7 @@ class myobSyncBills(graphene.Mutation):
 
         while res['NextPageLink'] != None:
             skip = 1000*counter
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
         
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -1443,7 +1518,10 @@ class myobSyncRemittance(graphene.Mutation):
         remittance = []
 
         endpoint = "Sale/CustomerPayment"
-        remittance = myob_get(user, endpoint, all=True)
+        try:
+            remittance = myob_get(info, endpoint, all=True)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         relevant_advice = []
         for advice in remittance['Items']:
@@ -1494,7 +1572,7 @@ class myobImportContractorsFromBills(graphene.Mutation):
         ## Get Bills
         bills = []
 
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000"
         
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1509,7 +1587,7 @@ class myobImportContractorsFromBills(graphene.Mutation):
 
         while res['NextPageLink'] != None:
             skip = 1000*counter
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
+            url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$top=1000&$skip={skip}"
         
             headers = {                
                 'Authorization': f'Bearer {user.access_token}',
@@ -1540,7 +1618,7 @@ class myobImportContractorsFromBills(graphene.Mutation):
 
                             # OPTIMISE - Get all contractors then find in that list. Not individual contractors
                             if contractor.abn == "":
-                                link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{bill['Supplier']['UID']}'"
+                                link = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=UID eq guid'{bill['Supplier']['UID']}'"
                                 headers = {                
                                     'Authorization': f'Bearer {user.access_token}',
                                     'x-myobapi-key': env('CLIENT_ID'),
@@ -1585,7 +1663,7 @@ class myobImportClientFromABN(graphene.Mutation):
 
         ## Get Contractor by ABN
         name = urllib.parse.quote(name)
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$filter=CompanyName eq '{name}'"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Contact/Customer?$filter=CompanyName eq '{name}'"
 
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1634,7 +1712,7 @@ class myobImportContractorFromABN(graphene.Mutation):
         ## Get Contractor by ABN
 
         name = urllib.parse.quote(name)
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=CompanyName eq '{name}' and BuyingDetails/ABN eq '{abn}'"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Contact/Supplier?$filter=CompanyName eq '{name}' and BuyingDetails/ABN eq '{abn}'"
 
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
@@ -1663,81 +1741,10 @@ class myobImportContractorFromABN(graphene.Mutation):
 
         return self(success=True, message="Contractor Imported")
 
-
-class myobImportBGISInvoices(graphene.Mutation):
-    class Arguments:
-        uid = graphene.String()
-
-    success = graphene.Boolean()
-    message = graphene.String()
-
-    @classmethod
-    @login_required
-    def mutate(self, root, info, uid):
-        env = environ.Env()
-        environ.Env.read_env()
-
-        user = check_user_token_auth(uid, info.context.user)
-        if user is None:
-            return self(success=False, message="MYOB User Authentication Error")
-
-
-        invoices = []
-
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000"
-        
-        headers = {                
-            'Authorization': f'Bearer {user.access_token}',
-            'x-myobapi-key': env('CLIENT_ID'),
-            'x-myobapi-version': 'v2',
-            'Accept-Encoding': 'gzip,deflate',
-        }
-        response = requests.request("GET", url, headers=headers, data={})
-        res = json.loads(response.text)
-        invoices = res
-        counter = 1
-
-        while res['NextPageLink'] != None:
-            skip = 1000*counter
-            url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Sale/Invoice/Service?$top=1000&$skip={skip}"
-        
-            headers = {                
-                'Authorization': f'Bearer {user.access_token}',
-                'x-myobapi-key': env('CLIENT_ID'),
-                'x-myobapi-version': 'v2',
-                'Accept-Encoding': 'gzip,deflate',
-            }
-            response = requests.request("GET", url, headers=headers, data={})
-            res = json.loads(response.text)
-            invoices['Items'].extend(res['Items'])
-            counter += 1
-
-        invs = []
-        bgis = Client.objects.get(name='BGIS')
-        for invoice in invoices['Items']:
-            # print(invoice)
-            if invoice['Customer']['UID'] == bgis.myob_uid:
-                if invoice['CustomerPurchaseOrderNumber']:
-                    po = invoice['CustomerPurchaseOrderNumber'].split('_')[0] if '_' in invoice['CustomerPurchaseOrderNumber'] else invoice['CustomerPurchaseOrderNumber']
-                    job = Job.objects.get(po=po[2:]) if Job.objects.filter(po=po[2:]).exists() else None 
-                    if job:
-                        new_invoice, created = Invoice.objects.get_or_create(myob_uid=invoice['UID'])
-                        new_invoice.number = invoice['Number']
-                        new_invoice.date_created = invoice['Date'].split('T')[0]
-                        new_invoice.date_paid = invoice['LastPaymentDate'].split('T')[0]
-                        new_invoice.amount = round(float(invoice['Subtotal']), 2)
-                        new_invoice.save()
-
-                        invs.append(invoice)
-                
-        print("Imported BGIS Invoices")
-        return self(success=True, message=json.dumps(invs))
-
-
-
 class CreateMYOBSaleOrder(graphene.Mutation):
     class Arguments:
         new_invoice = InvoiceInputObject()
+        myob_file_id = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -1746,7 +1753,7 @@ class CreateMYOBSaleOrder(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, new_invoice: InvoiceInputObject):
+    def mutate(self, root, info, new_invoice: InvoiceInputObject, myob_file_id):
         user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
@@ -1755,7 +1762,7 @@ class CreateMYOBSaleOrder(graphene.Mutation):
 
         # POST Invoice to MYOB
         endpoint = "Sale/Order/Service"
-        response = myob_post(user, endpoint, json.dumps(new_invoice, default=str))
+        response = myob_post(user, endpoint, json.dumps(new_invoice, default=str), company_file_id=myob_file_id)
 
         if not response.status_code == 201:
             print("Error:", response.text)
@@ -1767,13 +1774,19 @@ class CreateMYOBSaleOrder(graphene.Mutation):
 
         ## Confirm Creation and get details (number)
         get_filter = f"UID eq guid'{invoice_uid}'"
-        get_inv = myob_get(user, endpoint, get_filter)
+        try:
+            get_inv = myob_get(info, endpoint, get_filter, company_file_id=myob_file_id)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
         invoice = get_inv['Items'][0]
 
         # Get invoice as PDF
         print("Getting PDF")
         pdf_endpoint = f"Sale/Order/Service/{invoice_uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
-        pdf_response = myob_get(user, pdf_endpoint, return_response=True)
+        try:
+            pdf_response = myob_get(info, pdf_endpoint, return_response=True, company_file_id=myob_file_id)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         if not pdf_response.status_code == 200:
             print(pdf_response.text, "Error retrieving PDF for Invoice", invoice["Number"])
@@ -1813,6 +1826,7 @@ class CreateMyobBill(graphene.Mutation):
         newBill = BillInputType()
         attachment = graphene.String()
         attachmentName = graphene.String()
+        myob_file_id = graphene.String()
 
     success = graphene.Boolean()
     message= graphene.String()
@@ -1822,7 +1836,7 @@ class CreateMyobBill(graphene.Mutation):
     
     @classmethod
     @login_required
-    def mutate(self, root, info, job_name, job_uid, supplier_uid, newBill, attachment, attachmentName):
+    def mutate(self, root, info, job_name, job_uid, supplier_uid, newBill, attachment, attachmentName, myob_file_id):
         user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
@@ -1830,7 +1844,10 @@ class CreateMyobBill(graphene.Mutation):
         # Get shipToAddress from MYOB
         filter = f"UID eq guid'{supplier_uid}'"
         get_endpoint = "Contact/Supplier"
-        supplier_details = myob_get(user, get_endpoint, filter)
+        try:
+            supplier_details = myob_get(info, get_endpoint, filter, company_file_id=myob_file_id)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         if len(supplier_details['Items']) < 1:
             return self(success=False, message="Could Not Get Contractor Details From MYOB")
@@ -1873,7 +1890,7 @@ class CreateMyobBill(graphene.Mutation):
             "JournalMemo": f"Purchase: {supplier_details['CompanyName']}",
         }, default=str)
 
-        response = myob_post(user, post_endpoint, payload)
+        response = myob_post(user, post_endpoint, payload, company_file_id=myob_file_id)
 
         if response.status_code != 200 and response.status_code != 201:
             print(response.status_code, response.text)
@@ -1894,7 +1911,7 @@ class CreateMyobBill(graphene.Mutation):
                 }
             ],
         }, default=str)
-        attachment_response = myob_post(user, attachment_endpoint, attachment_payload)
+        attachment_response = myob_post(user, attachment_endpoint, attachment_payload, company_file_id=myob_file_id)
   
         if attachment_response.status_code != 200 and attachment_response.status_code != 201:
             print(attachment_response.status_code, attachment_response.text)
@@ -1943,7 +1960,7 @@ class myobUpdateBill(graphene.Mutation):
         }
 
         # GET MYOB Bill
-        get_url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$filter=UID eq guid'{bill.myobUid}'"
+        get_url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service?$filter=UID eq guid'{bill.myobUid}'"
         get_response = requests.request("GET", get_url, headers=headers)
 
         if not get_response.status_code == 200:
@@ -1971,7 +1988,7 @@ class myobUpdateBill(graphene.Mutation):
             myob_bill['Lines'][0]['Account']['UID'] = "83c3ab74-1b2e-4002-9e38-65c99fbf2b46"
 
         # PUT Bill with updates to MYOB
-        url = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service/{bill.myobUid}"
+        url = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/Purchase/Bill/Service/{bill.myobUid}"
         payload = json.dumps(myob_bill, default=str)
         response = requests.request("PUT", url, headers=headers, data=payload)
 
@@ -2029,7 +2046,10 @@ class GetCustomerPayment(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
         
         endpoint = "Sale/CustomerPayment"
-        response = myob_get(user, endpoint, filter)
+        try:
+            response = myob_get(info, endpoint, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
         if response is None:            
             return self(success=False, message="Get Request Failed")
 
@@ -2087,7 +2107,10 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
         # Check to see if the sale is an order
         url = "Sale/Order/Service"
         filter = f"UID eq guid'{invoice.myob_uid}'"
-        response = myob_get(user, url, filter)
+        try:
+            response = myob_get(info, url, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
         if response == None:
             print("Get Error")
             return self(success=False, message="Error with MYOB Request")
@@ -2104,7 +2127,10 @@ class convertSaleOrdertoInvoice(graphene.Mutation):
             print("Already Converted:", order['Number'])
             url = "Sale/Invoice/Service"
             filter = f"Number eq '{invoice.number}'"
-            response = myob_get(user, url, filter)
+            try:
+                response = myob_get(info, url, filter)
+            except MYOBError as e:
+                return self(success=False, message=str(e))
 
             inv = response['Items']
             inv = inv[0]
@@ -2167,21 +2193,25 @@ class GetSale(graphene.Mutation):
     class Arguments:
         sale_type = graphene.String()
         invoice_number = graphene.String()
-    
+        myob_file_id = graphene.String()
+
     success = graphene.Boolean()
     message = graphene.String()
     sale = graphene.Field(SaleInvoiceObject) or graphene.Field(SaleOrderObject)
     
     @classmethod
     @login_required
-    def mutate(self, root, info, sale_type: str, invoice_number: str):
+    def mutate(self, root, info, sale_type: str, invoice_number: str, myob_file_id: str):
         user = check_user_token_auth_new(info.context.user)
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
         endpoint = f"Sale/{sale_type}/Service"
         filter = f"Number eq '{invoice_number}'"
-        sale = myob_get(user, endpoint, filter)
+        try:
+            sale = myob_get(info, endpoint, filter, company_file_id=myob_file_id)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, message="Successfully Retrieved Sale", sale=sale)
 
@@ -2189,6 +2219,7 @@ class GetSalePDF(graphene.Mutation):
     class Arguments:
         sale_type = graphene.String()
         uid = graphene.String()
+        myob_file_id = graphene.String()
 
     success = graphene.Boolean()
     message = graphene.String()
@@ -2196,7 +2227,7 @@ class GetSalePDF(graphene.Mutation):
 
     @classmethod
     @login_required
-    def mutate(self, root, info, sale_type, uid):
+    def mutate(self, root, info, sale_type, uid, myob_file_id):
         
         user = check_user_token_auth_new(info.context.user)
         if user is None:
@@ -2205,7 +2236,10 @@ class GetSalePDF(graphene.Mutation):
         print("Getting PDF")
         endpoint = f"Sale/{sale_type}/Service/{uid}/?format=pdf&templatename={INVOICE_TEMPLATE}"
     
-        pdf_response = myob_get(user, endpoint)
+        try:
+            pdf_response = myob_get(info, endpoint, company_file_id = myob_file_id)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         if(pdf_response.status_code != 200):
             print(pdf_response, "Error retrieving PDF")
@@ -2229,7 +2263,10 @@ class GetTimesheets(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         endpoint = "Payroll/Timesheet"
-        response = myob_get(user, endpoint, filter)
+        try:
+            response = myob_get(info, endpoint, filter)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, message=response['Items'])
     
@@ -2285,7 +2322,10 @@ class GetMyobEmployees(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
         
         endpoint = "Contact/Employee"
-        employees = myob_get(user, endpoint, filter, all=True)
+        try:
+            employees = myob_get(info, endpoint, filter, all=True)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, message="Successfully retrieved employees", employees=employees['Items'])
 
@@ -2303,7 +2343,10 @@ class GetPayrollCategories(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
         
         endpoint = "Payroll/PayrollCategory"
-        payroll_categories = myob_get(user, endpoint)
+        try:
+            payroll_categories = myob_get(info, endpoint)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, message="Successfully retrieved payroll categories", payroll_categories=payroll_categories['Items'])
 
@@ -2320,7 +2363,10 @@ class GetPayrollDetails(graphene.Mutation):
             return self(success=False, message="MYOB User Authentication Error")
 
         endpoint = "Contact/EmployeePayrollDetails"
-        payroll_details = myob_get(user, endpoint)
+        try:
+            payroll_details = myob_get(info, endpoint)
+        except MYOBError as e:
+            return self(success=False, message=str(e))
 
         return self(success=True, message="Successfully retrieved payroll details", payroll_details=payroll_details['Items'])
 
@@ -2343,7 +2389,7 @@ class myobCustomQuery(graphene.Mutation):
         if user is None:
             return self(success=False, message="MYOB User Authentication Error")
 
-        link = f"{env('COMPANY_FILE_URL')}/{env('COMPANY_FILE_ID')}/{query}"
+        link = f"{env('MYOB_API_URL')}/{env('COMPANY_FILE_ID')}/{query}"
         headers = {                
             'Authorization': f'Bearer {user.access_token}',
             'x-myobapi-key': env('CLIENT_ID'),
@@ -2356,10 +2402,14 @@ class myobCustomQuery(graphene.Mutation):
 
 class Query(graphene.ObjectType):
     myob_users = graphene.List(MyobUserType)
-
     @login_required
-    def resolve_myob_users(root, info, **kwargs):
+    def resolve_myob_users(root, info):
         return MyobUser.objects.all()
+
+    company_files = graphene.List(CompanyFileType)
+    @login_required
+    def resolve_company_files(root, info):
+        return CompanyFile.objects.all()
 
 
 class Mutation(graphene.ObjectType):
@@ -2368,6 +2418,8 @@ class Mutation(graphene.ObjectType):
     get_payroll_categories = GetPayrollCategories.Field()
 
     myob_custom_query = myobCustomQuery.Field()
+
+    create_company_file = CreateCompanyFile.Field()
 
     myob_initial_connection = myobInitialConnection.Field()
     myob_get_access_token = myobGetAccessToken.Field()
@@ -2403,7 +2455,6 @@ class Mutation(graphene.ObjectType):
     myob_import_contractor_from_abn = myobImportContractorFromABN.Field()
     myob_import_client_from_abn = myobImportClientFromABN.Field()
     myob_import_contractors_from_bills = myobImportContractorsFromBills.Field()
-    myob_import_bgis_invoices = myobImportBGISInvoices.Field()
 
     create_myob_job = CreateMyobJob.Field()
     myob_create_sale_order = CreateMYOBSaleOrder.Field()

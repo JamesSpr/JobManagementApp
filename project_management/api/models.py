@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models.deletion import CASCADE, PROTECT, RESTRICT
 from accounts.models import CustomUser
+from myob.models import CompanyFile
 import datetime
 
 MAX_ID_SIZE = 20
@@ -142,7 +143,8 @@ class Job(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     
     client = models.ForeignKey(Client, on_delete=models.PROTECT, default=Client.get_default_id)
-    requester = models.ForeignKey(ClientContact, on_delete=models.PROTECT, blank=True, null=True,)
+    requester = models.ForeignKey(ClientContact, on_delete=models.PROTECT, blank=True, null=True)
+    myob_company = models.ForeignKey(CompanyFile, on_delete=models.PROTECT, blank=True, null=True)
     myob_uid = models.CharField(max_length=36, blank=True, null=True)
 
     stage = models.CharField(max_length=3, default='INS', choices=JOB_STATE, editable=False)

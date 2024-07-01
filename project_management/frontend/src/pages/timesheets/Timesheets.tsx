@@ -166,11 +166,6 @@ const Timesheets = () => {
                             message
                             details
                         }
-                    }
-                    getMyobPayrollCategories() {
-                    categories: getMyobPayrollCategories() {
-                        success
-                        message
                     }`,
                     variables: {}
                 }),

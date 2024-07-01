@@ -6,10 +6,13 @@ import graphene
 from graphene_django import DjangoObjectType
 from graphql_auth import mutations
 from graphql_auth.schema import UserQuery, MeQuery
-from accounts.models import CustomUser, Company
-from graphql_jwt.decorators import login_required
-
+from graphql_jwt.decorators import login_required, ensure_token
 from django.conf import settings
+
+from accounts.models import CustomUser, Company
+from myob.models import MyobUser, CompanyFile
+from api.models import Insurance
+from api.schema import UserInputType, InsuranceInputType
 
 class CompanyType(DjangoObjectType):
     class Meta:
@@ -36,7 +39,7 @@ class CreateCompany(graphene.Mutation):
 
         if logo:
             if 'data:image/jpeg;base64' in logo:
-                logo_type = 'jpeg'
+                logo_type = 'jpeg' 
             elif 'data:image/png;base64' in logo:
                 logo_type = 'png'
             else:
@@ -53,30 +56,90 @@ class CreateCompany(graphene.Mutation):
         company.save()
         return self(success=True, message="Company Created")
 
+# class UpdateCompany(graphene.Mutation):
+#     class Arguments:
+#         id = graphene.String()
+#         name = graphene.String()
+#         logo = graphene.String(required=False)
+
+#     success = graphene.Boolean()
+#     message = graphene.String()
+
+#     @classmethod
+#     @login_required
+#     def mutate(self, root, info, name, logo):
+
+#         if not Company.objects.filter(name=name).exists():
+#             return self(success=False, message="Company not found")
+
+#         company = Company.objects.get(id=id)
+#         company.name = name
+#         if logo:
+#             logo = logo.replace('data:image/jpeg;base64', '').replace('data:image/png;base64', '')
+#             img = Image.open(io.BytesIO(base64.decodestring(logo)))
+#             company.logo = img
+
+#         return self(success=True, message="Company Created")
+
+class IDInputType(graphene.InputObjectType):
+    id = graphene.String()
+
+class CompanyInputType(graphene.InputObjectType):
+    id = graphene.String()
+    name = graphene.String()
+    default_myob_file = graphene.Field(IDInputType)
+    default_myob_account = graphene.Field(IDInputType)
+
+
 class UpdateCompany(graphene.Mutation):
     class Arguments:
-        id = graphene.String()
-        name = graphene.String()
-        logo = graphene.String(required=False)
+        companyInfo = CompanyInputType()
+        employees = graphene.List(UserInputType)
+        insurances = graphene.List(InsuranceInputType)
 
-    success = graphene.Boolean()
+    success = graphene.String()
     message = graphene.String()
 
     @classmethod
     @login_required
-    def mutate(self, root, info, name, logo):
-
-        if not Company.objects.filter(name=name).exists():
+    def mutate(self, root, info, companyInfo, employees, insurances):
+        if not Company.objects.filter(id=companyInfo.id).exists():
             return self(success=False, message="Company not found")
 
-        company = Company.objects.get(id=id)
-        company.name = name
-        if logo:
-            logo = logo.replace('data:image/jpeg;base64', '').replace('data:image/png;base64', '')
-            img = Image.open(io.BytesIO(base64.decodestring(logo)))
-            company.logo = img
+        company = Company.objects.get(id=companyInfo.id)
+        company.name = companyInfo.name
+        company.default_myob_file = CompanyFile.objects.get(id=companyInfo.default_myob_file.id)
+        # company.default_myob_account = companyInfo.default_myob_account
+        company.save()
 
-        return self(success=True, message="Company Created")
+        # if logo:
+        #     logo = logo.replace('data:image/jpeg;base64', '').replace('data:image/png;base64', '')
+        #     img = Image.open(io.BytesIO(base64.decodestring(logo)))
+        #     company.logo = img
+
+        for emp in employees:
+            if CustomUser.objects.filter(email=emp.email).exists():
+                user = CustomUser.objects.get(email=emp.email)
+                user.first_name = emp.first_name
+                user.last_name = emp.last_name
+                user.is_active = emp.is_active
+                user.is_staff = emp.is_staff
+                user.role = emp.role
+                user.myob_user = MyobUser.objects.get(id=emp.myob_user.id) if emp.myob_user and MyobUser.objects.filter(id=emp.myob_user.id).exists() else None
+                user.myob_access = emp.myob_access
+                user.save()
+
+        for ins in insurances:
+            if Insurance.objects.filter(id=ins.id).exists():
+                insurance = Insurance.objects.get(id=ins.id)
+                insurance.description = ins.description
+                insurance.issue_date = ins.issueDate
+                insurance.start_date = ins.startDate
+                insurance.expiry_date = ins.expiryDate
+                insurance.active = ins.active
+                insurance.save()
+            
+        return self(success=True, message="Company Details Updated")
 
 
 class CustomUserType(DjangoObjectType):
@@ -146,14 +209,13 @@ class PersistLogin(graphene.Mutation):
 
     @classmethod
     def mutate(self, root, info):
-        cookies = info.context.META.get('HTTP_COOKIE')
         user = info.context.user
         print(user)
 
-        refresh_token_matches = re.search("(?<=JWT-refresh-token=)(.*)(?=;)?", cookies)
+        refresh_token = info.context.COOKIES.get("JWT-refresh-token")
+        print(refresh_token)
         
-        if refresh_token_matches:
-            refresh_token = refresh_token_matches.group()
+        if refresh_token:
             if not CustomUser.objects.filter(refresh_token=refresh_token).exists():
                 print("No user with token", refresh_token)
                 return self(user=None)
@@ -174,7 +236,8 @@ class PersistLogin(graphene.Mutation):
         user.save()
 
         # Update the token cookie
-        info.context.jwt_refrest_token = refresh.refresh_token
+        # info.context.JWT = refresh.token
+        # info.context['JWT-refresh-token'] = refresh.refresh_token
 
         return self(user=user, access_token=refresh.token)
 
@@ -220,9 +283,17 @@ class AuthMutation(graphene.ObjectType):
 
 class Query(UserQuery, MeQuery, graphene.ObjectType):
     companies = graphene.List(CompanyType)
+    my_company = graphene.Field(CompanyType)
 
-    def resolve_companies(root, info):
+    @login_required
+    def resolve_companies(root, info): 
         return Company.objects.all()
+    
+    @login_required
+    def resolve_my_company(root, info):
+        user = CustomUser.objects.get(id=info.context.user.id)
+        company = Company.objects.filter(id=user.company.id)
+        return company[0]
 
     # users = graphene.List(CustomUserType)
     # def resolve_users(root, info, is_staff=None):
@@ -233,13 +304,13 @@ class Query(UserQuery, MeQuery, graphene.ObjectType):
 
     user_refresh_token = graphene.List(CustomUserType)
 
+    @ensure_token
     def resolve_user_refresh_token(root, info, **kwargs):
-        cookies = info.context.META.get('HTTP_COOKIE')
-        refresh_token_matches = re.search("(?<=JWT-refresh-token=)(.*)(?=;)?", cookies)
+        cookie = info.context.COOKIES.get("JWT-refresh-token")
+        # refresh_token_matches = re.search("(?<=JWT-refresh-token=)(.*)(?=;)?", cookies)
         
-        if refresh_token_matches:
-            refresh_token = refresh_token_matches.group()
-            return CustomUser.objects.filter(refresh_token=refresh_token)
+        if cookie:
+            return CustomUser.objects.filter(refresh_token=cookie)
 
         return None
         

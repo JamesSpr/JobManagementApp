@@ -194,8 +194,8 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 
 GRAPHENE = {
     "SCHEMA": "project_management.schema.schema",
-    'MIDDLEWARE': [
-        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    "MIDDLEWARE": [
+        "graphql_jwt.middleware.JSONWebTokenMiddleware",
     ],
     "SUBSCRIPTION_PATH": "/ws/graphql" 
 }
@@ -220,7 +220,7 @@ GRAPHQL_AUTH = {
 
 GRAPHQL_JWT = {
     "JWT_VERIFY_EXPIRATION": True,
-    "JWT_EXPIRATION_DELTA": timedelta(minutes=15),
+    "JWT_EXPIRATION_DELTA": timedelta(minutes=5),
     "JWT_LONG_RUNNING_REFRESH_TOKEN": True,
     "JWT_REFRESH_EXPIRATION_DELTA": timedelta(days=7),
     "JWT_COOKIE_SECURE": True,
@@ -228,8 +228,9 @@ GRAPHQL_JWT = {
 }
 
 AUTHENTICATION_BACKENDS = [
-    'graphql_jwt.backends.JSONWebTokenBackend',
-    'django.contrib.auth.backends.ModelBackend',
+    # "graphql_jwt.backends.JSONWebTokenBackend",
+    "graphql_auth.backends.GraphQLAuthBackend",
+    "django.contrib.auth.backends.ModelBackend",
 ]
 
 # Email Settings

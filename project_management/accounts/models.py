@@ -6,16 +6,13 @@ class MyAccountManager(BaseUserManager):
         if not email:
             raise ValueError("Users must have an email address")
 
-        if '@aurify.com.au' in email:
-            user.company = Company.objects.get(id="1")
-
         user = self.model(
             email=self.normalize_email(email),
         )
 
         user.username = user.email
         user.role = 'GUS'
-        user.company = Company.objects.get(name="Aurify")
+        user.company = Company.objects.get(id="1")
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -24,13 +21,10 @@ class MyAccountManager(BaseUserManager):
         user = self.create_user(
             email=self.normalize_email(email),
         )
-
-        if '@aurify.com.au' in email:
-            user.company = Company.objects.get(id="1")
         
         user.username = user.email
         user.role = 'DEV'
-        user.company = Company.objects.get(name="Aurify")
+        user.company = Company.objects.get(id="1")
         user.set_password(password)
         user.is_admin = True
         user.is_staff = True
@@ -43,7 +37,8 @@ class Company(models.Model):
     id = models.AutoField(primary_key=True, unique=True)
     name = models.CharField(max_length=63, verbose_name="Company Name")
     logo_path = models.CharField(max_length=255, blank=True)
-    myob_account = models.ForeignKey('myob.MyobUser', on_delete=models.PROTECT, null=True)
+    default_myob_file = models.ForeignKey('myob.CompanyFile', on_delete=models.PROTECT, null=True)
+    default_myob_account = models.ForeignKey('myob.MyobUser', on_delete=models.PROTECT, null=True)
 
 class CustomUser(AbstractBaseUser):
     USER_ROLES = [

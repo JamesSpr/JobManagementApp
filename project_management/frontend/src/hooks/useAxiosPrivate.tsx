@@ -23,6 +23,7 @@ const useAxiosPrivate = () => {
         const responseIntercept = axiosPrivate.interceptors.response.use(
             async (response) => {
                 const prevRequest = response?.config; 
+                response?.data?.errors && console.log(response?.data?.errors)
                 if(response?.data?.errors && !prevRequest?.headers.sent) {
                     prevRequest.headers.sent = true;
                     const newAccessToken = await refresh();
